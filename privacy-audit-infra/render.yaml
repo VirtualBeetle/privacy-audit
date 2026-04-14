@@ -1,0 +1,235 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# Render Blueprint — Privacy Audit & Data Transparency Service
+#
+# Deploy to Render in one click:
+#   1. Push all repos to GitHub (or a mono-repo)
+#   2. Go to https://dashboard.render.com/blueprints → "New Blueprint"
+#   3. Select this repo, point to this render.yaml
+#   4. Fill in the environment variables marked (sync from Render dashboard)
+#
+# Services deployed:
+#   - audit-backend   (NestJS web service)
+#   - audit-frontend  (Vite static site)
+#   - health-backend  (Go web service)
+#   - social-backend  (Python/FastAPI web service)
+#
+# Databases:
+#   - privacy-audit-db  (Render managed PostgreSQL)
+#   - privacy-health-db (Render managed PostgreSQL)
+#   - privacy-social-db (Render managed PostgreSQL)
+#   - privacy-redis     (Render managed Redis)
+#
+# MongoDB: Use MongoDB Atlas (https://www.mongodb.com/atlas) — free M0 tier.
+#          Set MONGODB_URI manually in the Render dashboard.
+# ─────────────────────────────────────────────────────────────────────────────
+
+databases:
+  - name: privacy-audit-db
+    plan: free
+    databaseName: privacy_audit
+    user: postgres
+
+  - name: privacy-health-db
+    plan: free
+    databaseName: health_tenant
+    user: postgres
+
+  - name: privacy-social-db
+    plan: free
+    databaseName: social_tenant
+    user: postgres
+
+  - name: privacy-redis
+    plan: free
+    ipAllowList: []
+
+services:
+
+  # ── Core Audit Backend (NestJS) ─────────────────────────────────────────────
+  - type: web
+    name: audit-backend
+    runtime: docker
+    rootDir: privacy-audit-backend
+    dockerfilePath: ./Dockerfile
+    plan: free
+    healthCheckPath: /api/health
+    envVars:
+      - key: DB_HOST
+        fromDatabase:
+          name: privacy-audit-db
+          property: host
+      - key: DB_PORT
+        fromDatabase:
+          name: privacy-audit-db
+          property: port
+      - key: DB_USER
+        fromDatabase:
+          name: privacy-audit-db
+          property: user
+      - key: DB_PASSWORD
+        fromDatabase:
+          name: privacy-audit-db
+          property: password
+      - key: DB_NAME
+        fromDatabase:
+          name: privacy-audit-db
+          property: database
+      - key: REDIS_HOST
+        fromService:
+          type: redis
+          name: privacy-redis
+          property: host
+      - key: REDIS_PORT
+        fromService:
+          type: redis
+          name: privacy-redis
+          property: port
+      - key: REDIS_PASSWORD
+        fromService:
+          type: redis
+          name: privacy-redis
+          property: password
+      - key: JWT_SECRET
+        sync: false   # Set manually in Render dashboard
+      - key: GOOGLE_CLIENT_ID
+        sync: false   # Set manually
+      - key: GOOGLE_CLIENT_SECRET
+        sync: false   # Set manually
+      - key: GOOGLE_CALLBACK_URL
+        value: https://audit-backend.onrender.com/api/auth/google/callback
+      - key: DASHBOARD_BASE_URL
+        value: https://audit-frontend.onrender.com
+      - key: ANTHROPIC_API_KEY
+        sync: false   # Set manually
+      - key: MONGODB_URI
+        sync: false   # MongoDB Atlas URI — set manually
+      - key: SMTP_HOST
+        sync: false   # Set manually (e.g. smtp.gmail.com)
+      - key: SMTP_PORT
+        value: "587"
+      - key: SMTP_USER
+        sync: false
+      - key: SMTP_PASS
+        sync: false
+      - key: FROM_EMAIL
+        sync: false
+      - key: DEV_TOKEN
+        sync: false   # Set a random secret for /dev/* endpoints
+      - key: PORT
+        value: "8080"
+      - key: NODE_ENV
+        value: production
+
+  # ── Privacy Dashboard Frontend (Vite/React static site) ─────────────────────
+  - type: web
+    name: audit-frontend
+    runtime: static
+    rootDir: privacy-audit-frontend
+    buildCommand: npm ci && npm run build
+    staticPublishPath: dist
+    pullRequestPreviewsEnabled: true
+    headers:
+      - path: /*
+        name: Cache-Control
+        value: no-cache
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
+    envVars:
+      - key: VITE_API_URL
+        value: https://audit-backend.onrender.com
+
+  # ── HealthTrack Tenant Backend (Go) ─────────────────────────────────────────
+  - type: web
+    name: health-backend
+    runtime: docker
+    rootDir: privacy-health-tenant/backend
+    dockerfilePath: ./Dockerfile
+    plan: free
+    healthCheckPath: /health
+    envVars:
+      - key: PORT
+        value: "8081"
+      - key: DB_HOST
+        fromDatabase:
+          name: privacy-health-db
+          property: host
+      - key: DB_PORT
+        fromDatabase:
+          name: privacy-health-db
+          property: port
+      - key: DB_USER
+        fromDatabase:
+          name: privacy-health-db
+          property: user
+      - key: DB_PASSWORD
+        fromDatabase:
+          name: privacy-health-db
+          property: password
+      - key: DB_NAME
+        fromDatabase:
+          name: privacy-health-db
+          property: database
+      - key: JWT_SECRET
+        value: health-demo-secret
+      - key: AUDIT_SERVICE_URL
+        value: https://audit-backend.onrender.com
+      - key: AUDIT_API_KEY
+        sync: false   # Set manually — must match key registered in audit service
+
+  # ── HealthTrack Tenant Frontend (Vite/React static site) ────────────────────
+  - type: web
+    name: health-frontend
+    runtime: static
+    rootDir: privacy-health-tenant/frontend
+    buildCommand: npm ci && npm run build
+    staticPublishPath: dist
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
+    envVars:
+      - key: VITE_API_URL
+        value: https://health-backend.onrender.com
+
+  # ── ConnectSocial Tenant Backend (FastAPI/Python) ───────────────────────────
+  - type: web
+    name: social-backend
+    runtime: docker
+    rootDir: privacy-social-media-tenant/backend
+    dockerfilePath: ./Dockerfile
+    plan: free
+    healthCheckPath: /health
+    envVars:
+      - key: PORT
+        value: "8082"
+      - key: DATABASE_URL
+        fromDatabase:
+          name: privacy-social-db
+          property: connectionString
+      - key: JWT_SECRET
+        value: social-demo-secret
+      - key: JWT_ALGORITHM
+        value: HS256
+      - key: ACCESS_TOKEN_EXPIRE_MINUTES
+        value: "1440"
+      - key: AUDIT_SERVICE_URL
+        value: https://audit-backend.onrender.com
+      - key: AUDIT_API_KEY
+        sync: false   # Set manually — must match key registered in audit service
+
+  # ── ConnectSocial Tenant Frontend (Vite/React static site) ──────────────────
+  - type: web
+    name: social-frontend
+    runtime: static
+    rootDir: privacy-social-media-tenant/frontend
+    buildCommand: npm ci && npm run build
+    staticPublishPath: dist
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
+    envVars:
+      - key: VITE_API_URL
+        value: https://social-backend.onrender.com

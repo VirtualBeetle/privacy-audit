@@ -1,0 +1,25 @@
+{
+  "name": "privacy-audit-sdk",
+  "version": "0.1.0",
+  "description": "TypeScript/JavaScript client SDK for the Privacy Audit Service",
+  "author": "VirtualBeetle",
+  "license": "MIT",
+  "main": "dist/index.js",
+  "module": "dist/index.mjs",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch"
+  },
+  "devDependencies": {
+    "typescript": "^5.4.0"
+  },
+  "keywords": ["privacy", "gdpr", "audit", "sdk"]
+}

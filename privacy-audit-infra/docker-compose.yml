@@ -1,0 +1,329 @@
+version: "3.9"
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Privacy Audit & Data Transparency Service — Complete Docker Compose
+#
+# 9 services total:
+#   postgres-audit    PostgreSQL for the audit service            :5432
+#   postgres-health   PostgreSQL for the health tenant            :5433
+#   postgres-social   PostgreSQL for the social tenant            :5435
+#   redis             Redis for BullMQ event queue                :6379
+#   mongo             MongoDB for AI chat + analysis storage      :27017
+#   audit-backend     NestJS 11 core audit service                :8080
+#   audit-frontend    Vite + React privacy dashboard              :3000
+#   health-backend    Go + Gin health tenant                      :8081
+#   social-backend    FastAPI social tenant                       :8062
+#
+# Quick start:
+#   cp .env.example .env   # fill in secrets
+#   docker compose up -d   # start all services detached
+#   docker compose logs -f # watch all logs (Ctrl+C to stop tailing)
+#
+# Filter by service:
+#   docker compose logs -f audit-backend
+#   docker compose logs -f --tail=50 social-backend
+# ─────────────────────────────────────────────────────────────────────────────
+
+# ── Reusable YAML anchors ────────────────────────────────────────────────────
+
+# Log rotation applied to every service — prevents disk fill on long runs.
+x-logging: &default-logging
+  driver: "json-file"
+  options:
+    max-size: "10m"
+    max-file: "3"
+    tag: "{{.Name}}"
+
+# ── Networks ─────────────────────────────────────────────────────────────────
+
+networks:
+  audit-net:
+    name: privacy-audit-net
+    driver: bridge
+
+# ── Volumes ──────────────────────────────────────────────────────────────────
+
+volumes:
+  postgres-audit-data:
+    name: privacy-audit-postgres-audit
+  postgres-health-data:
+    name: privacy-audit-postgres-health
+  postgres-social-data:
+    name: privacy-audit-postgres-social
+  redis-data:
+    name: privacy-audit-redis
+  mongo-data:
+    name: privacy-audit-mongo
+
+# ── Services ─────────────────────────────────────────────────────────────────
+
+services:
+
+  # ── PostgreSQL — Audit DB ──────────────────────────────────────────────────
+  postgres-audit:
+    image: postgres:15-alpine
+    container_name: privacy-postgres-audit
+    restart: unless-stopped
+    networks: [audit-net]
+    logging: *default-logging
+    environment:
+      POSTGRES_DB: privacy_audit
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    volumes:
+      - postgres-audit-data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d privacy_audit"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 10s
+
+  # ── PostgreSQL — Health Tenant DB ──────────────────────────────────────────
+  postgres-health:
+    image: postgres:15-alpine
+    container_name: privacy-postgres-health
+    restart: unless-stopped
+    networks: [audit-net]
+    logging: *default-logging
+    environment:
+      POSTGRES_DB: health_tenant
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    volumes:
+      - postgres-health-data:/var/lib/postgresql/data
+    ports:
+      - "5433:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d health_tenant"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 10s
+
+  # ── PostgreSQL — Social Tenant DB ──────────────────────────────────────────
+  postgres-social:
+    image: postgres:15-alpine
+    container_name: privacy-postgres-social
+    restart: unless-stopped
+    networks: [audit-net]
+    logging: *default-logging
+    environment:
+      POSTGRES_DB: social_tenant
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    volumes:
+      - postgres-social-data:/var/lib/postgresql/data
+    ports:
+      - "5435:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d social_tenant"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 10s
+
+  # ── Redis — BullMQ Queue ───────────────────────────────────────────────────
+  redis:
+    image: redis:7-alpine
+    container_name: privacy-redis
+    restart: unless-stopped
+    networks: [audit-net]
+    logging: *default-logging
+    volumes:
+      - redis-data:/data
+    ports:
+      - "6379:6379"
+    command: redis-server --save 60 1 --loglevel warning
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 5s
+
+  # ── MongoDB — AI Chat + AI Analysis Storage ────────────────────────────────
+  mongo:
+    image: mongo:7
+    container_name: privacy-mongo
+    restart: unless-stopped
+    networks: [audit-net]
+    logging: *default-logging
+    volumes:
+      - mongo-data:/data/db
+    ports:
+      - "27017:27017"
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping').ok", "--quiet"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 15s
+
+  # ── Core Audit Service (NestJS) ────────────────────────────────────────────
+  audit-backend:
+    build:
+      context: ../privacy-audit-backend
+      dockerfile: Dockerfile
+    container_name: privacy-audit-backend
+    restart: unless-stopped
+    networks: [audit-net]
+    logging: *default-logging
+    depends_on:
+      postgres-audit:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      mongo:
+        condition: service_healthy
+    environment:
+      # PostgreSQL
+      DB_HOST: postgres-audit
+      DB_PORT: 5432
+      DB_USER: postgres
+      DB_PASSWORD: postgres
+      DB_NAME: privacy_audit
+      # Redis
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      # MongoDB
+      MONGODB_URI: ${MONGODB_URI:-mongodb://mongo:27017/privacy_audit_ai}
+      # Auth
+      JWT_SECRET: ${JWT_SECRET:-change-me-in-production}
+      # Google OAuth
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
+      GOOGLE_CALLBACK_URL: ${GOOGLE_CALLBACK_URL:-http://localhost:8080/api/auth/google/callback}
+      # Frontend URL
+      DASHBOARD_BASE_URL: ${DASHBOARD_BASE_URL:-http://localhost:3000}
+      # AI
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      ENCRYPTION_KEY: ${ENCRYPTION_KEY:-change-me-32-char-encryption-key}
+      # Email
+      SMTP_HOST: ${SMTP_HOST:-sandbox.smtp.mailtrap.io}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASS: ${SMTP_PASS:-}
+      FROM_EMAIL: ${FROM_EMAIL:-privacy-audit@demo.local}
+      # Dev tools
+      DEV_TOKEN: ${DEV_TOKEN:-dev-secret-change-me}
+      # Service
+      PORT: 8080
+      NODE_ENV: ${NODE_ENV:-development}
+    ports:
+      - "8080:8080"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://localhost:8080/api/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 8
+      start_period: 30s
+
+  # ── Privacy Dashboard (React) ──────────────────────────────────────────────
+  audit-frontend:
+    build:
+      context: ../privacy-audit-frontend
+      dockerfile: Dockerfile
+    container_name: privacy-audit-frontend
+    restart: unless-stopped
+    networks: [audit-net]
+    logging: *default-logging
+    depends_on:
+      audit-backend:
+        condition: service_healthy
+    environment:
+      VITE_API_URL: ${VITE_API_URL:-http://localhost:8080}
+    ports:
+      - "3000:80"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://localhost:80 || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  # ── HealthTrack Tenant Backend (Go + Gin) ──────────────────────────────────
+  health-backend:
+    build:
+      context: ../privacy-health-tenant/backend
+      dockerfile: Dockerfile
+    container_name: privacy-health-backend
+    restart: unless-stopped
+    networks: [audit-net]
+    logging: *default-logging
+    depends_on:
+      postgres-health:
+        condition: service_healthy
+      audit-backend:
+        condition: service_healthy
+    environment:
+      PORT: 8081
+      DB_HOST: postgres-health
+      DB_PORT: 5432
+      DB_USER: postgres
+      DB_PASSWORD: postgres
+      DB_NAME: health_tenant
+      JWT_SECRET: health-demo-secret
+      AUDIT_SERVICE_URL: http://audit-backend:8080
+      AUDIT_API_KEY: ${HEALTH_AUDIT_API_KEY:-health-tenant-api-key}
+    ports:
+      - "8081:8081"
+
+  # ── HealthTrack Tenant Frontend (React) ────────────────────────────────────
+  health-frontend:
+    build:
+      context: ../privacy-health-tenant/frontend
+      dockerfile: Dockerfile
+    container_name: privacy-health-frontend
+    restart: unless-stopped
+    networks: [audit-net]
+    logging: *default-logging
+    depends_on:
+      - health-backend
+    environment:
+      VITE_API_URL: ${HEALTH_VITE_API_URL:-http://localhost:8081}
+    ports:
+      - "3001:80"
+
+  # ── ConnectSocial Tenant Backend (FastAPI) ─────────────────────────────────
+  social-backend:
+    build:
+      context: ../privacy-social-media-tenant/backend
+      dockerfile: Dockerfile
+    container_name: privacy-social-backend
+    restart: unless-stopped
+    networks: [audit-net]
+    logging: *default-logging
+    depends_on:
+      postgres-social:
+        condition: service_healthy
+      audit-backend:
+        condition: service_healthy
+    environment:
+      PORT: 8082
+      DATABASE_URL: postgresql://postgres:postgres@postgres-social:5432/social_tenant
+      JWT_SECRET: social-demo-secret
+      JWT_ALGORITHM: HS256
+      ACCESS_TOKEN_EXPIRE_MINUTES: 1440
+      AUDIT_SERVICE_URL: http://audit-backend:8080
+      AUDIT_API_KEY: ${SOCIAL_AUDIT_API_KEY:-social-tenant-api-key}
+    ports:
+      - "8062:8082"
+
+  # ── ConnectSocial Tenant Frontend (React) ──────────────────────────────────
+  social-frontend:
+    build:
+      context: ../privacy-social-media-tenant/frontend
+      dockerfile: Dockerfile
+    container_name: privacy-social-frontend
+    restart: unless-stopped
+    networks: [audit-net]
+    logging: *default-logging
+    depends_on:
+      - social-backend
+    environment:
+      VITE_API_URL: ${SOCIAL_VITE_API_URL:-http://localhost:8062}
+    ports:
+      - "3002:80"
