@@ -6,5 +6,6 @@ import { AuditEvent } from '../events/audit-event.entity';
 @Module({
   imports: [TypeOrmModule.forFeature([AuditEvent])],
   providers: [RetentionService],
+  exports: [RetentionService],
 })
 export class RetentionModule {}

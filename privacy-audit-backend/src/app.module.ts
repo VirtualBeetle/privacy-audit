@@ -1,6 +1,7 @@
 import { Module, MiddlewareConsumer, RequestMethod } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { MongooseModule } from '@nestjs/mongoose';
 import { BullModule } from '@nestjs/bullmq';
 import { ScheduleModule } from '@nestjs/schedule';
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
@@ -17,6 +18,12 @@ import { DeletionsModule } from './deletions/deletions.module';
 import { DashboardUsersModule } from './dashboard-users/dashboard-users.module';
 import { RetentionModule } from './retention/retention.module';
 import { RiskModule } from './risk/risk.module';
+import { AiOrchestrationModule } from './ai-orchestration/ai-orchestration.module';
+import { AiChatModule } from './ai-chat/ai-chat.module';
+import { DevModule } from './dev/dev.module';
+import { ConsentsModule } from './consents/consents.module';
+import { BreachModule } from './breach/breach.module';
+import { WebhooksModule } from './webhooks/webhooks.module';
 
 // Entities
 import { Tenant } from './tenants/tenant.entity';
@@ -27,6 +34,9 @@ import { DeletionRequest } from './deletions/deletion-request.entity';
 import { DashboardUser } from './dashboard-users/dashboard-user.entity';
 import { LinkedAccount } from './dashboard-users/linked-account.entity';
 import { RiskAlert } from './risk/risk-alert.entity';
+import { Consent } from './consents/consent.entity';
+import { BreachReport } from './breach/breach-report.entity';
+import { Webhook } from './webhooks/webhook.entity';
 
 // Middleware
 import { TenantMiddleware } from './common/middleware/tenant.middleware';
@@ -57,8 +67,22 @@ import { AppController } from './app.controller';
           DashboardUser,
           LinkedAccount,
           RiskAlert,
+          Consent,
+          BreachReport,
+          Webhook,
         ],
         synchronize: true,
+      }),
+    }),
+
+    // ── MongoDB (AI Chat + AI Analysis storage) ────────────────────────────
+    MongooseModule.forRootAsync({
+      imports: [ConfigModule],
+      inject: [ConfigService],
+      useFactory: (configService: ConfigService) => ({
+        uri:
+          configService.get<string>('MONGODB_URI') ??
+          'mongodb://localhost:27017/privacy_audit_ai',
       }),
     }),
 
@@ -96,6 +120,12 @@ import { AppController } from './app.controller';
     DashboardUsersModule,
     RetentionModule,
     RiskModule,
+    AiOrchestrationModule,
+    AiChatModule,
+    DevModule,
+    ConsentsModule,
+    BreachModule,
+    WebhooksModule,
   ],
   controllers: [AppController],
   providers: [

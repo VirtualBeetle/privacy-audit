@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
 import IconButton from '@mui/material/IconButton';
@@ -6,25 +6,62 @@ import Collapse from '@mui/material/Collapse';
 import TextField from '@mui/material/TextField';
 import Chip from '@mui/material/Chip';
 import Tooltip from '@mui/material/Tooltip';
+import CircularProgress from '@mui/material/CircularProgress';
 import { AutoAwesome as AutoAwesomeIcon, Close as CloseIcon, Send as SendIcon, Shield as ShieldIcon } from '@mui/icons-material';
+import { dashboardApi } from '../../api/client';
 
-const DUMMY_MESSAGES = [
-  {
-    role: 'ai',
-    text: 'Hi James! I\'m your DataGuard AI. I can help you understand your privacy data and flag any concerns. What would you like to know?',
-  },
-  {
-    role: 'user',
-    text: 'Is there anything unusual in my recent activity?',
-  },
-  {
-    role: 'ai',
-    text: '⚠️ I noticed 2 critical events in the last 24 hours:\n\n1. Your location data was shared with Acxiom Data Broker without your consent.\n2. Your medical records were accessed by a third-party insurer.\n\nWould you like me to explain what this means for your privacy?',
-  },
-];
+interface Message {
+  role: 'user' | 'ai';
+  text: string;
+}
+
+const WELCOME: Message = {
+  role: 'ai',
+  text: "Hi! I'm DataGuard AI. I can help you understand your recent privacy data activity. What would you like to know?",
+};
 
 export default function AIChatButton() {
   const [open, setOpen] = useState(false);
+  const [messages, setMessages] = useState<Message[]>([WELCOME]);
+  const [input, setInput] = useState('');
+  const [sending, setSending] = useState(false);
+  const [sessionId, setSessionId] = useState<string | undefined>(undefined);
+  const [providerLabel, setProviderLabel] = useState<string>('');
+  const bottomRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages, sending]);
+
+  const handleSend = async () => {
+    const text = input.trim();
+    if (!text || sending) return;
+
+    setMessages((prev) => [...prev, { role: 'user', text }]);
+    setInput('');
+    setSending(true);
+
+    try {
+      const res = await dashboardApi.aiChat(text, sessionId);
+      setSessionId(res.sessionId);
+      setProviderLabel(`${res.provider} / ${res.model}`);
+      setMessages((prev) => [...prev, { role: 'ai', text: res.reply }]);
+    } catch {
+      setMessages((prev) => [
+        ...prev,
+        { role: 'ai', text: 'Sorry, I could not reach the AI service. Please try again.' },
+      ]);
+    } finally {
+      setSending(false);
+    }
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSend();
+    }
+  };
 
   return (
     <Box
@@ -44,7 +81,7 @@ export default function AIChatButton() {
         <Box
           className="anim-slide-right"
           sx={{
-            width: 340,
+            width: 360,
             borderRadius: '20px',
             overflow: 'hidden',
             boxShadow: '0 24px 60px rgba(0,0,0,0.18)',
@@ -52,7 +89,7 @@ export default function AIChatButton() {
             background: '#fff',
           }}
         >
-          {/* Panel header */}
+          {/* Header */}
           <Box
             sx={{
               background: 'linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%)',
@@ -65,15 +102,10 @@ export default function AIChatButton() {
           >
             <Box
               sx={{
-                width: 36,
-                height: 36,
-                borderRadius: '10px',
+                width: 36, height: 36, borderRadius: '10px',
                 background: 'linear-gradient(135deg, #38bdf8, #818cf8)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                boxShadow: '0 4px 12px rgba(56,189,248,0.4)',
-                flexShrink: 0,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                boxShadow: '0 4px 12px rgba(56,189,248,0.4)', flexShrink: 0,
               }}
             >
               <ShieldIcon sx={{ color: '#fff', fontSize: 18 }} />
@@ -85,12 +117,14 @@ export default function AIChatButton() {
               </Typography>
               <Box className="flex items-center gap-1">
                 <Box sx={{ width: 6, height: 6, borderRadius: '50%', backgroundColor: '#22c55e', boxShadow: '0 0 5px #22c55e' }} />
-                <Typography sx={{ color: '#94a3b8', fontSize: '0.7rem' }}>Online</Typography>
+                <Typography sx={{ color: '#94a3b8', fontSize: '0.7rem' }}>
+                  {providerLabel ? providerLabel : 'Online'}
+                </Typography>
               </Box>
             </Box>
 
             <Chip
-              label="Beta"
+              label="AI"
               size="small"
               sx={{ backgroundColor: 'rgba(99,102,241,0.25)', color: '#a5b4fc', fontSize: '0.65rem', fontWeight: 700, height: 20 }}
             />
@@ -100,29 +134,22 @@ export default function AIChatButton() {
           </Box>
 
           {/* Messages */}
-          <Box sx={{ height: 280, overflowY: 'auto', p: 2, display: 'flex', flexDirection: 'column', gap: 1.5, backgroundColor: '#f8fafc' }}>
-            {DUMMY_MESSAGES.map((msg, i) => (
+          <Box sx={{ height: 300, overflowY: 'auto', p: 2, display: 'flex', flexDirection: 'column', gap: 1.5, backgroundColor: '#f8fafc' }}>
+            {messages.map((msg, i) => (
               <Box
                 key={i}
                 sx={{
                   display: 'flex',
                   justifyContent: msg.role === 'user' ? 'flex-end' : 'flex-start',
-                  animation: `fadeInUp 0.3s ease-out ${i * 150}ms both`,
                 }}
               >
                 {msg.role === 'ai' && (
                   <Box
                     sx={{
-                      width: 26,
-                      height: 26,
-                      borderRadius: '8px',
+                      width: 26, height: 26, borderRadius: '8px',
                       background: 'linear-gradient(135deg, #38bdf8, #818cf8)',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      mr: 1,
-                      flexShrink: 0,
-                      mt: 0.3,
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      mr: 1, flexShrink: 0, mt: 0.3,
                     }}
                   >
                     <AutoAwesomeIcon sx={{ color: '#fff', fontSize: 14 }} />
@@ -131,8 +158,7 @@ export default function AIChatButton() {
                 <Box
                   sx={{
                     maxWidth: '80%',
-                    px: 1.8,
-                    py: 1.2,
+                    px: 1.8, py: 1.2,
                     borderRadius: msg.role === 'user' ? '16px 16px 4px 16px' : '16px 16px 16px 4px',
                     background: msg.role === 'user'
                       ? 'linear-gradient(135deg, #6366f1, #8b5cf6)'
@@ -143,12 +169,7 @@ export default function AIChatButton() {
                 >
                   <Typography
                     variant="body2"
-                    sx={{
-                      color: msg.role === 'user' ? '#fff' : '#1e293b',
-                      fontSize: '0.8rem',
-                      lineHeight: 1.5,
-                      whiteSpace: 'pre-line',
-                    }}
+                    sx={{ color: msg.role === 'user' ? '#fff' : '#1e293b', fontSize: '0.8rem', lineHeight: 1.5, whiteSpace: 'pre-line' }}
                   >
                     {msg.text}
                   </Typography>
@@ -157,38 +178,34 @@ export default function AIChatButton() {
             ))}
 
             {/* Typing indicator */}
-            <Box className="flex items-center gap-2">
-              <Box
-                sx={{
-                  width: 26,
-                  height: 26,
-                  borderRadius: '8px',
-                  background: 'linear-gradient(135deg, #38bdf8, #818cf8)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  flexShrink: 0,
-                }}
-              >
-                <AutoAwesomeIcon sx={{ color: '#fff', fontSize: 14 }} />
-              </Box>
-              <Box sx={{ px: 1.8, py: 1.2, borderRadius: '16px 16px 16px 4px', background: '#fff', border: '1px solid #e2e8f0' }}>
-                <Box className="flex gap-1 items-center" sx={{ py: 0.3 }}>
-                  {[0, 1, 2].map((i) => (
-                    <Box
-                      key={i}
-                      sx={{
-                        width: 6,
-                        height: 6,
-                        borderRadius: '50%',
-                        backgroundColor: '#94a3b8',
-                        animation: `floatY 1.2s ease-in-out ${i * 200}ms infinite`,
-                      }}
-                    />
-                  ))}
+            {sending && (
+              <Box className="flex items-center gap-2">
+                <Box
+                  sx={{
+                    width: 26, height: 26, borderRadius: '8px',
+                    background: 'linear-gradient(135deg, #38bdf8, #818cf8)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+                  }}
+                >
+                  <AutoAwesomeIcon sx={{ color: '#fff', fontSize: 14 }} />
+                </Box>
+                <Box sx={{ px: 1.8, py: 1.2, borderRadius: '16px 16px 16px 4px', background: '#fff', border: '1px solid #e2e8f0' }}>
+                  <Box className="flex gap-1 items-center" sx={{ py: 0.3 }}>
+                    {[0, 1, 2].map((i) => (
+                      <Box
+                        key={i}
+                        sx={{
+                          width: 6, height: 6, borderRadius: '50%', backgroundColor: '#94a3b8',
+                          animation: `floatY 1.2s ease-in-out ${i * 200}ms infinite`,
+                        }}
+                      />
+                    ))}
+                  </Box>
                 </Box>
               </Box>
-            </Box>
+            )}
+
+            <div ref={bottomRef} />
           </Box>
 
           {/* Input */}
@@ -197,8 +214,13 @@ export default function AIChatButton() {
               <TextField
                 fullWidth
                 size="small"
+                multiline
+                maxRows={3}
                 placeholder="Ask about your data privacy…"
-                disabled
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                onKeyDown={handleKeyDown}
+                disabled={sending}
                 sx={{
                   '& .MuiOutlinedInput-root': {
                     borderRadius: '12px',
@@ -208,39 +230,37 @@ export default function AIChatButton() {
                 }}
               />
               <IconButton
-                disabled
+                onClick={handleSend}
+                disabled={!input.trim() || sending}
                 sx={{
                   background: 'linear-gradient(135deg, #6366f1, #8b5cf6)',
                   color: '#fff',
-                  width: 36,
-                  height: 36,
-                  borderRadius: '10px',
-                  flexShrink: 0,
+                  width: 36, height: 36, borderRadius: '10px', flexShrink: 0,
                   '&.Mui-disabled': { background: 'linear-gradient(135deg, #c7d2fe, #ddd6fe)', color: '#fff' },
+                  '&:hover': { background: 'linear-gradient(135deg, #4f46e5, #7c3aed)' },
                 }}
               >
-                <SendIcon sx={{ fontSize: 16 }} />
+                {sending
+                  ? <CircularProgress size={14} sx={{ color: '#fff' }} />
+                  : <SendIcon sx={{ fontSize: 16 }} />
+                }
               </IconButton>
             </Box>
             <Typography variant="caption" sx={{ color: '#94a3b8', fontSize: '0.65rem', display: 'block', textAlign: 'center', mt: 0.8 }}>
-              AI analysis coming soon — powered by DataGuard Intelligence
+              Powered by DataGuard AI — your data stays private
             </Typography>
           </Box>
         </Box>
       </Collapse>
 
-      {/* FAB button */}
+      {/* FAB */}
       <Tooltip title={open ? '' : 'Ask DataGuard AI'} placement="left">
         <Box sx={{ position: 'relative' }}>
-          {/* Pulse ring */}
           {!open && (
             <Box
               sx={{
-                position: 'absolute',
-                inset: 0,
-                borderRadius: '50%',
-                backgroundColor: '#6366f1',
-                animation: 'pulseRing 2s ease-out infinite',
+                position: 'absolute', inset: 0, borderRadius: '50%',
+                backgroundColor: '#6366f1', animation: 'pulseRing 2s ease-out infinite',
               }}
             />
           )}
@@ -248,24 +268,15 @@ export default function AIChatButton() {
             onClick={() => setOpen((v) => !v)}
             className="cursor-pointer"
             sx={{
-              width: 56,
-              height: 56,
-              borderRadius: '50%',
+              width: 56, height: 56, borderRadius: '50%',
               background: open
                 ? 'linear-gradient(135deg, #ef4444, #f97316)'
                 : 'linear-gradient(135deg, #6366f1, #8b5cf6)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
               boxShadow: '0 8px 24px rgba(99,102,241,0.45)',
               transition: 'all 0.3s cubic-bezier(0.22,1,0.36,1)',
-              transform: open ? 'rotate(0deg) scale(1)' : 'rotate(0deg) scale(1)',
-              '&:hover': {
-                transform: 'scale(1.1)',
-                boxShadow: '0 12px 32px rgba(99,102,241,0.55)',
-              },
-              position: 'relative',
-              zIndex: 1,
+              '&:hover': { transform: 'scale(1.1)', boxShadow: '0 12px 32px rgba(99,102,241,0.55)' },
+              position: 'relative', zIndex: 1,
             }}
           >
             {open

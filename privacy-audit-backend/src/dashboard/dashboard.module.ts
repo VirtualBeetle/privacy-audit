@@ -10,6 +10,7 @@ import { ExportsModule } from '../exports/exports.module';
 import { DeletionsModule } from '../deletions/deletions.module';
 import { DashboardUsersModule } from '../dashboard-users/dashboard-users.module';
 import { RiskModule } from '../risk/risk.module';
+import { AiChatModule } from '../ai-chat/ai-chat.module';
 import { ApiKeyGuard } from '../common/guards/api-key.guard';
 import { DashboardGuard, DashboardAnyGuard } from '../common/guards/dashboard.guard';
 
@@ -21,6 +22,7 @@ import { DashboardGuard, DashboardAnyGuard } from '../common/guards/dashboard.gu
     DeletionsModule,
     DashboardUsersModule,
     RiskModule,
+    AiChatModule,
     JwtModule.registerAsync({
       imports: [ConfigModule],
       inject: [ConfigService],

@@ -1,10 +1,11 @@
-import { Injectable, ConflictException } from '@nestjs/common';
+import { Injectable, ConflictException, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { randomUUID, createHash } from 'crypto';
 import * as bcrypt from 'bcrypt';
 import { Tenant } from './tenant.entity';
 import { User, UserRole } from '../users/user.entity';
+import { AuditEvent } from '../events/audit-event.entity';
 import { RegisterTenantDto } from './dto/register-tenant.dto';
 
 export { RegisterTenantDto };
@@ -24,6 +25,8 @@ export class TenantsService {
     private tenantsRepository: Repository<Tenant>,
     @InjectRepository(User)
     private usersRepository: Repository<User>,
+    @InjectRepository(AuditEvent)
+    private eventsRepository: Repository<AuditEvent>,
   ) {}
 
   async register(dto: RegisterTenantDto) {
@@ -58,6 +61,9 @@ export class TenantsService {
 
     await this.usersRepository.save(adminUser);
 
+    const dashboardUrl = `${process.env.FRONTEND_URL ?? 'http://localhost:5173'}/dashboard`;
+    const apiBaseUrl = `${process.env.API_URL ?? 'http://localhost:8080'}/api`;
+
     return {
       tenant: {
         id: savedTenant.id,
@@ -68,6 +74,20 @@ export class TenantsService {
         retentionDays: savedTenant.retentionDays,
         createdAt: savedTenant.createdAt,
       },
+      dashboardUrl,
+      quickstart: {
+        sendEvent: `curl -X POST ${apiBaseUrl}/events \\
+  -H "Content-Type: application/json" \\
+  -H "x-api-key: ${plaintextApiKey}" \\
+  -d '{"event_id":"evt-001","tenant_user_id":"user-123","action":{"code":"READ","label":"Read profile"},"data_fields":["email","name"],"reason":{"code":"SERVICE","label":"Service operation"},"actor":{"type":"user","label":"End user"},"sensitivity":{"code":"LOW","label":"Low"},"occurred_at":"${new Date().toISOString()}"}'`,
+        loginDashboard: `# 1. Login to get a JWT:
+curl -X POST ${apiBaseUrl}/auth/login \\
+  -H "Content-Type: application/json" \\
+  -d '{"email":"${savedTenant.email}","password":"<your-password>"}'
+
+# 2. Visit your dashboard:
+${dashboardUrl}`,
+      },
       message:
         'Tenant registered successfully. Save your API key — it will not be shown again.',
     };
@@ -75,6 +95,29 @@ export class TenantsService {
 
   async findById(id: string): Promise<Tenant | null> {
     return this.tenantsRepository.findOne({ where: { id } });
+  }
+
+  async getOnboardingStatus(tenantId: string) {
+    const tenant = await this.tenantsRepository.findOne({ where: { id: tenantId } });
+    if (!tenant) throw new NotFoundException('Tenant not found');
+
+    const eventCount = await this.eventsRepository.count({ where: { tenantId } });
+    const firstEvent = eventCount > 0
+      ? await this.eventsRepository.findOne({
+          where: { tenantId },
+          order: { occurredAt: 'ASC' },
+        })
+      : null;
+
+    return {
+      tenantId,
+      tenantName: tenant.name,
+      hasEvents: eventCount > 0,
+      eventCount,
+      firstEventAt: firstEvent?.occurredAt ?? null,
+      dashboardReady: eventCount > 0,
+      dashboardUrl: `${process.env.FRONTEND_URL ?? 'http://localhost:5173'}/dashboard`,
+    };
   }
 
   // Used by ApiKeyGuard: hash the incoming key and look up in one DB query.

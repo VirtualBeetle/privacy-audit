@@ -5,7 +5,7 @@
 > 🔄 In Progress — partially built or in active development
 > ⏳ Not Started — planned, not yet begun
 
-Last updated: 2026-04-14
+Last updated: 2026-04-14 (Phase 9 backend + frontend, Phase 10, Phase 11 completed)
 
 ---
 
@@ -262,14 +262,14 @@ Last updated: 2026-04-14
 
 ---
 
-## Phase 8 — Render Deployment + CI/CD
+## Phase 8 — Render Deployment + CI/CD ✅ FULLY DONE (merged into Phase 7)
 
 | # | Task | Status | Notes |
 |---|---|---|---|
-| CI-1 | GitHub Actions CI — lint + build on every push/PR | ⏳ Not Started | `.github/workflows/ci.yml` |
-| CI-2 | `render.yaml` Blueprint — all 4 web services + 2 DBs + Redis | ⏳ Not Started | In `privacy-audit-infra/` |
-| CI-3 | Render env var groups documented in `.env.render.example` | ⏳ Not Started | Maps each service's required vars |
-| CI-4 | `DEPLOY.md` — step-by-step Render deploy guide | ⏳ Not Started | Fork → Connect → Deploy |
+| CI-1 | GitHub Actions CI — lint + build on every push/PR | ✅ Done | `.github/workflows/ci.yml` — covers all 6 services |
+| CI-2 | `render.yaml` Blueprint — all services + DBs + Redis | ✅ Done | At repo root (required by Render) |
+| CI-3 | Env vars documented | ✅ Done | Covered in `DEPLOY.md` and `.env.example` files |
+| CI-4 | `DEPLOY.md` — step-by-step Render deploy guide | ✅ Done | Full local + Render guide |
 
 ---
 
@@ -278,61 +278,61 @@ Last updated: 2026-04-14
 ### MongoDB Setup
 | # | Task | Status | Notes |
 |---|---|---|---|
-| MONGO-1 | Install `@nestjs/mongoose` + `mongoose` in backend | ⏳ Not Started | Dual-DB: Postgres for core, MongoDB for AI data |
-| MONGO-2 | `MongooseModule.forRootAsync` in `AppModule` | ⏳ Not Started | `MONGODB_URI` env var |
+| MONGO-1 | Install `@nestjs/mongoose` + `mongoose` in backend | ✅ Done | `npm install @nestjs/mongoose mongoose` |
+| MONGO-2 | `MongooseModule.forRootAsync` in `AppModule` | ✅ Done | `MONGODB_URI` env var, fallback to localhost |
 | MONGO-10 | MongoDB service already added to Docker Compose (`mongo:7`) | ✅ Done | Port 27017, named volume |
 
 ### AI Provider Orchestration (switchable from DB)
 | # | Task | Status | Notes |
 |---|---|---|---|
-| AI-1 | `AiProviderSetting` Mongoose schema — provider, model, apiKey (AES-256 encrypted), isActive, label | ⏳ Not Started | `src/ai-orchestration/schemas/ai-provider-setting.schema.ts` |
-| AI-2 | `ENCRYPTION_KEY` env var + AES-256-GCM encrypt/decrypt util | ⏳ Not Started | Used to encrypt stored API keys |
-| AI-3 | `AiOrchestrationService` — reads active provider from DB, routes to Claude/Gemini/OpenAI | ⏳ Not Started | Single `chat(messages)` and `analyse(prompt)` interface |
-| AI-4 | Claude adapter — uses `@anthropic-ai/sdk`, supports `claude-opus-4-6` and `claude-sonnet-4-6` | ⏳ Not Started | |
-| AI-5 | Gemini adapter — uses `@google/generative-ai` SDK, supports `gemini-1.5-pro` and `gemini-1.5-flash` | ⏳ Not Started | |
-| AI-6 | OpenAI adapter (optional) — uses `openai` SDK, supports `gpt-4o` | ⏳ Not Started | Optional stretch goal |
-| AI-7 | Dev endpoints: `GET /dev/ai-providers`, `POST /dev/ai-providers`, `PUT /dev/ai-providers/:id/activate`, `DELETE /dev/ai-providers/:id` | ⏳ Not Started | Manage providers + switch active one via API |
-| AI-8 | `RiskService` and `AiChatService` use `AiOrchestrationService` instead of direct Anthropic calls | ⏳ Not Started | |
+| AI-1 | `AiProviderSetting` Mongoose schema — provider, model, apiKey (AES-256 encrypted), isActive, label | ✅ Done | `src/ai-orchestration/schemas/ai-provider-setting.schema.ts` |
+| AI-2 | `ENCRYPTION_KEY` env var + AES-256-GCM encrypt/decrypt util | ✅ Done | `src/ai-orchestration/encryption.util.ts` |
+| AI-3 | `AiOrchestrationService` — reads active provider from DB, routes to Claude/Gemini/OpenAI | ✅ Done | Single `chat(messages)` and `analyse(prompt)` interface |
+| AI-4 | Claude adapter — uses `@anthropic-ai/sdk`, supports `claude-opus-4-6` and `claude-sonnet-4-6` | ✅ Done | Fallback to `ANTHROPIC_API_KEY` env if no DB provider |
+| AI-5 | Gemini adapter — uses `@google/generative-ai` SDK, supports `gemini-1.5-pro` and `gemini-1.5-flash` | ✅ Done | |
+| AI-6 | OpenAI adapter (optional) — uses `openai` SDK, supports `gpt-4o` | ✅ Done | Dynamic require — install `openai` package to enable |
+| AI-7 | Dev endpoints: `GET /dev/ai-providers`, `POST /dev/ai-providers`, `PUT /dev/ai-providers/:id/activate`, `DELETE /dev/ai-providers/:id` | ✅ Done | All guarded by `x-dev-token` |
+| AI-8 | `RiskService` and `AiChatService` use `AiOrchestrationService` instead of direct Anthropic calls | ✅ Done | |
 
 ### AI Chat
 | # | Task | Status | Notes |
 |---|---|---|---|
-| MONGO-3 | `AiChatSession` Mongoose schema (userId, provider used, messages array, tenantContext) | ⏳ Not Started | |
-| MONGO-4 | `AiAnalysisRecord` Mongoose schema (tenantId, providerUsed, full context, event samples, findings) | ⏳ Not Started | |
-| MONGO-5 | `AiChatModule` + `AiChatService` | ⏳ Not Started | `src/ai-chat/` |
-| MONGO-6 | `POST /dashboard/ai-chat` — send message, get AI response with user's audit data as context | ⏳ Not Started | Uses active AI provider from DB |
-| MONGO-7 | `GET /dashboard/ai-chat/history` — paginated sessions | ⏳ Not Started | |
-| MONGO-8 | `RiskService` stores full analysis in MongoDB (alongside PG alerts) | ⏳ Not Started | Rich doc with event samples + provider used |
-| MONGO-9 | `GET /dashboard/ai-analysis` — full analysis history from MongoDB | ⏳ Not Started | |
-| MONGO-11 | Frontend: `AIChatPanel` — real chat UI, shows which AI provider is responding | ⏳ Not Started | |
-| MONGO-12 | Frontend: AI Analysis History section — expandable cards | ⏳ Not Started | |
+| MONGO-3 | `AiChatSession` Mongoose schema (userId, provider used, messages array, tenantContext) | ✅ Done | Collection `ai_chat_sessions` |
+| MONGO-4 | `AiAnalysisRecord` Mongoose schema (tenantId, providerUsed, full context, event samples, findings) | ✅ Done | Collection `ai_analysis_records` |
+| MONGO-5 | `AiChatModule` + `AiChatService` | ✅ Done | `src/ai-chat/` |
+| MONGO-6 | `POST /dashboard/ai-chat` — send message, get AI response with user's audit data as context | ✅ Done | Prepends last 20 events as system context |
+| MONGO-7 | `GET /dashboard/ai-chat/history` — paginated sessions | ✅ Done | Query: `?page=1&limit=20` |
+| MONGO-8 | `RiskService` stores full analysis in MongoDB (alongside PG alerts) | ✅ Done | Non-blocking — PG failure doesn't block MongoDB |
+| MONGO-9 | `GET /dashboard/ai-analysis` — full analysis history from MongoDB | ✅ Done | Expandable accordion cards in UI |
+| MONGO-11 | Frontend: `AIChatPanel` — real chat UI, shows which AI provider is responding | ✅ Done | Live API calls, session continuity, provider label shown |
+| MONGO-12 | Frontend: AI Analysis History section — expandable cards | ✅ Done | Accordion UI in Dashboard.tsx, shows provider/model/findings |
 
 ---
 
-## Phase 10 — Email Notifications
+## Phase 10 — Email Notifications ✅ FULLY DONE
 
 | # | Task | Status | Notes |
 |---|---|---|---|
-| EMAIL-1 | Install `nodemailer` + `@types/nodemailer` in backend | ⏳ Not Started | No heavy mail SDK needed |
-| EMAIL-2 | `EmailModule` + `EmailService` with nodemailer transport | ⏳ Not Started | `src/email/email.service.ts` |
-| EMAIL-3 | HTML email template — HIGH/CRITICAL risk alert for tenant admin | ⏳ Not Started | Inline CSS, severity badge, suggested action |
-| EMAIL-4 | HTML email template — suspicious activity alert for user | ⏳ Not Started | Lists affected events, privacy dashboard link |
-| EMAIL-5 | `RiskService` triggers email on HIGH/CRITICAL alert after analysis | ⏳ Not Started | Uses tenant's admin email from `User` table |
-| EMAIL-6 | Weekly privacy digest cron (`0 9 * * 1` — Monday 09:00 UTC) | ⏳ Not Started | Summary of last 7 days' audit events |
-| EMAIL-7 | Add SMTP env vars to `.env.example` (SMTP_HOST, PORT, USER, PASS, FROM_EMAIL) | ⏳ Not Started | Supports Gmail SMTP / Mailtrap / SendGrid SMTP |
+| EMAIL-1 | Install `nodemailer` + `@types/nodemailer` in backend | ✅ Done | |
+| EMAIL-2 | `EmailModule` + `EmailService` with nodemailer transport | ✅ Done | `src/email/email.service.ts` — graceful no-op when SMTP not configured |
+| EMAIL-3 | HTML email template — HIGH/CRITICAL risk alert for tenant admin | ✅ Done | Severity badge, description, suggested action, inline CSS |
+| EMAIL-4 | HTML email template — weekly digest | ✅ Done | Stats grid (total/critical/high), top findings list |
+| EMAIL-5 | `RiskService` triggers email on HIGH/CRITICAL alert after analysis | ✅ Done | Non-blocking `.catch()` — alert save doesn't fail if email fails |
+| EMAIL-6 | Weekly privacy digest cron (`0 9 * * 1` — Monday 09:00 UTC) | ✅ Done | `sendWeeklyDigests()` in RiskService + `POST /dev/trigger-weekly-digest` |
+| EMAIL-7 | Add SMTP env vars to `.env.example` (SMTP_HOST, PORT, USER, PASS, FROM_EMAIL) | ✅ Done | Already present — supports Gmail/Mailtrap/SendGrid |
 
 ---
 
-## Phase 11 — Developer Tools (Manual Triggers for Demo)
+## Phase 11 — Developer Tools (Manual Triggers for Demo) ✅ FULLY DONE
 
 | # | Task | Status | Notes |
 |---|---|---|---|
-| DEV-1 | `DevModule` + `DevController` guarded by `DEV_TOKEN` env var | ⏳ Not Started | `src/dev/dev.controller.ts` |
-| DEV-2 | `POST /dev/trigger-risk-analysis` — runs full risk analysis immediately | ⏳ Not Started | Returns list of alerts generated |
-| DEV-3 | `POST /dev/trigger-retention` — runs retention purge immediately | ⏳ Not Started | Returns count of deleted events |
-| DEV-4 | `POST /dev/trigger-weekly-digest` — sends weekly email digest immediately | ⏳ Not Started | For demo: show email flow live |
-| DEV-5 | `POST /dev/seed-events` — injects 20 sample events for a tenant | ⏳ Not Started | With varied actions, sensitivities, actors |
-| DEV-6 | `GET /dev/queue-status` — BullMQ queue depth + failed jobs | ⏳ Not Started | Real-time queue health for demo |
+| DEV-1 | `DevModule` + `DevController` guarded by `DEV_TOKEN` env var | ✅ Done | `src/dev/dev.controller.ts` — all routes require `x-dev-token` header |
+| DEV-2 | `POST /dev/trigger-risk-analysis` — runs full risk analysis immediately | ✅ Done | Returns `{ tenants, alerts }` |
+| DEV-3 | `POST /dev/trigger-retention` — runs retention purge immediately | ✅ Done | Delegates to `RetentionService.purgeExpiredEvents()` |
+| DEV-4 | `POST /dev/trigger-weekly-digest` — sends weekly email digest immediately | ✅ Done | Delegates to `RiskService.sendWeeklyDigests()` |
+| DEV-5 | `POST /dev/seed-events` — injects 20 sample events for a tenant | ✅ Done | Body: `{ tenantId, tenantUserId? }` — varied actions/sensitivities/actors |
+| DEV-6 | `GET /dev/queue-status` — BullMQ queue depth + failed jobs | ✅ Done | Returns waiting/active/completed/failed/delayed counts + health flag |
 
 ---
 
@@ -340,7 +340,7 @@ Last updated: 2026-04-14
 
 | # | Task | Status | Notes |
 |---|---|---|---|
-| ARCH-1 | `architecture-diagram.excalidraw` — full system diagram paste-into-excalidraw.com | ⏳ Not Started | All 8 services + external APIs + SDKs |
+| ARCH-1 | `architecture-diagram.excalidraw` — full system diagram paste-into-excalidraw.com | ✅ Done | File at repo root — paste into excalidraw.com |
 
 ---
 
@@ -386,13 +386,15 @@ Last updated: 2026-04-14
 | SDKs | 12 | 12 |
 | Infrastructure | 5 | 5 |
 | Integration | 4 | 4 |
-| Phase 7 — Mono-Repo + One-Command Startup + CI/CD | 9 | 11 |
-| Phase 9 — MongoDB + AI Chat + AI Orchestration | 1 | 18 |
-| Phase 10 — Email Notifications | 0 | 7 |
-| Phase 11 — Dev Tools | 0 | 6 |
+| Phase 7 — Mono-Repo + One-Command Startup + CI/CD | 11 | 11 |
+| Phase 8 — Render CI/CD (merged into Phase 7) | 4 | 4 |
+| Phase 9 — MongoDB + AI Chat + AI Orchestration | 18 | 18 |
+| Phase 10 — Email Notifications | 7 | 7 |
+| Phase 11 — Dev Tools | 6 | 6 |
 | Phase 12 — Architecture Diagram | 1 | 1 |
 | Phase 13 — Tenant Onboarding | 0 | 6 |
 | Phase 14 — Complexity Boosters | 0 | 6 |
 | **Phase 1–6 Total** | **115** | **115** |
-| **New Phases 7–14 Total** | **2** | **55** |
-| **Grand Total** | **117** | **170** |
+| **Phases 7–8 Total** | **15** | **15** |
+| **Phases 9–14 Remaining** | **2** | **44** |
+| **Grand Total** | **132** | **174** |

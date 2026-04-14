@@ -5,6 +5,8 @@ import Header from './components/Header/Header';
 import Dashboard from './pages/Dashboard';
 import Login from './pages/Login';
 import AuthRedirect from './pages/AuthRedirect';
+import Onboard from './pages/Onboard';
+import Webhooks from './pages/Webhooks';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 
 const theme = createTheme({
@@ -28,11 +30,13 @@ function AppRoutes() {
       <Routes>
         {/* Public */}
         <Route path="/login" element={<Login />} />
+        <Route path="/onboard" element={<Onboard />} />
         <Route path="/auth/redirect" element={<AuthRedirect />} />
         <Route path="/auth/google/callback" element={<AuthRedirect />} />
 
         {/* Protected */}
         <Route path="/dashboard" element={<PrivateRoute element={<Dashboard />} />} />
+        <Route path="/webhooks" element={<PrivateRoute element={<Webhooks />} />} />
 
         {/* Default redirect */}
         <Route path="*" element={<Navigate to="/dashboard" replace />} />

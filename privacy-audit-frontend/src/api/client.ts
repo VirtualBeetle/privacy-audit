@@ -67,4 +67,64 @@ export const dashboardApi = {
   /** Get all linked tenant accounts (google_session only). */
   getLinkedAccounts: () =>
     api.get('/dashboard/linked-accounts').then((r) => r.data),
+
+  /** Send a message in the AI chat. Creates a new session if sessionId is omitted. */
+  aiChat: (message: string, sessionId?: string) =>
+    api.post('/dashboard/ai-chat', { message, sessionId }).then((r) => r.data),
+
+  /** Get paginated AI chat session history. */
+  getChatHistory: (page = 1, limit = 20) =>
+    api.get('/dashboard/ai-chat/history', { params: { page, limit } }).then((r) => r.data),
+
+  /** Get AI risk analysis history (tenant analysis records from MongoDB). */
+  getAnalysisHistory: () =>
+    api.get('/dashboard/ai-analysis').then((r) => r.data),
+
+  /** Get Privacy Health Score (0-100) for the authenticated user. */
+  getPrivacyScore: () =>
+    api.get('/dashboard/privacy-score').then((r) => r.data),
+
+  /** Get all breach reports for the authenticated user. */
+  getBreachReports: () =>
+    api.get('/dashboard/breach-report').then((r) => r.data),
+
+  /** Report a data breach — starts the 72h GDPR Art.33 countdown. */
+  reportBreach: (description: string, severity?: string) =>
+    api.post('/dashboard/breach-report', { description, severity }).then((r) => r.data),
+
+  /** Simulate notifying the regulator. */
+  notifyRegulator: (id: string) =>
+    api.post(`/dashboard/breach-report/${id}/notify`).then((r) => r.data),
+
+  /** Get consent records for a user. */
+  getConsents: (userId: string) =>
+    api.get(`/consents/${userId}`).then((r) => r.data),
+
+  /** Set consent for a data type. */
+  setConsent: (tenantUserId: string, dataType: string, granted: boolean) =>
+    api.post('/consents', { tenantUserId, dataType, granted }).then((r) => r.data),
+
+  /** List active webhooks. */
+  getWebhooks: () =>
+    api.get('/webhooks').then((r) => r.data),
+
+  /** Register a new webhook. */
+  addWebhook: (url: string, triggerOn?: string) =>
+    api.post('/webhooks', { url, triggerOn }).then((r) => r.data),
+
+  /** Delete a webhook. */
+  deleteWebhook: (id: string) =>
+    api.delete(`/webhooks/${id}`),
+};
+
+// ─── Onboarding API helpers ─────────────────────────────────────────────────
+
+export const onboardApi = {
+  /** Register a new tenant and get enriched onboarding payload. */
+  register: (name: string, email: string, password: string) =>
+    api.post('/tenants/register', { name, email, password }).then((r) => r.data),
+
+  /** Poll onboarding status — hasEvents, eventCount, firstEventAt, dashboardReady. */
+  getStatus: (tenantId: string) =>
+    api.get(`/tenants/${tenantId}/onboarding-status`).then((r) => r.data),
 };

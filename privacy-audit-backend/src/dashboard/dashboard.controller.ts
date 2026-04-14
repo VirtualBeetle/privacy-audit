@@ -4,6 +4,7 @@ import {
   Get,
   Body,
   Param,
+  Query,
   UseGuards,
   Res,
   HttpStatus,
@@ -14,6 +15,7 @@ import { ExportsService } from '../exports/exports.service';
 import { DeletionsService } from '../deletions/deletions.service';
 import { RiskService } from '../risk/risk.service';
 import { DashboardUsersService } from '../dashboard-users/dashboard-users.service';
+import { AiChatService } from '../ai-chat/ai-chat.service';
 import { CreateDashboardTokenDto } from './dto/create-dashboard-token.dto';
 import { ExchangeTokenDto } from './dto/exchange-token.dto';
 import { ApiKeyGuard } from '../common/guards/api-key.guard';
@@ -28,6 +30,7 @@ export class DashboardController {
     private readonly deletionsService: DeletionsService,
     private readonly riskService: RiskService,
     private readonly dashboardUsersService: DashboardUsersService,
+    private readonly aiChatService: AiChatService,
   ) {}
 
   // ─── Auth ──────────────────────────────────────────────────────────────────
@@ -172,6 +175,85 @@ export class DashboardController {
   @UseGuards(DashboardGuard)
   getDeletionStatus(@CurrentUser() user: any, @Param('id') id: string) {
     return this.deletionsService.getStatus(id, user.tenantId, user.tenantUserId);
+  }
+
+  // ─── AI Chat ──────────────────────────────────────────────────────────────
+
+  /**
+   * POST /api/dashboard/ai-chat
+   * Send a chat message. The AI receives the user's recent audit events as context.
+   * Body: { message: string, sessionId?: string }
+   */
+  @Post('ai-chat')
+  @UseGuards(DashboardAnyGuard)
+  async aiChat(
+    @CurrentUser() user: any,
+    @Body() body: { message: string; sessionId?: string },
+  ) {
+    return this.aiChatService.sendMessage(user, body.message, body.sessionId);
+  }
+
+  /**
+   * GET /api/dashboard/ai-chat/history
+   * Returns paginated list of past chat sessions.
+   * Query: ?page=1&limit=20
+   */
+  @Get('ai-chat/history')
+  @UseGuards(DashboardAnyGuard)
+  async getChatHistory(
+    @CurrentUser() user: any,
+    @Query('page') page = '1',
+    @Query('limit') limit = '20',
+  ) {
+    const userId = user.tenantUserId ?? user.dashboardUserId ?? 'unknown';
+    return this.aiChatService.getChatHistory(
+      userId,
+      parseInt(page, 10),
+      parseInt(limit, 10),
+    );
+  }
+
+  /**
+   * GET /api/dashboard/ai-analysis
+   * Returns AI risk analysis history from MongoDB (full context + findings).
+   * Only available for dashboard_session (per-tenant).
+   */
+  @Get('ai-analysis')
+  @UseGuards(DashboardGuard)
+  async getAnalysisHistory(@CurrentUser() user: any) {
+    return this.aiChatService.getAnalysisHistory(user.tenantId, 10);
+  }
+
+  // ─── Privacy Health Score ──────────────────────────────────────────────────
+
+  /**
+   * GET /api/dashboard/privacy-score
+   * Returns a 0-100 privacy health score for the authenticated user's tenant.
+   * Breakdown: consent rate (30), opt-out (20), third-party (20), sensitivity (20), critical (10).
+   */
+  @Get('privacy-score')
+  @UseGuards(DashboardAnyGuard)
+  getPrivacyScore(@CurrentUser() user: any) {
+    return this.dashboardService.computePrivacyScore(user);
+  }
+
+  // ─── PDF Compliance Report ─────────────────────────────────────────────────
+
+  /**
+   * GET /api/dashboard/compliance-report/download
+   * Generates and streams a PDF compliance report (GDPR Art.30 record).
+   * Covers: event log summary, retention policy, deletion proof, hash chain, risk alerts.
+   */
+  @Get('compliance-report/download')
+  @UseGuards(DashboardGuard)
+  async downloadComplianceReport(
+    @CurrentUser() user: any,
+    @Res() res: Response,
+  ) {
+    const { buffer, filename } = await this.dashboardService.generateCompliancePdf(user);
+    (res as any).setHeader('Content-Type', 'application/pdf');
+    (res as any).setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    (res as any).status(HttpStatus.OK).end(buffer);
   }
 
   // ─── AI Risk Alerts ────────────────────────────────────────────────────────
