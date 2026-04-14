@@ -13,7 +13,7 @@ import Chip from '@mui/material/Chip';
 import IconButton from '@mui/material/IconButton';
 import Tooltip from '@mui/material/Tooltip';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
-import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import OpenInNewIcon from '@mui/icons-material/OpenInNew';
 import { onboardApi } from '../api/client';
 
@@ -40,7 +40,7 @@ function CopyBlock({ label, value }: { label: string; value: string }) {
         </Typography>
         <Tooltip title={copied ? 'Copied!' : 'Copy'}>
           <IconButton size="small" onClick={handleCopy} sx={{ color: copied ? '#22c55e' : '#6366f1' }}>
-            {copied ? <CheckCircleOutlineIcon fontSize="small" /> : <ContentCopyIcon fontSize="small" />}
+            {copied ? <CheckCircleIcon fontSize="small" /> : <ContentCopyIcon fontSize="small" />}
           </IconButton>
         </Tooltip>
       </Box>
@@ -236,7 +236,7 @@ export default function Onboard() {
                 )}
                 {dashboardReady ? (
                   <Chip
-                    icon={<CheckCircleOutlineIcon />}
+                    icon={<CheckCircleIcon />}
                     label={`${eventCount} event${eventCount !== 1 ? 's' : ''} received — ready!`}
                     color="success"
                     variant="outlined"
@@ -278,7 +278,7 @@ export default function Onboard() {
           {/* ── Step 2: Open Dashboard ── */}
           {step === 2 && payload && (
             <Box sx={{ textAlign: 'center', py: 2 }}>
-              <CheckCircleOutlineIcon sx={{ fontSize: 56, color: '#22c55e', mb: 2 }} />
+              <CheckCircleIcon sx={{ fontSize: 56, color: '#22c55e', mb: 2 }} />
               <Typography variant="h6" sx={{ fontWeight: 700, mb: 1 }}>
                 You're all set, {payload.tenant.name}!
               </Typography>

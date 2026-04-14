@@ -268,8 +268,8 @@ export class DashboardService {
         .text('Each event is SHA-256 hashed with the previous event\'s hash, forming a tamper-evident chain. Any modification to a stored event invalidates all subsequent hashes.');
       doc.moveDown(0.4);
       if (events.length > 0) {
-        row('First event hash', events[events.length - 1]?.hash?.slice(0, 32) + '…' ?? 'N/A');
-        row('Latest event hash', events[0]?.hash?.slice(0, 32) + '…' ?? 'N/A');
+        row('First event hash', (events[events.length - 1]?.hash?.slice(0, 32) ?? 'N/A') + '…');
+        row('Latest event hash', (events[0]?.hash?.slice(0, 32) ?? 'N/A') + '…');
         row('Chain integrity', 'Verifiable via GET /api/events/verify-chain');
       }
       doc.moveDown(0.8);

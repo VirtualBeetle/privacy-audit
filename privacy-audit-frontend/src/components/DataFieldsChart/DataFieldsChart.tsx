@@ -44,7 +44,7 @@ export default function DataFieldsChart({ events }: Props) {
                 width={110}
               />
               <Tooltip
-                formatter={(v: number) => [`${v} times`, 'Accessed']}
+                formatter={(v: any) => [`${v} times`, 'Accessed']}
                 contentStyle={{ borderRadius: 8, border: '1px solid #e2e8f0', fontSize: '0.8rem' }}
               />
               <Bar dataKey="count" radius={[0, 4, 4, 0]}>

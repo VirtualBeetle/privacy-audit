@@ -52,7 +52,7 @@ export default function SensitivityChart({ events }: Props) {
                 ))}
               </Pie>
               <Tooltip
-                formatter={(value: number, name: string) => [`${value} events`, name]}
+                formatter={(value: any, name: any) => [`${value} events`, name]}
                 contentStyle={{ borderRadius: 8, border: '1px solid #e2e8f0', fontSize: '0.8rem' }}
               />
               <Legend

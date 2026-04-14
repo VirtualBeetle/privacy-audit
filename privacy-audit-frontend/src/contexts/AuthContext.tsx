@@ -4,8 +4,8 @@ import {
   useState,
   useEffect,
   useCallback,
-  ReactNode,
 } from 'react';
+import type { ReactNode } from 'react';
 
 export type SessionType = 'dashboard_session' | 'google_session';
 

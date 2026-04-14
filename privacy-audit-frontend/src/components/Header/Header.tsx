@@ -8,8 +8,11 @@ import Box from '@mui/material/Box';
 import Menu from '@mui/material/Menu';
 import MenuItem from '@mui/material/MenuItem';
 import ListItemIcon from '@mui/material/ListItemIcon';
+import Divider from '@mui/material/Divider';
 import LogoutIcon from '@mui/icons-material/Logout';
 import LinkIcon from '@mui/icons-material/Link';
+import WebhookIcon from '@mui/icons-material/Webhook';
+import PersonAddIcon from '@mui/icons-material/PersonAdd';
 import { Shield as ShieldIcon } from '@mui/icons-material';
 import { useAuth } from '../../contexts/AuthContext';
 
@@ -146,15 +149,17 @@ export default function Header() {
                 onClose={() => setAnchorEl(null)}
                 transformOrigin={{ horizontal: 'right', vertical: 'top' }}
                 anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
-                PaperProps={{
-                  sx: {
-                    mt: 1,
-                    borderRadius: 2,
-                    minWidth: 180,
-                    boxShadow: '0 8px 32px rgba(0,0,0,0.12)',
-                    border: '1px solid #e2e8f0',
+                slotProps={{
+                  paper: {
+                    sx: {
+                      mt: 1,
+                      borderRadius: 2,
+                      minWidth: 180,
+                      boxShadow: '0 8px 32px rgba(0,0,0,0.12)',
+                      border: '1px solid #e2e8f0',
+                    },
                   },
-                }}
+                } as any}
               >
                 {user?.type === 'dashboard_session' && (
                   <MenuItem
@@ -167,6 +172,19 @@ export default function Header() {
                     Link Google account
                   </MenuItem>
                 )}
+                <MenuItem
+                  onClick={() => { setAnchorEl(null); navigate('/webhooks'); }}
+                >
+                  <ListItemIcon><WebhookIcon fontSize="small" /></ListItemIcon>
+                  Webhooks
+                </MenuItem>
+                <MenuItem
+                  onClick={() => { setAnchorEl(null); navigate('/onboard'); }}
+                >
+                  <ListItemIcon><PersonAddIcon fontSize="small" /></ListItemIcon>
+                  Onboard new tenant
+                </MenuItem>
+                <Divider sx={{ my: 0.5 }} />
                 <MenuItem onClick={handleLogout}>
                   <ListItemIcon><LogoutIcon fontSize="small" /></ListItemIcon>
                   Sign out

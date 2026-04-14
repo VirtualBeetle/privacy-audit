@@ -72,7 +72,7 @@ MongoDB Atlas provides a free M0 cluster (512MB, enough for this project):
 1. Go to https://dashboard.render.com
 2. Click **New** → **Blueprint**
 3. Connect your GitHub repo
-4. Render will find `privacy-audit-infra/render.yaml` automatically
+4. Render will find `render.yaml` at the repo root automatically
 5. Review the services and click **Apply**
 
 ### Step 4 — Set required secrets in Render dashboard

@@ -1,3 +1,4 @@
+import type { ReactElement } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { createTheme, ThemeProvider } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
@@ -18,7 +19,7 @@ const theme = createTheme({
   },
 });
 
-function PrivateRoute({ element }: { element: JSX.Element }) {
+function PrivateRoute({ element }: { element: ReactElement }) {
   const { isAuthenticated } = useAuth();
   return isAuthenticated ? element : <Navigate to="/login" replace />;
 }

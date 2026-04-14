@@ -13,7 +13,7 @@ import Select from '@mui/material/Select';
 import MenuItem from '@mui/material/MenuItem';
 import FormControl from '@mui/material/FormControl';
 import InputLabel from '@mui/material/InputLabel';
-import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
+import DeleteIcon from '@mui/icons-material/Delete';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import { dashboardApi } from '../api/client';
 
@@ -169,7 +169,7 @@ export default function Webhooks() {
                 </Box>
                 <Tooltip title="Delete webhook">
                   <IconButton size="small" color="error" onClick={() => handleDelete(w.id)}>
-                    <DeleteOutlineIcon fontSize="small" />
+                    <DeleteIcon fontSize="small" />
                   </IconButton>
                 </Tooltip>
               </Box>

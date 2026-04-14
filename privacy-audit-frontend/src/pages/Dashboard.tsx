@@ -8,6 +8,8 @@ import CircularProgress from '@mui/material/CircularProgress';
 import Divider from '@mui/material/Divider';
 import Paper from '@mui/material/Paper';
 import Tooltip from '@mui/material/Tooltip';
+import Switch from '@mui/material/Switch';
+import FormControlLabel from '@mui/material/FormControlLabel';
 import Accordion from '@mui/material/Accordion';
 import AccordionSummary from '@mui/material/AccordionSummary';
 import AccordionDetails from '@mui/material/AccordionDetails';
@@ -22,7 +24,7 @@ import DeleteForeverIcon from '@mui/icons-material/DeleteForever';
 import WarningAmberIcon from '@mui/icons-material/WarningAmber';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import PsychologyIcon from '@mui/icons-material/Psychology';
-import HelpOutlineIcon from '@mui/icons-material/HelpOutline';
+import HelpIcon from '@mui/icons-material/Help';
 import KeyboardArrowLeftIcon from '@mui/icons-material/KeyboardArrowLeft';
 import KeyboardArrowRightIcon from '@mui/icons-material/KeyboardArrowRight';
 import StatsBar from '../components/StatsBar/StatsBar';
@@ -32,6 +34,7 @@ import EventFeed from '../components/EventFeed/EventFeed';
 import AIChatButton from '../components/AIChatButton/AIChatButton';
 import TenantTabs from '../components/TenantTabs/TenantTabs';
 import { dashboardApi } from '../api/client';
+import { useAuth } from '../contexts/AuthContext';
 import type { AuditEvent, TenantFilter } from '../types';
 
 const SEVERITY_COLOR: Record<string, string> = {
@@ -88,7 +91,14 @@ interface PrivacyScore {
   totalEvents: number;
 }
 
+interface ConsentRecord {
+  dataType: string;
+  granted: boolean;
+  updatedAt?: string | null;
+}
+
 export default function Dashboard() {
+  const { user } = useAuth();
   const [events, setEvents] = useState<AuditEvent[]>([]);
   const [riskAlerts, setRiskAlerts] = useState<RiskAlert[]>([]);
   const [analysisHistory, setAnalysisHistory] = useState<AnalysisRecord[]>([]);
@@ -96,6 +106,8 @@ export default function Dashboard() {
   const [breachReports, setBreachReports] = useState<BreachReport[]>([]);
   const [breachInput, setBreachInput] = useState('');
   const [breachLoading, setBreachLoading] = useState(false);
+  const [consents, setConsents] = useState<ConsentRecord[]>([]);
+  const [consentToggling, setConsentToggling] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [tab, setTab] = useState<TenantFilter>('all');
@@ -113,18 +125,21 @@ export default function Dashboard() {
     setLoading(true);
     setError('');
     try {
-      const [eventsData, alertsData, analysisData, scoreData, breachData] = await Promise.all([
+      const userId = user?.tenantUserId ?? user?.dashboardUserId ?? '';
+      const [eventsData, alertsData, analysisData, scoreData, breachData, consentsData] = await Promise.all([
         dashboardApi.getEvents(),
         dashboardApi.getRiskAlerts(),
         dashboardApi.getAnalysisHistory().catch(() => []),
         dashboardApi.getPrivacyScore().catch(() => null),
         dashboardApi.getBreachReports().catch(() => []),
+        userId ? dashboardApi.getConsents(userId).catch(() => null) : Promise.resolve(null),
       ]);
       setEvents(Array.isArray(eventsData) ? eventsData : []);
       setRiskAlerts(Array.isArray(alertsData) ? alertsData : []);
       setAnalysisHistory(Array.isArray(analysisData) ? analysisData : []);
       setPrivacyScore(scoreData);
       setBreachReports(Array.isArray(breachData) ? breachData : []);
+      if (consentsData?.consents) setConsents(consentsData.consents);
     } catch {
       setError('Failed to load your privacy data. Please try again.');
     } finally {
@@ -135,7 +150,6 @@ export default function Dashboard() {
   useEffect(() => { load(); }, [load]);
 
   // ── Tenant tab filtering ─────────────────────────────────────────────────
-  const tenantIds = [...new Set(events.map((e) => e.tenantId))];
   const tenantSlugMap: Record<string, string> = {};
   events.forEach((e) => {
     const slug = e.tenantId?.includes('health') ? 'health' : 'social';
@@ -205,6 +219,20 @@ export default function Dashboard() {
     } finally {
       setDeleteLoading(false);
     }
+  };
+
+  // ── Consent toggles ─────────────────────────────────────────────────────
+  const handleConsentToggle = async (dataType: string, granted: boolean) => {
+    const userId = user?.tenantUserId ?? user?.dashboardUserId;
+    if (!userId) return;
+    setConsentToggling(dataType);
+    try {
+      await dashboardApi.setConsent(userId, dataType, granted);
+      setConsents((prev) =>
+        prev.map((c) => c.dataType === dataType ? { ...c, granted } : c),
+      );
+    } catch { /* silently handle */ }
+    finally { setConsentToggling(null); }
   };
 
   // ── Breach report ────────────────────────────────────────────────────────
@@ -710,6 +738,81 @@ export default function Dashboard() {
                 )}
               </Box>
             </Box>
+
+            {/* Article 7 — Consent Management */}
+            {consents.length > 0 && (
+              <>
+                <Divider sx={{ my: 3 }} />
+                <Box>
+                  <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 0.5 }}>
+                    Article 7 — Consent Management
+                  </Typography>
+                  <Typography variant="caption" sx={{ color: '#64748b', display: 'block', mb: 2 }}>
+                    Control which categories of personal data you consent to being processed. Toggle off to revoke consent for that data type.
+                  </Typography>
+                  <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                    {consents.map((c) => (
+                      <Box
+                        key={c.dataType}
+                        sx={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          px: 1.5,
+                          py: 0.5,
+                          borderRadius: 2,
+                          border: '1px solid',
+                          borderColor: c.granted ? '#bbf7d0' : '#fecaca',
+                          background: c.granted ? '#f0fdf4' : '#fff7f7',
+                          minWidth: 160,
+                        }}
+                      >
+                        <FormControlLabel
+                          control={
+                            <Switch
+                              size="small"
+                              checked={c.granted}
+                              onChange={(e) => handleConsentToggle(c.dataType, e.target.checked)}
+                              disabled={consentToggling === c.dataType}
+                              color="success"
+                            />
+                          }
+                          label={
+                            <Typography variant="caption" sx={{ fontWeight: 600, color: '#374151', textTransform: 'capitalize' }}>
+                              {c.dataType.replace(/_/g, ' ')}
+                              {consentToggling === c.dataType && (
+                                <CircularProgress size={10} sx={{ ml: 0.5, verticalAlign: 'middle' }} />
+                              )}
+                            </Typography>
+                          }
+                          sx={{ m: 0 }}
+                        />
+                      </Box>
+                    ))}
+                  </Box>
+                </Box>
+              </>
+            )}
+
+            {/* Webhooks link */}
+            <Divider sx={{ my: 3 }} />
+            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 1 }}>
+              <Box>
+                <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 0.3 }}>
+                  Webhook Notifications
+                </Typography>
+                <Typography variant="caption" sx={{ color: '#64748b' }}>
+                  Register endpoints to receive HMAC-signed alerts when HIGH/CRITICAL risks are detected.
+                </Typography>
+              </Box>
+              <Button
+                variant="outlined"
+                size="small"
+                href="/webhooks"
+                sx={{ textTransform: 'none', fontWeight: 600, whiteSpace: 'nowrap' }}
+              >
+                Manage Webhooks
+              </Button>
+            </Box>
           </Paper>
         </Box>
 
@@ -739,7 +842,7 @@ export default function Dashboard() {
             zIndex: 1200,
           }}
         >
-          <HelpOutlineIcon sx={{ color: '#6366f1', fontSize: 22 }} />
+          <HelpIcon sx={{ color: '#6366f1', fontSize: 22 }} />
         </Box>
       </Tooltip>
 
@@ -749,7 +852,7 @@ export default function Dashboard() {
         onClose={() => setTourOpen(false)}
         maxWidth="xs"
         fullWidth
-        PaperProps={{ sx: { borderRadius: 3 } }}
+        slotProps={{ paper: { sx: { borderRadius: 3 } } } as any}
       >
         <DialogTitle sx={{ pb: 0, fontWeight: 700 }}>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>

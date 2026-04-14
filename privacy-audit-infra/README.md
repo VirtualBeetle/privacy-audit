@@ -116,4 +116,4 @@ make dev-seed-events TENANT_ID=<uuid>   # Seed 20 events for a tenant
 | `privacy-audit-backend` | local build | 8080 | NestJS core service |
 | `privacy-audit-frontend` | local build | 3000 | React dashboard |
 | `privacy-health-backend` | local build | 8081 | Go health tenant |
-| `privacy-social-backend` | local build | 8062 | FastAPI social tenant |
+| `privacy-social-backend` | local build | 8082 | FastAPI social tenant |
