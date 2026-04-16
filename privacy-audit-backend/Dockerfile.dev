@@ -1,0 +1,14 @@
+FROM node:20-alpine
+WORKDIR /app
+
+# wget is used by the Docker healthcheck
+RUN apk add --no-cache wget
+
+COPY package*.json ./
+# npm ci installs ALL deps including devDependencies (@nestjs/cli, typescript, etc.)
+RUN npm ci
+
+COPY . .
+
+EXPOSE 8080
+CMD ["npm", "run", "start:dev"]

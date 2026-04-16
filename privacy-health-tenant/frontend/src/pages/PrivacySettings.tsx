@@ -9,7 +9,7 @@ export default function PrivacySettings() {
   const [loading, setLoading] = useState({ export: false, delete: false });
 
   useEffect(() => {
-    client.get('/api/privacy/dashboard-link').then(r => setDashboardLink(r.data.url));
+    client.get('/api/privacy/dashboard-token').then(r => setDashboardLink(r.data.url));
   }, []);
 
   const handleExport = async () => {
@@ -49,9 +49,12 @@ export default function PrivacySettings() {
           See a full history of how your data has been accessed, by whom, and why — powered by the Privacy Audit Service.
         </p>
         {dashboardLink ? (
-          <a href={dashboardLink} target="_blank" rel="noopener noreferrer" style={{ color: '#2563eb', fontSize: 14 }}>
-            View My Privacy Audit Trail →
-          </a>
+          <button
+            onClick={() => { window.location.href = dashboardLink; }}
+            style={{ ...btnStyle, fontSize: 14 }}
+          >
+            View My Privacy Dashboard →
+          </button>
         ) : (
           <span style={{ color: '#94a3b8', fontSize: 14 }}>Loading dashboard link...</span>
         )}

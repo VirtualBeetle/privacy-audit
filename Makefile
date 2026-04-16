@@ -7,13 +7,14 @@
 
 INFRA_DIR  := privacy-audit-infra
 COMPOSE    := docker compose -f $(INFRA_DIR)/docker-compose.yml
+COMPOSE_DEV := docker compose -f $(INFRA_DIR)/docker-compose.yml -f $(INFRA_DIR)/docker-compose.dev.yml
 ENV_FILE   := $(INFRA_DIR)/.env
 ENV_EXAMPLE:= $(INFRA_DIR)/.env.example
 
 # Detect if jq is available for prettier JSON output
 JQ := $(shell command -v jq 2>/dev/null && echo "| jq ." || echo "")
 
-.PHONY: help start stop reset restart build logs status ps \
+.PHONY: help start dev stop reset restart build rebuild logs status ps \
         shell seed dev-analysis dev-retention dev-digest dev-seed-events \
         mongo-shell redis-cli pg-shell
 
@@ -21,11 +22,13 @@ JQ := $(shell command -v jq 2>/dev/null && echo "| jq ." || echo "")
 help:
 	@printf "\n  \033[1mPrivacy Audit Service\033[0m — available commands\n\n"
 	@printf "  \033[36mStartup\033[0m\n"
-	@printf "    make start              Start all 9 services (auto-copies .env if needed)\n"
+	@printf "    make start              Start all services — production mode (nginx-served builds)\n"
+	@printf "    make dev                Start all services — dev mode (Vite hot-reload, backend watch)\n"
 	@printf "    make stop               Stop all services (data is kept)\n"
 	@printf "    make reset              Stop + wipe all data volumes (fresh DB)\n"
 	@printf "    make restart            Restart without rebuilding images\n"
-	@printf "    make build              Build Docker images only\n\n"
+	@printf "    make build              Build Docker images only\n"
+	@printf "    make rebuild            Rebuild + restart one service: make rebuild SERVICE=health-frontend\n\n"
 	@printf "  \033[36mLogs & Status\033[0m\n"
 	@printf "    make logs               Tail all service logs (color-coded)\n"
 	@printf "    make logs SERVICE=xyz   Tail one service (e.g. audit-backend)\n"
@@ -51,7 +54,10 @@ $(ENV_FILE):
 # ── Start all services ────────────────────────────────────────────────────────
 start: $(ENV_FILE)
 	@printf "\n  \033[32m→ Starting all services...\033[0m\n\n"
-	$(COMPOSE) up -d --build
+	@# Tear down any dev-mode containers first (dev uses different images/ports).
+	@$(COMPOSE_DEV) down --remove-orphans 2>/dev/null; true
+	@docker ps -aq --filter "name=privacy-" | xargs docker rm -f 2>/dev/null; true
+	$(COMPOSE) up -d --build --remove-orphans --force-recreate
 	@printf "\n  \033[1mServices running:\033[0m\n"
 	@printf "    \033[36mPrivacy Dashboard\033[0m  → http://localhost:3000\n"
 	@printf "    \033[36mAudit API\033[0m          → http://localhost:8080/api\n"
@@ -60,16 +66,57 @@ start: $(ENV_FILE)
 	@printf "    \033[36mConnectSocial App\033[0m  → http://localhost:3002\n"
 	@printf "\n  Run \033[1mmake logs\033[0m to watch startup or \033[1mmake status\033[0m to check health.\n\n"
 
+# ── Dev mode (hot-reload) ─────────────────────────────────────────────────────
+# Frontends: Vite dev server — changes to src/ are instant, no rebuild needed
+# audit-backend: nest --watch — TypeScript recompiles on save
+# social-backend: uvicorn --reload — Python reloads on save
+# health-backend: Go needs explicit rebuild: make rebuild SERVICE=health-backend
+dev: $(ENV_FILE)
+	@printf "\n  \033[32m→ Starting in dev mode (hot-reload)...\033[0m\n\n"
+	@# Tear down any prod-mode containers first (prod uses different images/ports).
+	@# Also force-rm any containers stuck in "Created" state — they hold port locks.
+	@$(COMPOSE) down --remove-orphans 2>/dev/null; true
+	@docker ps -aq --filter "name=privacy-" | xargs docker rm -f 2>/dev/null; true
+	$(COMPOSE_DEV) up -d --build --remove-orphans --force-recreate
+	@printf "\n  \033[1mDev servers running:\033[0m\n"
+	@printf "    \033[36mDataGuard (Vite)\033[0m    → http://localhost:3000\n"
+	@printf "    \033[36mHealthTrack (Vite)\033[0m  → http://localhost:3001\n"
+	@printf "    \033[36mConnectSocial (Vite)\033[0m→ http://localhost:3002\n"
+	@printf "    \033[36mAudit API\033[0m           → http://localhost:8080/api\n"
+	@printf "\n  Edit any file in src/ and the browser refreshes automatically.\n"
+	@printf "  Run \033[1mmake logs\033[0m to watch all output.\n\n"
+
+# ── Rebuild one service ───────────────────────────────────────────────────────
+# Usage: make rebuild SERVICE=health-frontend
+#        make rebuild SERVICE=audit-backend
+rebuild:
+ifndef SERVICE
+	@printf "\n  \033[31mError: SERVICE is required.\033[0m\n"
+	@printf "  Usage: make rebuild SERVICE=<name>\n"
+	@printf "  Names: audit-backend audit-frontend health-backend health-frontend\n"
+	@printf "         social-backend social-frontend nginx-proxy\n\n"
+	@exit 1
+endif
+	@printf "\n  \033[36m→ Rebuilding $(SERVICE)...\033[0m\n\n"
+	$(COMPOSE) up -d --build $(SERVICE)
+	@printf "\n  \033[32m✓ $(SERVICE) rebuilt and restarted.\033[0m\n\n"
+
 # ── Stop ─────────────────────────────────────────────────────────────────────
+# Run BOTH compose stacks so ports are always freed regardless of which mode was active.
+# Also force-remove any containers stuck in "Created" state — Docker allocates ports
+# at container-create time, so a failed startup leaves ports locked until rm -f.
 stop:
 	@printf "  \033[33m→ Stopping all services...\033[0m\n"
-	$(COMPOSE) down
+	@$(COMPOSE_DEV) down --remove-orphans 2>/dev/null; true
+	@$(COMPOSE) down --remove-orphans 2>/dev/null; true
+	@docker ps -aq --filter "name=privacy-" | xargs docker rm -f 2>/dev/null; true
 	@printf "  \033[32m  Done. Data volumes preserved.\033[0m\n"
 
 # ── Reset (destroy all data) ──────────────────────────────────────────────────
 reset:
 	@printf "  \033[31m→ Stopping services and deleting all data volumes...\033[0m\n"
-	$(COMPOSE) down -v
+	@$(COMPOSE_DEV) down -v --remove-orphans 2>/dev/null; true
+	@$(COMPOSE) down -v --remove-orphans 2>/dev/null; true
 	@printf "  \033[32m  Done. Run 'make start' for a completely fresh environment.\033[0m\n"
 
 # ── Restart (no rebuild) ──────────────────────────────────────────────────────
@@ -156,6 +203,15 @@ dev-seed-events: _check-dev-token
 	  -H "Content-Type: application/json" \
 	  -d '{"tenantId":"$(TENANT_ID)"}' $(JQ)
 	@printf "\n"
+
+# ── Push to GitHub (triggers Render auto-deploy if configured) ────────────────
+# Usage: make push MSG="your commit message"
+MSG ?= "chore: update"
+push:
+	@printf "\n  \033[36m→ Pushing to GitHub...\033[0m\n\n"
+	@cd .. && git add -A && git commit -m $(MSG) && git push origin main
+	@printf "\n  \033[32m✓ Pushed. Render will auto-deploy if configured.\033[0m\n"
+	@printf "  Check: https://dashboard.render.com\n\n"
 
 # ── Shorthand aliases ─────────────────────────────────────────────────────────
 up: start

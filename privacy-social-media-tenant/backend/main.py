@@ -7,7 +7,7 @@ from app.routers import auth, users, posts, interactions, checkins, admin, priva
 
 logging.basicConfig(level=logging.INFO)
 
-app = FastAPI(title="SocialDemo API", version="1.0.0")
+app = FastAPI(title="ConnectSocial API", version="1.0.0")
 
 app.add_middleware(
     CORSMiddleware,

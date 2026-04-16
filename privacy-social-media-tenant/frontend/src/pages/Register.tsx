@@ -31,7 +31,7 @@ export default function Register() {
       <div style={card}>
         <div style={{ textAlign: 'center', marginBottom: 28 }}>
           <div style={{ fontSize: 30, marginBottom: 6 }}>◈</div>
-          <h1 style={{ margin: 0, fontSize: 22, fontWeight: 700, color: '#f1f5f9' }}>Join SocialDemo</h1>
+          <h1 style={{ margin: 0, fontSize: 22, fontWeight: 700, color: '#f1f5f9' }}>Join ConnectSocial</h1>
           <p style={{ margin: '4px 0 0', color: '#64748b', fontSize: 13 }}>Create your account</p>
         </div>
 

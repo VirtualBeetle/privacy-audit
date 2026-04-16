@@ -24,6 +24,7 @@ import { DevModule } from './dev/dev.module';
 import { ConsentsModule } from './consents/consents.module';
 import { BreachModule } from './breach/breach.module';
 import { WebhooksModule } from './webhooks/webhooks.module';
+import { SeedModule } from './seed/seed.module';
 
 // Entities
 import { Tenant } from './tenants/tenant.entity';
@@ -126,6 +127,7 @@ import { AppController } from './app.controller';
     ConsentsModule,
     BreachModule,
     WebhooksModule,
+    SeedModule,
   ],
   controllers: [AppController],
   providers: [

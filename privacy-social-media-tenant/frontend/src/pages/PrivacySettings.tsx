@@ -9,7 +9,7 @@ export default function PrivacySettings() {
   const [loading, setLoading] = useState({ export: false, delete: false });
 
   useEffect(() => {
-    client.get('/api/privacy/dashboard-link').then(r => setDashboardUrl(r.data.url));
+    client.get('/api/privacy/dashboard-token').then(r => setDashboardUrl(r.data.url));
   }, []);
 
   const handleExport = async () => {
@@ -55,9 +55,12 @@ export default function PrivacySettings() {
             See the complete history of how your data has been accessed — who read it, why, and whether it was shared with third parties.
           </p>
           {dashboardUrl ? (
-            <a href={dashboardUrl} target="_blank" rel="noopener noreferrer" style={auditLink}>
-              View My Full Audit Trail →
-            </a>
+            <button
+              onClick={() => { window.location.href = dashboardUrl; }}
+              style={primaryBtn}
+            >
+              View My Privacy Dashboard →
+            </button>
           ) : (
             <span style={{ color: '#334155', fontSize: 14 }}>Loading...</span>
           )}
@@ -143,7 +146,6 @@ const page: React.CSSProperties = { minHeight: '100vh', background: '#0f172a', p
 const container: React.CSSProperties = { maxWidth: 640, margin: '0 auto', padding: '0 20px' };
 const card: React.CSSProperties = { background: '#1e293b', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 14, padding: 24, marginBottom: 16 };
 const iconCircle: React.CSSProperties = { width: 36, height: 36, borderRadius: '50%', background: 'rgba(99,102,241,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 };
-const auditLink: React.CSSProperties = { color: '#6366f1', fontSize: 14, fontWeight: 600, textDecoration: 'none' };
 const eventRow: React.CSSProperties = { display: 'flex', gap: 14, alignItems: 'flex-start', padding: '10px 14px', background: 'rgba(255,255,255,0.03)', borderRadius: 10 };
 const primaryBtn: React.CSSProperties = { padding: '9px 20px', background: '#6366f1', color: '#fff', border: 'none', borderRadius: 8, fontSize: 14, fontWeight: 600, cursor: 'pointer' };
 const dangerBtn: React.CSSProperties = { padding: '9px 20px', background: '#f43f5e', color: '#fff', border: 'none', borderRadius: 8, fontSize: 14, fontWeight: 600, cursor: 'pointer' };

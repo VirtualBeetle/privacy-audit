@@ -1,0 +1,105 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# docker-compose.dev.yml — Development hot-reload override
+#
+# Usage:
+#   make dev           (recommended — wraps the command below)
+#   docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d --build
+#
+# What changes in dev mode vs production:
+#   - Frontends run Vite dev server on port 80 (same port as prod nginx — avoids
+#     Docker Compose merging the ports list and creating duplicate host bindings)
+#   - audit-backend runs nest start --watch (TypeScript recompiles on save)
+#   - social-backend runs uvicorn --reload (Python reloads on save)
+#   - health-backend unchanged (Go requires explicit rebuild: make rebuild SERVICE=health-backend)
+#   - nginx-proxy is enabled (Vite runs on :80 so .local URLs work in dev too)
+#
+# Ports (same as prod — no port overrides needed):
+#   http://localhost:3000  DataGuard frontend (Vite on :80 inside container)
+#   http://localhost:3001  HealthTrack frontend (Vite on :80 inside container)
+#   http://localhost:3002  ConnectSocial frontend (Vite on :80 inside container)
+#   http://localhost:8080  audit-backend API
+#   http://localhost:8081  health-backend API
+#   http://localhost:8062  social-backend API
+#
+# NOTE: Docker Compose CONCATENATES ports lists when merging overlay files.
+# If we added "3000:5173" here, Docker would try to bind port 3000 twice
+# (once for the base "3000:80" and once for "3000:5173") and fail.
+# Solution: Vite dev servers run on :80 so no port override is needed.
+# ─────────────────────────────────────────────────────────────────────────────
+
+services:
+
+  # ── DataGuard frontend — Vite dev server on :80 ────────────────────────────
+  audit-frontend:
+    build:
+      context: ../privacy-audit-frontend
+      dockerfile: Dockerfile.dev
+    volumes:
+      - ../privacy-audit-frontend/src:/app/src
+      - ../privacy-audit-frontend/public:/app/public
+      - ../privacy-audit-frontend/index.html:/app/index.html
+      - ../privacy-audit-frontend/vite.config.ts:/app/vite.config.ts
+      - ../privacy-audit-frontend/tailwind.config.js:/app/tailwind.config.js
+    environment:
+      VITE_API_TARGET: http://audit-backend:8080
+      CHOKIDAR_USEPOLLING: "true"
+    healthcheck:
+      disable: true
+
+  # ── HealthTrack frontend — Vite dev server on :80 ──────────────────────────
+  health-frontend:
+    build:
+      context: ../privacy-health-tenant/frontend
+      dockerfile: Dockerfile.dev
+    volumes:
+      - ../privacy-health-tenant/frontend/src:/app/src
+      - ../privacy-health-tenant/frontend/public:/app/public
+      - ../privacy-health-tenant/frontend/index.html:/app/index.html
+      - ../privacy-health-tenant/frontend/vite.config.ts:/app/vite.config.ts
+    environment:
+      VITE_API_TARGET: http://health-backend:8081
+      CHOKIDAR_USEPOLLING: "true"
+
+  # ── ConnectSocial frontend — Vite dev server on :80 ────────────────────────
+  social-frontend:
+    build:
+      context: ../privacy-social-media-tenant/frontend
+      dockerfile: Dockerfile.dev
+    volumes:
+      - ../privacy-social-media-tenant/frontend/src:/app/src
+      - ../privacy-social-media-tenant/frontend/public:/app/public
+      - ../privacy-social-media-tenant/frontend/index.html:/app/index.html
+      - ../privacy-social-media-tenant/frontend/vite.config.ts:/app/vite.config.ts
+    environment:
+      VITE_API_TARGET: http://social-backend:8082
+      CHOKIDAR_USEPOLLING: "true"
+
+  # ── audit-backend — NestJS watch mode ────────────────────────────────────────
+  # Uses Dockerfile.dev which keeps devDependencies (@nestjs/cli, typescript).
+  # The prod image prunes devDeps so `nest start --watch` would crash there.
+  audit-backend:
+    build:
+      context: ../privacy-audit-backend
+      dockerfile: Dockerfile.dev
+    volumes:
+      - ../privacy-audit-backend/src:/app/src
+    command: npm run start:dev
+    # TypeScript compilation on first watch start takes ~60s — give it time.
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://localhost:8080/api/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 12
+      start_period: 120s
+
+  # ── social-backend — uvicorn --reload ────────────────────────────────────────
+  social-backend:
+    volumes:
+      - ../privacy-social-media-tenant/backend:/app
+    command: uvicorn main:app --host 0.0.0.0 --port 8082 --reload
+
+  # ── nginx-proxy enabled in dev ────────────────────────────────────────────────
+  # Vite dev servers run on :80 (same as prod nginx), so the proxy config works
+  # unchanged. dataguard.local / health.local / social.local all work in dev.
+  nginx-proxy:
+    profiles: []

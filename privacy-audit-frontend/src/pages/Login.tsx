@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Box from '@mui/material/Box';
 import Paper from '@mui/material/Paper';
@@ -20,21 +20,51 @@ export default function Login() {
   const [token, setToken] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [autoLogging, setAutoLogging] = useState(false);
 
-  const handleTokenLogin = async () => {
-    if (!token.trim()) return;
+  const isJwt = (t: string) => t.trim().split('.').length === 3;
+  const isUuid = (t: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(t.trim());
+
+  const attemptLogin = async (rawToken: string) => {
+    const t = rawToken.trim();
+    if (isUuid(t)) {
+      setError('This looks like a user ID, not a login token. Go back to the app and click "View my privacy" — it will generate a proper token automatically.');
+      return;
+    }
+    if (!isJwt(t)) {
+      setError('Invalid token format. A valid token starts with "eyJ..." and contains two dots. Go back to the app and request a fresh link.');
+      return;
+    }
     setLoading(true);
     setError('');
     try {
-      const data = await dashboardApi.exchangeToken(token.trim());
+      const data = await dashboardApi.exchangeToken(t);
       login(data.sessionToken);
       navigate('/dashboard');
     } catch {
-      setError('Invalid or expired token. Please request a new link from the app.');
+      setError('This token has expired (tokens are valid for 15 minutes). Go back to the app and click "View my privacy" again to get a fresh link.');
     } finally {
       setLoading(false);
     }
   };
+
+  // Auto-consume ?token= param — set by tenant apps after issuing a handshake token
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const autoToken = params.get('token');
+    if (autoToken) {
+      setAutoLogging(true);
+      setToken(autoToken);
+      dashboardApi.exchangeToken(autoToken)
+        .then((data) => { login(data.sessionToken); navigate('/dashboard'); })
+        .catch(() => {
+          setAutoLogging(false);
+          setError('This link has expired (valid for 15 minutes). Go back to the app and click "View my privacy" again.');
+        });
+    }
+  }, []);
+
+  const handleTokenLogin = () => attemptLogin(token);
 
   return (
     <Box
@@ -128,10 +158,22 @@ export default function Login() {
           </Typography>
         </Divider>
 
-        {/* Token-based login (from tenant app "View my privacy" link) */}
+        {/* Auto-login spinner */}
+        {autoLogging && (
+          <Box sx={{ textAlign: 'center', py: 2 }}>
+            <CircularProgress size={28} sx={{ color: '#38bdf8', mb: 1.5 }} />
+            <Typography sx={{ color: '#94a3b8', fontSize: '0.85rem' }}>
+              Signing you in automatically…
+            </Typography>
+          </Box>
+        )}
+
+        {/* Token-based login (fallback — tenant apps use ?token= auto-flow) */}
+        {!autoLogging && (
         <Typography variant="body2" sx={{ color: '#94a3b8', mb: 1.5 }}>
           Received a "View my privacy" link from an app? Paste the token here:
         </Typography>
+        )}
 
         {error && (
           <Alert severity="error" sx={{ mb: 2, borderRadius: 2 }}>
@@ -139,27 +181,29 @@ export default function Login() {
           </Alert>
         )}
 
-        <TextField
-          fullWidth
-          multiline
-          rows={3}
-          placeholder="Paste your handshake token..."
-          value={token}
-          onChange={(e) => setToken(e.target.value)}
-          sx={{
-            mb: 2,
-            '& .MuiOutlinedInput-root': {
-              color: '#f1f5f9',
-              fontSize: '0.8rem',
-              fontFamily: 'monospace',
-              '& fieldset': { borderColor: 'rgba(255,255,255,0.15)' },
-              '&:hover fieldset': { borderColor: 'rgba(255,255,255,0.3)' },
-              '&.Mui-focused fieldset': { borderColor: '#38bdf8' },
-            },
-          }}
-        />
+        {!autoLogging && (
+          <TextField
+            fullWidth
+            multiline
+            rows={3}
+            placeholder="eyJ... (JWT token from the app — not your user ID)"
+            value={token}
+            onChange={(e) => setToken(e.target.value)}
+            sx={{
+              mb: 2,
+              '& .MuiOutlinedInput-root': {
+                color: '#f1f5f9',
+                fontSize: '0.8rem',
+                fontFamily: 'monospace',
+                '& fieldset': { borderColor: 'rgba(255,255,255,0.15)' },
+                '&:hover fieldset': { borderColor: 'rgba(255,255,255,0.3)' },
+                '&.Mui-focused fieldset': { borderColor: '#38bdf8' },
+              },
+            }}
+          />
+        )}
 
-        <Button
+        {!autoLogging && <Button
           fullWidth
           variant="contained"
           size="large"
@@ -175,7 +219,7 @@ export default function Login() {
           }}
         >
           {loading ? <CircularProgress size={22} color="inherit" /> : 'Access my privacy data'}
-        </Button>
+        </Button>}
       </Paper>
     </Box>
   );

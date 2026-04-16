@@ -33,7 +33,7 @@ export default function Login() {
       <div style={card}>
         <div style={{ textAlign: 'center', marginBottom: 32 }}>
           <div style={{ fontSize: 36, marginBottom: 8 }}>◈</div>
-          <h1 style={{ margin: 0, fontSize: 24, fontWeight: 700, color: '#f1f5f9' }}>SocialDemo</h1>
+          <h1 style={{ margin: 0, fontSize: 24, fontWeight: 700, color: '#f1f5f9' }}>ConnectSocial</h1>
           <p style={{ margin: '6px 0 0', color: '#64748b', fontSize: 14 }}>Sign in to your account</p>
         </div>
 

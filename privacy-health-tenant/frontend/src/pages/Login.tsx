@@ -30,7 +30,7 @@ export default function Login() {
   return (
     <div style={{ minHeight: '100vh', background: '#f8fafc', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
       <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: 12, padding: 40, width: 380 }}>
-        <h1 style={{ margin: '0 0 8px', color: '#1e293b', fontSize: 22 }}>🏥 HealthDemo</h1>
+        <h1 style={{ margin: '0 0 8px', color: '#1e293b', fontSize: 22 }}>🏥 HealthTrack</h1>
         <p style={{ margin: '0 0 28px', color: '#64748b', fontSize: 14 }}>Sign in to your account</p>
 
         {error && (

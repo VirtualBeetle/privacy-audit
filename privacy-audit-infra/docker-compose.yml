@@ -73,7 +73,7 @@ services:
     volumes:
       - postgres-audit-data:/var/lib/postgresql/data
     ports:
-      - "5432:5432"
+      - "5442:5432"
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres -d privacy_audit"]
       interval: 5s
@@ -197,7 +197,7 @@ services:
       GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
       GOOGLE_CALLBACK_URL: ${GOOGLE_CALLBACK_URL:-http://localhost:8080/api/auth/google/callback}
       # Frontend URL
-      DASHBOARD_BASE_URL: ${DASHBOARD_BASE_URL:-http://localhost:3000}
+      DASHBOARD_BASE_URL: ${DASHBOARD_BASE_URL:-http://dataguard.local}
       # AI
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
       ENCRYPTION_KEY: ${ENCRYPTION_KEY:-change-me-32-char-encryption-key}
@@ -268,6 +268,8 @@ services:
       JWT_SECRET: health-demo-secret
       AUDIT_SERVICE_URL: http://audit-backend:8080
       AUDIT_API_KEY: ${HEALTH_AUDIT_API_KEY:-health-tenant-api-key}
+      AUDIT_TENANT_ID: ${HEALTH_TENANT_ID:-11111111-1111-1111-1111-111111111111}
+      DASHBOARD_BASE_URL: ${DASHBOARD_BASE_URL:-http://dataguard.local}
     ports:
       - "8081:8081"
 
@@ -276,14 +278,14 @@ services:
     build:
       context: ../privacy-health-tenant/frontend
       dockerfile: Dockerfile
+      args:
+        VITE_API_URL: ${HEALTH_VITE_API_URL:-http://health.local}
     container_name: privacy-health-frontend
     restart: unless-stopped
     networks: [audit-net]
     logging: *default-logging
     depends_on:
       - health-backend
-    environment:
-      VITE_API_URL: ${HEALTH_VITE_API_URL:-http://localhost:8081}
     ports:
       - "3001:80"
 
@@ -309,6 +311,8 @@ services:
       ACCESS_TOKEN_EXPIRE_MINUTES: 1440
       AUDIT_SERVICE_URL: http://audit-backend:8080
       AUDIT_API_KEY: ${SOCIAL_AUDIT_API_KEY:-social-tenant-api-key}
+      AUDIT_TENANT_ID: ${SOCIAL_TENANT_ID:-22222222-2222-2222-2222-222222222222}
+      DASHBOARD_BASE_URL: ${DASHBOARD_BASE_URL:-http://dataguard.local}
     ports:
       - "8062:8082"
 
@@ -317,13 +321,32 @@ services:
     build:
       context: ../privacy-social-media-tenant/frontend
       dockerfile: Dockerfile
+      args:
+        VITE_API_URL: ${SOCIAL_VITE_API_URL:-http://social.local}
     container_name: privacy-social-frontend
     restart: unless-stopped
     networks: [audit-net]
     logging: *default-logging
     depends_on:
       - social-backend
-    environment:
-      VITE_API_URL: ${SOCIAL_VITE_API_URL:-http://localhost:8062}
     ports:
       - "3002:80"
+
+  # ── Nginx Reverse Proxy — named URLs ──────────────────────────────────────
+  # Serves dataguard.local / health.local / social.local / api.dataguard.local
+  # Run: sudo ./setup-hosts.sh  (once) to add /etc/hosts entries
+  nginx-proxy:
+    build:
+      context: .
+      dockerfile: nginx-proxy.Dockerfile
+    container_name: privacy-nginx-proxy
+    restart: unless-stopped
+    networks: [audit-net]
+    logging: *default-logging
+    depends_on:
+      - audit-frontend
+      - health-frontend
+      - social-frontend
+      - audit-backend
+    ports:
+      - "80:80"

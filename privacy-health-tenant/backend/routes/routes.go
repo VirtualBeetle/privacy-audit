@@ -53,6 +53,7 @@ func Setup(r *gin.Engine, db *gorm.DB) {
 	privacy := api.Group("/privacy", middleware.AuthRequired())
 	{
 		privacy.GET("/dashboard-link", privacyH.DashboardLink)
+		privacy.GET("/dashboard-token", privacyH.DashboardToken)
 		privacy.POST("/export", privacyH.Export)
 		privacy.DELETE("/delete", privacyH.Delete)
 	}

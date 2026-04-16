@@ -62,6 +62,41 @@ check_deps() {
   ok "Docker daemon running"
 }
 
+# ── 1b. Set up /etc/hosts for nicer URLs ─────────────────────────────────────
+setup_hosts() {
+  local hosts_ok=true
+  for domain in dataguard.local health.local social.local api.dataguard.local; do
+    if ! grep -q "$domain" /etc/hosts 2>/dev/null; then
+      hosts_ok=false
+      break
+    fi
+  done
+
+  if $hosts_ok; then
+    ok "Local domains already configured (dataguard.local, health.local, social.local)"
+    return 0
+  fi
+
+  # Not yet set up — offer to do it now (requires sudo, once only)
+  printf "\n  ${YELLOW}Set up nice local URLs?${NC}\n"
+  printf "  This adds 4 lines to /etc/hosts (one-time, needs your password):\n"
+  printf "    dataguard.local / health.local / social.local / api.dataguard.local\n\n"
+  printf "  ${BOLD}Set up now? [Y/n]:${NC} "
+  read -r reply </dev/tty
+  reply="${reply:-Y}"
+
+  if [[ "$reply" =~ ^[Yy]$ ]]; then
+    if sudo bash "$(dirname "$0")/setup-hosts.sh"; then
+      ok "Local domains configured — nice URLs are active"
+    else
+      warn "Could not update /etc/hosts — app will work on localhost:3000/3001/3002"
+    fi
+  else
+    warn "Skipped — app will work on localhost:3000 / 3001 / 3002"
+    warn "Run 'sudo ./setup-hosts.sh' anytime to enable nicer URLs"
+  fi
+}
+
 # ── 2. Set up .env ────────────────────────────────────────────────────────────
 setup_env() {
   step "2/5" "Environment files"
@@ -150,12 +185,23 @@ print_urls() {
   printf "╚══════════════════════════════════════════════════════════╝\n"
   printf "${NC}\n"
 
+  local use_nice_urls=false
+  grep -q "dataguard.local" /etc/hosts 2>/dev/null && use_nice_urls=true
+
   printf "  ${CYAN}Service URLs:${NC}\n"
-  printf "    Privacy Dashboard  → ${BOLD}http://localhost:3000${NC}\n"
-  printf "    Audit REST API     → ${BOLD}http://localhost:8080/api${NC}\n"
-  printf "    API Docs (Swagger) → ${BOLD}http://localhost:8080/api/docs${NC}\n"
-  printf "    HealthTrack App    → ${BOLD}http://localhost:3001${NC}\n"
-  printf "    ConnectSocial App  → ${BOLD}http://localhost:3002${NC}\n"
+  if $use_nice_urls; then
+    printf "    DataGuard Dashboard → ${BOLD}http://dataguard.local${NC}\n"
+    printf "    HealthTrack App     → ${BOLD}http://health.local${NC}\n"
+    printf "    ConnectSocial App   → ${BOLD}http://social.local${NC}\n"
+    printf "    Audit API + Swagger → ${BOLD}http://api.dataguard.local/api/docs${NC}\n"
+  else
+    printf "    DataGuard Dashboard → ${BOLD}http://localhost:3000${NC}\n"
+    printf "    HealthTrack App     → ${BOLD}http://localhost:3001${NC}\n"
+    printf "    ConnectSocial App   → ${BOLD}http://localhost:3002${NC}\n"
+    printf "    Audit REST API      → ${BOLD}http://localhost:8080/api${NC}\n"
+    printf "    API Docs (Swagger)  → ${BOLD}http://localhost:8080/api/docs${NC}\n"
+    printf "\n  ${YELLOW}Tip: run 'sudo ./setup-hosts.sh' once for nicer URLs${NC}\n"
+  fi
 
   printf "\n  ${CYAN}Useful commands:${NC}\n"
   printf "    make logs                  Tail all service logs\n"
@@ -177,6 +223,7 @@ print_urls() {
 main() {
   print_header
   check_deps
+  setup_hosts
   setup_env
   check_placeholders
   start_services

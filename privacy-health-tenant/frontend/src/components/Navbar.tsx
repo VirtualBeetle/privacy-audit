@@ -20,7 +20,7 @@ export default function Navbar() {
       gap: 32,
     }}>
       <span style={{ fontWeight: 700, fontSize: 18, color: '#1e293b' }}>
-        🏥 HealthDemo
+        🏥 HealthTrack
       </span>
 
       {user.role === 'patient' && (

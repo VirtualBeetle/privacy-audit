@@ -24,7 +24,7 @@ export default function Navbar() {
       <div style={innerStyle}>
         {/* Logo */}
         <Link to={user.role === 'admin' ? '/admin' : '/feed'} style={logoStyle}>
-          ◈ SocialDemo
+          ◈ ConnectSocial
         </Link>
 
         {/* Search — only for regular users */}

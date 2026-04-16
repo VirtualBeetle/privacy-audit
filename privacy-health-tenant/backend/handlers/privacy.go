@@ -1,9 +1,11 @@
 package handlers
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"os"
+	"strings"
 
 	"github.com/VirtualBeetle/privacy-health-tenant/audit"
 	"github.com/gin-gonic/gin"
@@ -15,12 +17,62 @@ type PrivacyHandler struct {
 }
 
 func (h *PrivacyHandler) DashboardLink(c *gin.Context) {
-	userID := c.GetString("userID")
-	serviceURL := os.Getenv("AUDIT_SERVICE_URL")
-	tenantID := os.Getenv("AUDIT_TENANT_ID")
-
-	url := fmt.Sprintf("%s/dashboard?tenant_id=%s&user_id=%s", serviceURL, tenantID, userID)
+	// Kept for backwards compat — redirects to the token-based flow.
+	url, err := buildDashboardURL(c.GetString("userID"))
+	if err != nil {
+		c.JSON(http.StatusBadGateway, gin.H{"error": err.Error()})
+		return
+	}
 	c.JSON(http.StatusOK, gin.H{"url": url})
+}
+
+// DashboardToken issues a short-lived SSO token and returns the DataGuard
+// login URL with ?token= so the user lands directly on their dashboard.
+func (h *PrivacyHandler) DashboardToken(c *gin.Context) {
+	url, err := buildDashboardURL(c.GetString("userID"))
+	if err != nil {
+		c.JSON(http.StatusBadGateway, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"url": url})
+}
+
+func buildDashboardURL(userID string) (string, error) {
+	auditURL := os.Getenv("AUDIT_SERVICE_URL")
+	if auditURL == "" {
+		auditURL = "http://localhost:8080"
+	}
+	apiKey := os.Getenv("AUDIT_API_KEY")
+	dashboardURL := os.Getenv("DASHBOARD_BASE_URL")
+	if dashboardURL == "" {
+		dashboardURL = "http://localhost:3000"
+	}
+
+	body := fmt.Sprintf(`{"tenantUserId":"%s"}`, userID)
+	req, err := http.NewRequest("POST", auditURL+"/api/dashboard/token", strings.NewReader(body))
+	if err != nil {
+		return "", fmt.Errorf("failed to build request")
+	}
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("x-api-key", apiKey)
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return "", fmt.Errorf("audit service unavailable")
+	}
+	defer resp.Body.Close()
+
+	var result map[string]interface{}
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return "", fmt.Errorf("invalid audit response")
+	}
+
+	token, ok := result["handshakeToken"].(string)
+	if !ok || token == "" {
+		return "", fmt.Errorf("no token returned by audit service")
+	}
+
+	return fmt.Sprintf("%s/login?token=%s", dashboardURL, token), nil
 }
 
 func (h *PrivacyHandler) Export(c *gin.Context) {
