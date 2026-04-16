@@ -67,7 +67,7 @@ func buildDashboardURL(userID string) (string, error) {
 		return "", fmt.Errorf("invalid audit response")
 	}
 
-	token, ok := result["handshakeToken"].(string)
+	token, ok := result["token"].(string)
 	if !ok || token == "" {
 		return "", fmt.Errorf("no token returned by audit service")
 	}

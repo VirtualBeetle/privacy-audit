@@ -49,6 +49,44 @@ make dev-digest     # send weekly email digest now
 
 ---
 
+## Google OAuth Setup (Local Dev)
+
+Google OAuth requires real credentials — the app works without them (token login still works) but "Continue with Google" will fail.
+
+### One-time setup
+
+1. Go to [Google Cloud Console](https://console.cloud.google.com)
+2. Create a project (e.g. "Privacy Audit")
+3. **APIs & Services → OAuth consent screen**
+   - User type: External → Create
+   - App name: `DataGuard`, fill in your email, save through all steps
+   - **Test users → Add Users** → add your own Gmail (required while app is in Testing mode)
+4. **APIs & Services → Credentials → Create Credentials → OAuth 2.0 Client ID**
+   - Application type: Web application
+   - Authorised redirect URIs — add:
+     ```
+     http://localhost:8080/api/auth/google/callback
+     ```
+   - Click Create, copy **Client ID** and **Client Secret**
+5. Edit `privacy-audit-infra/.env`:
+   ```
+   GOOGLE_CLIENT_ID=<your-client-id>.apps.googleusercontent.com
+   GOOGLE_CLIENT_SECRET=<your-client-secret>
+   ```
+6. Restart: `make stop && make start`
+
+### How the flow works
+```
+Click "Continue with Google"
+  → browser → localhost:8080/api/auth/google
+  → Google consent screen
+  → Google → localhost:8080/api/auth/google/callback
+  → backend issues JWT, redirects to dataguard.local/auth/google/callback?token=...
+  → frontend stores JWT → /dashboard
+```
+
+---
+
 ## Option B — Render (Free Cloud Hosting) — Share with Mentor
 
 Render lets you deploy all services for free. No credit card needed for the free tier.

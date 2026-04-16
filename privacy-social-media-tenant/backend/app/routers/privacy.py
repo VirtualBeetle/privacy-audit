@@ -17,7 +17,7 @@ def _get_dashboard_url(user_id: str) -> str:
             timeout=5.0,
         )
         resp.raise_for_status()
-        token = resp.json().get("handshakeToken", "")
+        token = resp.json().get("token", "")
         if not token:
             raise ValueError("empty token")
         return f"{config.DASHBOARD_BASE_URL}/login?token={token}"

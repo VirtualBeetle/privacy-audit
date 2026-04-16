@@ -125,7 +125,7 @@ check_placeholders() {
     fi
   }
 
-  check_var "GOOGLE_CLIENT_ID"     "your-google.*"         "Google OAuth login"
+  check_var "GOOGLE_CLIENT_ID"     "your-client-id.*"      "Google OAuth login"
   check_var "ANTHROPIC_API_KEY"    "sk-ant-your.*"         "AI risk analysis + AI chat"
   check_var "JWT_SECRET"           "change-me.*"           "Tokens are not secure (OK for local dev)"
   check_var "ENCRYPTION_KEY"       "change-me.*"           "AI key encryption is not secure (OK for local dev)"

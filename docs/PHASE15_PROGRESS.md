@@ -17,7 +17,7 @@
 | 5 | HealthTrack full-page modern UI | TODO | HIGH |
 | 6 | ConnectSocial better colour scheme | TODO | HIGH |
 | 7 | DataGuard login page redesign | TODO | HIGH |
-| 8 | Google OAuth fix | BLOCKED | HIGH |
+| 8 | Google OAuth fix | DONE ✅ | HIGH |
 | 9 | "View my privacy" → auto-login fix | DONE ✅ | HIGH |
 | 10 | Multi-tenant user linking plan | TODO | MEDIUM |
 | 11 | Token paste: UUID confusion + bad error messages | DONE | HIGH |
@@ -27,7 +27,7 @@
 | 15 | Browser tab title & favicon (moved up) | TODO | LOW |
 | 16 | Nginx graceful "service down" page (no raw 502) | TODO | MEDIUM |
 
-**Done: 5 / 16** (Items 1, 2, 3, 4, 9 complete; 11 complete as part of Item 1)
+**Done: 6 / 16** (Items 1, 2, 3, 4, 9 complete; 11 complete as part of Item 1)
 
 ---
 
@@ -137,26 +137,16 @@
 
 ## Item 8 — Google OAuth Fix
 
-**Status:** `BLOCKED`
+**Status:** `DONE` ✅
 **Priority:** HIGH
-**Blocked by:** Missing Google Cloud Console credentials
-
-### Root Cause
-`GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` are not configured. Google OAuth cannot work without real credentials.
 
 ### Tasks
-- [ ] 8a. User: Create OAuth 2.0 credentials in Google Cloud Console
-- [ ] 8b. User: Add `http://localhost:8080/api/auth/google/callback` as authorised redirect URI
-- [ ] 8c. User: Set `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` in `privacy-audit-infra/.env`
-- [ ] 8d. Dev: Verify passport-google strategy redirects to `DASHBOARD_BASE_URL` after auth
-- [ ] 8e. Dev: Add clear setup instructions to `DEPLOY.md`
-- [ ] 8f. Dev: Improve `start.sh` warning when Google vars are missing
-
-**Instructions for User (step 8a–8c):**
-1. Go to https://console.cloud.google.com → APIs & Services → Credentials
-2. Create → OAuth 2.0 Client ID → Web application
-3. Add `http://localhost:8080/api/auth/google/callback` under Authorised redirect URIs
-4. Copy Client ID + Secret → paste into `privacy-audit-infra/.env`
+- [x] 8a. User: Create OAuth 2.0 credentials in Google Cloud Console
+- [x] 8b. User: Add `http://localhost:8080/api/auth/google/callback` as authorised redirect URI
+- [x] 8c. User: Set `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` in `privacy-audit-infra/.env`
+- [x] 8d. Dev: Verified passport-google strategy → issues JWT → redirects to `DASHBOARD_BASE_URL/auth/google/callback?token=`
+- [x] 8e. Dev: Added Google OAuth local setup section to `DEPLOY.md`
+- [x] 8f. Dev: Fixed `start.sh` placeholder check pattern (`your-google.*` → `your-client-id.*`)
 
 ---
 
