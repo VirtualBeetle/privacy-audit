@@ -1,29 +1,96 @@
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
-import { Apps as AppsIcon, Favorite as FavoriteIcon, People as PeopleIcon } from '@mui/icons-material';
-import type { TenantFilter } from '../../types';
+import Button from '@mui/material/Button';
+import AddIcon from '@mui/icons-material/Add';
+import AppsIcon from '@mui/icons-material/Apps';
+import { Favorite as FavoriteIcon, People as PeopleIcon } from '@mui/icons-material';
+import type { LinkedAccount } from '../../types';
+import type { SessionType } from '../../contexts/AuthContext';
 
-interface TabDef {
-  value: TenantFilter;
+// ─── Known tenant metadata ────────────────────────────────────────────────────
+export const HEALTH_TENANT_ID = '11111111-1111-1111-1111-111111111111';
+export const SOCIAL_TENANT_ID = '22222222-2222-2222-2222-222222222222';
+
+interface TenantMeta {
   label: string;
   icon: React.ReactNode;
-  count: number;
   color: string;
   bg: string;
 }
 
+const TENANT_META: Record<string, TenantMeta> = {
+  [HEALTH_TENANT_ID]: {
+    label: 'HealthTrack',
+    icon: <FavoriteIcon sx={{ fontSize: 16 }} />,
+    color: '#ef4444',
+    bg: '#fef2f2',
+  },
+  [SOCIAL_TENANT_ID]: {
+    label: 'ConnectSocial',
+    icon: <PeopleIcon sx={{ fontSize: 16 }} />,
+    color: '#0ea5e9',
+    bg: '#f0f9ff',
+  },
+};
+
+const fallbackMeta = (tenantId: string): TenantMeta => ({
+  label: `App ${tenantId.slice(0, 6)}`,
+  icon: <AppsIcon sx={{ fontSize: 16 }} />,
+  color: '#6366f1',
+  bg: '#eef2ff',
+});
+
+// ─── Props ────────────────────────────────────────────────────────────────────
 interface Props {
-  value: TenantFilter;
-  onChange: (v: TenantFilter) => void;
-  counts: { all: number; health: number; social: number };
+  sessionType: SessionType;
+  linkedAccounts: LinkedAccount[];
+  value: string;
+  onChange: (v: string) => void;
+  onConnect: () => void;
+  eventCounts: Record<string, number>;
 }
 
-export default function TenantTabs({ value, onChange, counts }: Props) {
-  const tabs: TabDef[] = [
-    { value: 'all',    label: 'All Apps',      icon: <AppsIcon sx={{ fontSize: 16 }} />,     count: counts.all,    color: '#6366f1', bg: '#eef2ff' },
-    { value: 'health', label: 'HealthTrack',   icon: <FavoriteIcon sx={{ fontSize: 16 }} />,  count: counts.health, color: '#ef4444', bg: '#fef2f2' },
-    { value: 'social', label: 'ConnectSocial', icon: <PeopleIcon sx={{ fontSize: 16 }} />,    count: counts.social, color: '#0ea5e9', bg: '#f0f9ff' },
+export default function TenantTabs({
+  sessionType,
+  linkedAccounts,
+  value,
+  onChange,
+  onConnect,
+  eventCounts,
+}: Props) {
+  // dashboard_session: no tabs — the header already says which app this is
+  if (sessionType === 'dashboard_session') return null;
+
+  // google_session with no linked accounts: no tabs (empty state is shown in Dashboard)
+  if (linkedAccounts.length === 0) return null;
+
+  const tabs = [
+    {
+      id: 'all',
+      ...(TENANT_META['all'] ?? {
+        label: 'All Apps',
+        icon: <AppsIcon sx={{ fontSize: 16 }} />,
+        color: '#6366f1',
+        bg: '#eef2ff',
+      }),
+      count: eventCounts['all'] ?? 0,
+    },
+    ...linkedAccounts.map((acc) => ({
+      id: acc.tenantId,
+      ...(TENANT_META[acc.tenantId] ?? fallbackMeta(acc.tenantId)),
+      count: eventCounts[acc.tenantId] ?? 0,
+    })),
   ];
+
+  // Override "all" entry with correct meta
+  tabs[0] = {
+    id: 'all',
+    label: 'All Apps',
+    icon: <AppsIcon sx={{ fontSize: 16 }} />,
+    color: '#6366f1',
+    bg: '#eef2ff',
+    count: eventCounts['all'] ?? 0,
+  };
 
   return (
     <Box
@@ -33,15 +100,19 @@ export default function TenantTabs({ value, onChange, counts }: Props) {
         borderBottom: '1px solid rgba(226,232,240,0.8)',
         px: { xs: 2, md: 4 },
         py: 1.5,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
       }}
     >
+      {/* Tabs */}
       <Box className="flex gap-2">
         {tabs.map((tab) => {
-          const active = value === tab.value;
+          const active = value === tab.id;
           return (
             <Box
-              key={tab.value}
-              onClick={() => onChange(tab.value)}
+              key={tab.id}
+              onClick={() => onChange(tab.id)}
               className="flex items-center gap-2 cursor-pointer select-none"
               sx={{
                 px: 2,
@@ -88,6 +159,30 @@ export default function TenantTabs({ value, onChange, counts }: Props) {
           );
         })}
       </Box>
+
+      {/* Connect button */}
+      <Button
+        size="small"
+        variant="outlined"
+        startIcon={<AddIcon />}
+        onClick={onConnect}
+        sx={{
+          textTransform: 'none',
+          fontWeight: 700,
+          fontSize: '0.78rem',
+          borderRadius: '10px',
+          borderColor: '#6366f1',
+          color: '#6366f1',
+          px: 2,
+          py: 0.75,
+          '&:hover': {
+            backgroundColor: '#eef2ff',
+            borderColor: '#4f46e5',
+          },
+        }}
+      >
+        Connect application
+      </Button>
     </Box>
   );
 }

@@ -8,9 +8,11 @@ export const api = axios.create({
 });
 
 // Attach session token to every request if present.
+// Does NOT overwrite an Authorization header already set in the request config
+// (e.g. linkAccountWith passes a specific dashboard_session token).
 api.interceptors.request.use((config) => {
   const token = localStorage.getItem('session_token');
-  if (token) {
+  if (token && !config.headers.Authorization) {
     config.headers.Authorization = `Bearer ${token}`;
   }
   return config;
@@ -60,9 +62,18 @@ export const dashboardApi = {
   getDeletionStatus: (id: string) =>
     api.get(`/dashboard/deletions/${id}`).then((r) => r.data),
 
-  /** Link a Google account to the current dashboard_session. */
-  linkAccount: (googleSessionToken: string) =>
-    api.post('/dashboard/link-account', { googleSessionToken }).then((r) => r.data),
+  /**
+   * Link a tenant account to a Google account.
+   * Call with dashboardSessionToken as the auth token (overrides localStorage) and
+   * the googleSessionToken in the body. This is used when the user already has a
+   * google_session and arrives via a tenant app handshake redirect.
+   */
+  linkAccountWith: (dashboardSessionToken: string, googleSessionToken: string) =>
+    api.post(
+      '/dashboard/link-account',
+      { googleSessionToken },
+      { headers: { Authorization: `Bearer ${dashboardSessionToken}` } },
+    ).then((r) => r.data),
 
   /** Get all linked tenant accounts (google_session only). */
   getLinkedAccounts: () =>
@@ -115,6 +126,30 @@ export const dashboardApi = {
   /** Delete a webhook. */
   deleteWebhook: (id: string) =>
     api.delete(`/webhooks/${id}`),
+
+  /**
+   * GDPR Article 5(1)(c) — Data Minimisation Violations.
+   * Returns events where the tenant accessed a data field not in their declared allowed list.
+   */
+  getViolations: () =>
+    api.get('/dashboard/violations').then((r) => r.data),
+
+  /**
+   * GDPR Article 30 — Tamper-Evident Hash Chain Verification.
+   * Walks the entire audit log and recomputes every SHA-256 hash.
+   * Returns { valid, eventCount, latestHash, brokenAtEventId? }.
+   */
+  verifyChainIntegrity: () =>
+    api.get('/dashboard/chain-integrity').then((r) => r.data),
+
+  /**
+   * Returns the SSE stream URL for real-time event push.
+   * EventSource cannot send Authorization headers so we pass the token as a query param.
+   */
+  getStreamUrl: () => {
+    const token = localStorage.getItem('session_token') ?? '';
+    return `${BASE_URL}/api/dashboard/events/stream?token=${encodeURIComponent(token)}`;
+  },
 };
 
 // ─── Onboarding API helpers ─────────────────────────────────────────────────

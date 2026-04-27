@@ -309,6 +309,69 @@ export class DashboardService {
     });
   }
 
+  // ─── Hash Chain Integrity (GDPR Article 30) ──────────────────────────────
+
+  /**
+   * verifyUserChain — walks the audit log for the requesting user's tenant and
+   * recomputes every SHA-256 hash. Any mismatch proves tampering.
+   * Exposed to end-users via GET /api/dashboard/chain-integrity.
+   */
+  async verifyUserChain(user: {
+    type: string;
+    tenantId?: string;
+    tenantUserId?: string;
+  }): Promise<{
+    valid: boolean;
+    eventCount: number;
+    latestHash: string | null;
+    brokenAtEventId?: string;
+    gdprArticle: string;
+  }> {
+    const tenantId = user.tenantId;
+    if (!tenantId) {
+      return { valid: true, eventCount: 0, latestHash: null, gdprArticle: 'GDPR Article 30 — Tamper-Evident Audit Log' };
+    }
+
+    const events = await this.eventsRepository.find({
+      where: { tenantId },
+      order: { createdAt: 'ASC' },
+    });
+
+    const { createHash } = await import('crypto');
+
+    let prevHash: string | null = null;
+    for (const event of events) {
+      const input = [
+        event.eventId,
+        event.tenantId,
+        event.tenantUserId,
+        event.actionCode,
+        JSON.stringify([...(event.dataFields ?? [])].sort()),
+        event.occurredAt instanceof Date ? event.occurredAt.toISOString() : event.occurredAt,
+        prevHash ?? '',
+      ].join('|');
+      const expected = createHash('sha256').update(input).digest('hex');
+
+      if (event.hash !== expected) {
+        return {
+          valid: false,
+          eventCount: events.length,
+          latestHash: null,
+          brokenAtEventId: event.id,
+          gdprArticle: 'GDPR Article 30 — Tamper-Evident Audit Log',
+        };
+      }
+      prevHash = event.hash;
+    }
+
+    return {
+      valid: true,
+      eventCount: events.length,
+      latestHash: events.length > 0 ? events[events.length - 1].hash.slice(0, 16) + '…' : null,
+      gdprArticle: 'GDPR Article 30 — Tamper-Evident Audit Log',
+    };
+  }
+
   // ─── Account Linking ──────────────────────────────────────────────────────
 
   /**

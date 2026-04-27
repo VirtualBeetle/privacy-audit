@@ -25,6 +25,7 @@ import { ConsentsModule } from './consents/consents.module';
 import { BreachModule } from './breach/breach.module';
 import { WebhooksModule } from './webhooks/webhooks.module';
 import { SeedModule } from './seed/seed.module';
+import { DataMinimisationModule } from './data-minimisation/data-minimisation.module';
 
 // Entities
 import { Tenant } from './tenants/tenant.entity';
@@ -38,6 +39,7 @@ import { RiskAlert } from './risk/risk-alert.entity';
 import { Consent } from './consents/consent.entity';
 import { BreachReport } from './breach/breach-report.entity';
 import { Webhook } from './webhooks/webhook.entity';
+import { DataMinimisationViolation } from './data-minimisation/data-minimisation-violation.entity';
 
 // Middleware
 import { TenantMiddleware } from './common/middleware/tenant.middleware';
@@ -71,6 +73,7 @@ import { AppController } from './app.controller';
           Consent,
           BreachReport,
           Webhook,
+          DataMinimisationViolation,
         ],
         synchronize: true,
       }),
@@ -128,6 +131,7 @@ import { AppController } from './app.controller';
     BreachModule,
     WebhooksModule,
     SeedModule,
+    DataMinimisationModule,
   ],
   controllers: [AppController],
   providers: [

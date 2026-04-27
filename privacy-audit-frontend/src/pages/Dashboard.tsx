@@ -27,15 +27,25 @@ import PsychologyIcon from '@mui/icons-material/Psychology';
 import HelpIcon from '@mui/icons-material/Help';
 import KeyboardArrowLeftIcon from '@mui/icons-material/KeyboardArrowLeft';
 import KeyboardArrowRightIcon from '@mui/icons-material/KeyboardArrowRight';
+import VerifiedIcon from '@mui/icons-material/Verified';
+import ErrorOutlineIcon from '@mui/icons-material/ErrorOutline';
+import GppBadIcon from '@mui/icons-material/GppBad';
+import AutorenewIcon from '@mui/icons-material/Autorenew';
 import StatsBar from '../components/StatsBar/StatsBar';
 import SensitivityChart from '../components/SensitivityChart/SensitivityChart';
 import DataFieldsChart from '../components/DataFieldsChart/DataFieldsChart';
 import EventFeed from '../components/EventFeed/EventFeed';
 import AIChatButton from '../components/AIChatButton/AIChatButton';
-import TenantTabs from '../components/TenantTabs/TenantTabs';
+import TenantTabs, { HEALTH_TENANT_ID, SOCIAL_TENANT_ID } from '../components/TenantTabs/TenantTabs';
+import ConnectAppModal from '../components/ConnectAppModal/ConnectAppModal';
 import { dashboardApi } from '../api/client';
 import { useAuth } from '../contexts/AuthContext';
-import type { AuditEvent, TenantFilter } from '../types';
+import type { AuditEvent, LinkedAccount, TenantFilter } from '../types';
+
+const TENANT_NAMES: Record<string, string> = {
+  [HEALTH_TENANT_ID]: 'HealthTrack',
+  [SOCIAL_TENANT_ID]: 'ConnectSocial',
+};
 
 const SEVERITY_COLOR: Record<string, string> = {
   CRITICAL: '#ef4444',
@@ -97,6 +107,25 @@ interface ConsentRecord {
   updatedAt?: string | null;
 }
 
+interface DataMinimisationViolation {
+  id: string;
+  tenantId: string;
+  tenantUserId: string;
+  eventId: string;
+  violatingFields: string[];
+  allowedFields: string[];
+  tenantName: string | null;
+  detectedAt: string;
+}
+
+interface ChainIntegrityResult {
+  valid: boolean;
+  eventCount: number;
+  latestHash: string | null;
+  brokenAtEventId?: string;
+  gdprArticle: string;
+}
+
 export default function Dashboard() {
   const { user } = useAuth();
   const [events, setEvents] = useState<AuditEvent[]>([]);
@@ -111,6 +140,18 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [tab, setTab] = useState<TenantFilter>('all');
+  const [linkedAccounts, setLinkedAccounts] = useState<LinkedAccount[]>([]);
+  const [connectModalOpen, setConnectModalOpen] = useState(false);
+
+  // Data Minimisation violations
+  const [violations, setViolations] = useState<DataMinimisationViolation[]>([]);
+
+  // Hash chain integrity
+  const [chainResult, setChainResult] = useState<ChainIntegrityResult | null>(null);
+  const [chainVerifying, setChainVerifying] = useState(false);
+
+  // Live update indicator
+  const [liveFlash, setLiveFlash] = useState(false);
 
   // Export state
   const [exportLoading, setExportLoading] = useState(false);
@@ -126,13 +167,15 @@ export default function Dashboard() {
     setError('');
     try {
       const userId = user?.tenantUserId ?? user?.dashboardUserId ?? '';
-      const [eventsData, alertsData, analysisData, scoreData, breachData, consentsData] = await Promise.all([
+      const [eventsData, alertsData, analysisData, scoreData, breachData, consentsData, linkedData, violationsData] = await Promise.all([
         dashboardApi.getEvents(),
         dashboardApi.getRiskAlerts(),
         dashboardApi.getAnalysisHistory().catch(() => []),
         dashboardApi.getPrivacyScore().catch(() => null),
         dashboardApi.getBreachReports().catch(() => []),
         userId ? dashboardApi.getConsents(userId).catch(() => null) : Promise.resolve(null),
+        user?.type === 'google_session' ? dashboardApi.getLinkedAccounts().catch(() => ({ linkedAccounts: [] })) : Promise.resolve({ linkedAccounts: [] }),
+        dashboardApi.getViolations().catch(() => []),
       ]);
       setEvents(Array.isArray(eventsData) ? eventsData : []);
       setRiskAlerts(Array.isArray(alertsData) ? alertsData : []);
@@ -140,6 +183,8 @@ export default function Dashboard() {
       setPrivacyScore(scoreData);
       setBreachReports(Array.isArray(breachData) ? breachData : []);
       if (consentsData?.consents) setConsents(consentsData.consents);
+      setLinkedAccounts(Array.isArray(linkedData?.linkedAccounts) ? linkedData.linkedAccounts : []);
+      setViolations(Array.isArray(violationsData) ? violationsData : []);
     } catch {
       setError('Failed to load your privacy data. Please try again.');
     } finally {
@@ -149,23 +194,69 @@ export default function Dashboard() {
 
   useEffect(() => { load(); }, [load]);
 
-  // ── Tenant tab filtering ─────────────────────────────────────────────────
-  const tenantSlugMap: Record<string, string> = {};
-  events.forEach((e) => {
-    const slug = e.tenantId?.includes('health') ? 'health' : 'social';
-    tenantSlugMap[e.tenantId] = slug;
-  });
+  // ── SSE: real-time live updates ──────────────────────────────────────────
+  useEffect(() => {
+    const url = dashboardApi.getStreamUrl();
+    const es = new EventSource(url);
 
-  const filtered =
-    tab === 'all'
-      ? events
-      : events.filter((e) => tenantSlugMap[e.tenantId] === tab);
+    es.onmessage = (msg) => {
+      try {
+        const payload = JSON.parse(msg.data);
+        const newEvent = payload.event as AuditEvent;
 
-  const counts = {
-    all: events.length,
-    health: events.filter((e) => tenantSlugMap[e.tenantId] === 'health').length,
-    social: events.filter((e) => tenantSlugMap[e.tenantId] === 'social').length,
+        // Prepend new event to the feed
+        setEvents((prev) => {
+          if (prev.some((e) => e.id === newEvent.id)) return prev;
+          return [newEvent, ...prev];
+        });
+
+        // Append new violation if detected
+        if (payload.violation) {
+          const v: DataMinimisationViolation = {
+            id: newEvent.id,
+            tenantId: newEvent.tenantId,
+            tenantUserId: newEvent.tenantUserId,
+            eventId: newEvent.eventId,
+            violatingFields: payload.violation.violatingFields,
+            allowedFields: payload.violation.allowedFields,
+            tenantName: payload.violation.tenantName,
+            detectedAt: new Date().toISOString(),
+          };
+          setViolations((prev) => [v, ...prev]);
+        }
+
+        // Flash live indicator
+        setLiveFlash(true);
+        setTimeout(() => setLiveFlash(false), 2000);
+      } catch { /* ignore malformed messages */ }
+    };
+
+    es.onerror = () => { /* SSE will auto-reconnect */ };
+
+    return () => es.close();
+  }, []);
+
+  // ── Chain integrity verify ────────────────────────────────────────────────
+  const handleVerifyChain = async () => {
+    setChainVerifying(true);
+    try {
+      const result = await dashboardApi.verifyChainIntegrity();
+      setChainResult(result);
+    } catch {
+      setChainResult(null);
+    } finally {
+      setChainVerifying(false);
+    }
   };
+
+  // ── Tenant tab filtering ─────────────────────────────────────────────────
+  // tab is either 'all' or an actual tenantId UUID
+  const filtered = tab === 'all' ? events : events.filter((e) => e.tenantId === tab);
+
+  const eventCounts: Record<string, number> = { all: events.length };
+  events.forEach((e) => {
+    eventCounts[e.tenantId] = (eventCounts[e.tenantId] ?? 0) + 1;
+  });
 
   // ── Export ───────────────────────────────────────────────────────────────
   const handleExport = async () => {
@@ -312,7 +403,14 @@ export default function Dashboard() {
         background: 'linear-gradient(160deg, #f1f5f9 0%, #e8edf5 50%, #f1f5f9 100%)',
       }}
     >
-      <TenantTabs value={tab} onChange={setTab} counts={counts} />
+      <TenantTabs
+        sessionType={user?.type ?? 'dashboard_session'}
+        linkedAccounts={linkedAccounts}
+        value={tab}
+        onChange={setTab}
+        onConnect={() => setConnectModalOpen(true)}
+        eventCounts={eventCounts}
+      />
 
       <Box sx={{ maxWidth: 1240, mx: 'auto', px: { xs: 2, md: 4 }, py: 4 }}>
 
@@ -328,14 +426,75 @@ export default function Dashboard() {
             variant="h4"
             sx={{ fontWeight: 800, color: '#0f172a', letterSpacing: '-0.5px', lineHeight: 1.15 }}
           >
-            Your{' '}
-            <span className="gradient-text">Privacy</span>{' '}
-            Overview
+            {user?.type === 'dashboard_session' && user.tenantId
+              ? <>{TENANT_NAMES[user.tenantId] ?? 'App'}{' '}<span className="gradient-text">Privacy</span></>
+              : <>Your{' '}<span className="gradient-text">Privacy</span>{' '}Overview</>
+            }
           </Typography>
           <Typography variant="body1" sx={{ color: '#64748b', mt: 0.5 }}>
-            A complete record of how your personal data has been accessed across all connected apps.
+            {user?.type === 'dashboard_session'
+              ? 'A record of how your personal data has been accessed in this application.'
+              : 'A complete record of how your personal data has been accessed across all connected apps.'}
           </Typography>
         </Box>
+
+        {/* Empty state for google_session with no linked accounts */}
+        {user?.type === 'google_session' && linkedAccounts.length === 0 && !loading && (
+          <Box
+            className="anim-fade-up delay-1"
+            sx={{
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              py: 10,
+              gap: 3,
+              textAlign: 'center',
+            }}
+          >
+            <Box
+              sx={{
+                width: 80,
+                height: 80,
+                borderRadius: 4,
+                background: 'linear-gradient(135deg, #eef2ff, #e0e7ff)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: '2.5rem',
+              }}
+            >
+              🔗
+            </Box>
+            <Box>
+              <Typography variant="h6" sx={{ fontWeight: 800, color: '#0f172a', mb: 1 }}>
+                No apps connected yet
+              </Typography>
+              <Typography variant="body1" sx={{ color: '#64748b', maxWidth: 380 }}>
+                Connect an application to start seeing how your personal data is being used — all in one place.
+              </Typography>
+            </Box>
+            <Button
+              variant="contained"
+              onClick={() => setConnectModalOpen(true)}
+              sx={{
+                textTransform: 'none',
+                fontWeight: 700,
+                borderRadius: 2,
+                px: 3,
+                py: 1.2,
+                background: 'linear-gradient(135deg, #6366f1, #4f46e5)',
+                boxShadow: '0 4px 14px rgba(99,102,241,0.4)',
+                '&:hover': { background: 'linear-gradient(135deg, #4f46e5, #4338ca)' },
+              }}
+            >
+              + Connect application
+            </Button>
+          </Box>
+        )}
+
+        {/* Main content — hidden when google_session has no linked accounts */}
+        {!(user?.type === 'google_session' && linkedAccounts.length === 0) && <>
 
         {/* Privacy Health Score */}
         {privacyScore && (
@@ -421,6 +580,143 @@ export default function Dashboard() {
         >
           <SensitivityChart events={filtered} />
           <DataFieldsChart events={filtered} />
+        </Box>
+
+        {/* ── Data Minimisation Violations (GDPR Article 5(1)(c)) ── */}
+        {violations.length > 0 && (
+          <Box className="anim-fade-up delay-3" sx={{ mb: 4 }}>
+            <Paper
+              elevation={0}
+              sx={{ borderRadius: 3, border: '2px solid #fca5a5', background: 'linear-gradient(135deg, #fff1f2, #fff7f7)', p: 3 }}
+            >
+              <Box sx={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', mb: 2.5, flexWrap: 'wrap', gap: 1 }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                  <GppBadIcon sx={{ color: '#dc2626', fontSize: 24 }} />
+                  <Box>
+                    <Typography variant="h6" sx={{ fontWeight: 800, color: '#0f172a', lineHeight: 1.2 }}>
+                      Data Minimisation Violations
+                    </Typography>
+                    <Typography variant="caption" sx={{ color: '#dc2626', fontWeight: 600 }}>
+                      GDPR Article 5(1)(c) — Data accessed beyond declared purpose
+                    </Typography>
+                  </Box>
+                </Box>
+                <Chip
+                  label={`${violations.length} violation${violations.length > 1 ? 's' : ''}`}
+                  sx={{ background: '#dc2626', color: '#fff', fontWeight: 700 }}
+                />
+              </Box>
+              <Typography variant="body2" sx={{ color: '#64748b', mb: 2.5, lineHeight: 1.6 }}>
+                These apps accessed personal data fields that are <strong>not in their declared allowed-fields policy</strong>.
+                Under GDPR Article 5(1)(c), organisations must only process data that is adequate, relevant, and limited to what is necessary.
+              </Typography>
+              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+                {violations.map((v, i) => (
+                  <Box
+                    key={v.id ?? i}
+                    sx={{
+                      p: 2,
+                      borderRadius: 2,
+                      background: '#fff',
+                      border: '1px solid #fca5a5',
+                    }}
+                  >
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1, flexWrap: 'wrap' }}>
+                      <Chip
+                        label={v.tenantName ?? 'Unknown App'}
+                        size="small"
+                        sx={{ background: '#fef2f2', color: '#dc2626', fontWeight: 700, fontSize: '0.72rem' }}
+                      />
+                      <Typography variant="caption" sx={{ color: '#64748b' }}>
+                        {new Date(v.detectedAt).toLocaleString('en-IE')}
+                      </Typography>
+                    </Box>
+                    <Typography variant="body2" sx={{ color: '#374151', mb: 0.75 }}>
+                      <strong>Undeclared fields accessed:</strong>{' '}
+                      {v.violatingFields.map((f) => (
+                        <Chip
+                          key={f}
+                          label={f}
+                          size="small"
+                          sx={{ mr: 0.5, mb: 0.25, background: '#fee2e2', color: '#b91c1c', fontWeight: 700, fontSize: '0.68rem' }}
+                        />
+                      ))}
+                    </Typography>
+                    <Typography variant="caption" sx={{ color: '#94a3b8' }}>
+                      Allowed: {v.allowedFields.slice(0, 5).join(', ')}{v.allowedFields.length > 5 ? ` +${v.allowedFields.length - 5} more` : ''}
+                    </Typography>
+                  </Box>
+                ))}
+              </Box>
+            </Paper>
+          </Box>
+        )}
+
+        {/* ── Hash Chain Integrity (GDPR Article 30) ── */}
+        <Box className="anim-fade-up delay-3" sx={{ mb: 4 }}>
+          <Paper elevation={0} sx={{ borderRadius: 3, border: '1px solid #e2e8f0', p: 3 }}>
+            <Box sx={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'wrap', gap: 2 }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                <VerifiedIcon sx={{ color: '#6366f1', fontSize: 24 }} />
+                <Box>
+                  <Typography variant="h6" sx={{ fontWeight: 700, color: '#0f172a', lineHeight: 1.2 }}>
+                    Audit Log Integrity
+                  </Typography>
+                  <Typography variant="caption" sx={{ color: '#6366f1', fontWeight: 600 }}>
+                    GDPR Article 30 — Tamper-Evident SHA-256 Hash Chain
+                  </Typography>
+                </Box>
+              </Box>
+              <Button
+                variant="outlined"
+                size="small"
+                onClick={handleVerifyChain}
+                disabled={chainVerifying}
+                startIcon={chainVerifying ? <AutorenewIcon className="spin" /> : <VerifiedIcon />}
+                sx={{ textTransform: 'none', fontWeight: 700, borderColor: '#6366f1', color: '#6366f1', whiteSpace: 'nowrap' }}
+              >
+                {chainVerifying ? 'Verifying…' : 'Verify Now'}
+              </Button>
+            </Box>
+            <Typography variant="body2" sx={{ color: '#64748b', mt: 1.5, mb: chainResult ? 2 : 0, lineHeight: 1.6 }}>
+              Every audit event is SHA-256 hashed with the previous event's hash, forming an unbreakable chain.
+              Any modification to any event invalidates all subsequent hashes — proving the log has not been tampered with.
+            </Typography>
+            {chainResult && (
+              <Box
+                sx={{
+                  mt: 1.5,
+                  p: 2,
+                  borderRadius: 2,
+                  background: chainResult.valid ? '#f0fdf4' : '#fef2f2',
+                  border: `1px solid ${chainResult.valid ? '#bbf7d0' : '#fca5a5'}`,
+                }}
+              >
+                {chainResult.valid ? (
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, flexWrap: 'wrap' }}>
+                    <VerifiedIcon sx={{ color: '#16a34a', fontSize: 20 }} />
+                    <Typography variant="body2" sx={{ fontWeight: 700, color: '#15803d' }}>
+                      Chain intact — {chainResult.eventCount} events verified, no tampering detected
+                    </Typography>
+                    {chainResult.latestHash && (
+                      <Chip
+                        label={`Latest hash: ${chainResult.latestHash}`}
+                        size="small"
+                        sx={{ background: '#dcfce7', color: '#15803d', fontFamily: 'monospace', fontSize: '0.68rem' }}
+                      />
+                    )}
+                  </Box>
+                ) : (
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                    <ErrorOutlineIcon sx={{ color: '#dc2626', fontSize: 20 }} />
+                    <Typography variant="body2" sx={{ fontWeight: 700, color: '#b91c1c' }}>
+                      Chain broken at event {chainResult.brokenAtEventId?.slice(0, 8)}… — tampering detected!
+                    </Typography>
+                  </Box>
+                )}
+              </Box>
+            )}
+          </Paper>
         </Box>
 
         {/* AI Risk Alerts */}
@@ -572,6 +868,37 @@ export default function Dashboard() {
 
         {/* Event feed */}
         <Box className="anim-fade-up delay-3" sx={{ mb: 4 }}>
+          {/* Queue architecture badge + live indicator */}
+          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1.5, flexWrap: 'wrap', gap: 1 }}>
+            <Typography variant="subtitle2" sx={{ fontWeight: 700, color: '#0f172a' }}>
+              Audit Event Feed
+            </Typography>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              {/* Live indicator */}
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, px: 1.5, py: 0.5, borderRadius: 2, background: liveFlash ? '#dcfce7' : '#f1f5f9', border: `1px solid ${liveFlash ? '#86efac' : '#e2e8f0'}`, transition: 'all 0.4s ease' }}>
+                <Box sx={{ width: 8, height: 8, borderRadius: '50%', background: liveFlash ? '#22c55e' : '#94a3b8', boxShadow: liveFlash ? '0 0 0 3px rgba(34,197,94,0.3)' : 'none', transition: 'all 0.4s ease' }} />
+                <Typography variant="caption" sx={{ fontWeight: 700, color: liveFlash ? '#15803d' : '#64748b', fontSize: '0.72rem' }}>
+                  {liveFlash ? 'New event!' : 'Live'}
+                </Typography>
+              </Box>
+              {/* Queue badge */}
+              <Tooltip title="Events are accepted as 202 and processed asynchronously via BullMQ Redis queue — ensuring zero data loss even under load">
+                <Chip
+                  label="BullMQ async queue"
+                  size="small"
+                  sx={{ background: '#eef2ff', color: '#4f46e5', fontWeight: 700, fontSize: '0.68rem', cursor: 'help' }}
+                />
+              </Tooltip>
+              {/* Hash chain badge */}
+              <Tooltip title="SHA-256 hash chaining: each event links to the previous, making the log tamper-evident (GDPR Art.30)">
+                <Chip
+                  label="SHA-256 chained"
+                  size="small"
+                  sx={{ background: '#f0fdf4', color: '#16a34a', fontWeight: 700, fontSize: '0.68rem', cursor: 'help' }}
+                />
+              </Tooltip>
+            </Box>
+          </Box>
           <EventFeed events={filtered} />
         </Box>
 
@@ -816,7 +1143,11 @@ export default function Dashboard() {
           </Paper>
         </Box>
 
+        </>} {/* end main content guard */}
+
       </Box>
+
+      <ConnectAppModal open={connectModalOpen} onClose={() => setConnectModalOpen(false)} />
 
       <AIChatButton />
 

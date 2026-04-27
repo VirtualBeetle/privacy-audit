@@ -48,6 +48,13 @@ body {
   100% { background-position: 0% 50%; }
 }
 
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
+.spin { animation: spin 1s linear infinite; }
+
 /* ── Utility animation classes ───────────────────────────────── */
 .anim-fade-up {
   opacity: 0;

@@ -8,7 +8,12 @@ import {
   UseGuards,
   Res,
   HttpStatus,
+  Sse,
+  UnauthorizedException,
 } from '@nestjs/common';
+import { Observable } from 'rxjs';
+import { JwtService } from '@nestjs/jwt';
+import { ConfigService } from '@nestjs/config';
 import { Response } from 'express';
 import { DashboardService } from './dashboard.service';
 import { ExportsService } from '../exports/exports.service';
@@ -16,6 +21,8 @@ import { DeletionsService } from '../deletions/deletions.service';
 import { RiskService } from '../risk/risk.service';
 import { DashboardUsersService } from '../dashboard-users/dashboard-users.service';
 import { AiChatService } from '../ai-chat/ai-chat.service';
+import { DataMinimisationService } from '../data-minimisation/data-minimisation.service';
+import { EventStreamService } from '../events/event-stream.service';
 import { CreateDashboardTokenDto } from './dto/create-dashboard-token.dto';
 import { ExchangeTokenDto } from './dto/exchange-token.dto';
 import { ApiKeyGuard } from '../common/guards/api-key.guard';
@@ -31,24 +38,20 @@ export class DashboardController {
     private readonly riskService: RiskService,
     private readonly dashboardUsersService: DashboardUsersService,
     private readonly aiChatService: AiChatService,
+    private readonly dataMinimisationService: DataMinimisationService,
+    private readonly eventStreamService: EventStreamService,
+    private readonly jwtService: JwtService,
+    private readonly configService: ConfigService,
   ) {}
 
   // ─── Auth ──────────────────────────────────────────────────────────────────
 
-  /**
-   * POST /api/dashboard/token
-   * Tenant app requests a 15-min handshake token for one of its users.
-   */
   @Post('token')
   @UseGuards(ApiKeyGuard)
   issueToken(@CurrentUser() user: any, @Body() dto: CreateDashboardTokenDto) {
     return this.dashboardService.issueToken(user.tenantId, dto);
   }
 
-  /**
-   * POST /api/dashboard/session
-   * Exchange a 15-min handshake token for an 8-hour session JWT.
-   */
   @Post('session')
   exchangeToken(@Body() dto: ExchangeTokenDto) {
     return this.dashboardService.exchangeToken(dto);
@@ -56,28 +59,60 @@ export class DashboardController {
 
   // ─── Events ────────────────────────────────────────────────────────────────
 
-  /**
-   * GET /api/dashboard/events
-   * Returns audit events for the authenticated user.
-   * Accepts both dashboard_session and google_session tokens.
-   */
   @Get('events')
   @UseGuards(DashboardAnyGuard)
   getEvents(@CurrentUser() user: any) {
     return this.dashboardService.getEvents(user);
   }
 
-  // ─── Account Linking ───────────────────────────────────────────────────────
+  // ─── Real-Time SSE Stream ─────────────────────────────────────────────────
 
   /**
-   * POST /api/dashboard/link-account
+   * GET /api/dashboard/events/stream?token=<jwt>
    *
-   * Links the calling user's tenant account (from their dashboard_session)
-   * to their Google identity (provided as googleSessionToken in the body).
-   * After linking, their `google_session` will aggregate events from this tenant.
+   * Server-Sent Events endpoint. The browser cannot send an Authorization
+   * header via EventSource, so we accept the session JWT as a query param.
+   * Emits a JSON payload whenever a new audit event is processed for this user.
    *
-   * Body: { googleSessionToken: string }
+   * Payload shape: { tenantId, tenantUserId, event, violation? }
    */
+  @Sse('events/stream')
+  async streamEvents(
+    @Query('token') token: string,
+  ): Promise<Observable<{ data: string }>> {
+    if (!token) {
+      throw new UnauthorizedException('token query param is required for SSE');
+    }
+
+    let payload: any;
+    try {
+      payload = this.jwtService.verify(token, {
+        secret: this.configService.get<string>('JWT_SECRET'),
+      });
+    } catch {
+      throw new UnauthorizedException('Invalid or expired session token');
+    }
+
+    if (payload.type === 'dashboard_session') {
+      return this.eventStreamService.streamFor(payload.tenantId, payload.tenantUserId);
+    }
+
+    if (payload.type === 'google_session') {
+      const linked = await this.dashboardUsersService.getLinkedAccounts(
+        payload.dashboardUserId,
+      );
+      const pairs = linked.map((l) => ({
+        tenantId: l.tenantId,
+        tenantUserId: l.tenantUserId,
+      }));
+      return this.eventStreamService.streamForMany(pairs);
+    }
+
+    throw new UnauthorizedException('Unsupported token type for SSE');
+  }
+
+  // ─── Account Linking ───────────────────────────────────────────────────────
+
   @Post('link-account')
   @UseGuards(DashboardGuard)
   linkAccount(
@@ -87,11 +122,6 @@ export class DashboardController {
     return this.dashboardService.linkAccount(user, body.googleSessionToken);
   }
 
-  /**
-   * GET /api/dashboard/linked-accounts
-   * Returns all tenant accounts linked to the Google identity.
-   * Requires google_session.
-   */
   @Get('linked-accounts')
   @UseGuards(DashboardAnyGuard)
   async getLinkedAccounts(@CurrentUser() user: any) {
@@ -106,10 +136,6 @@ export class DashboardController {
 
   // ─── Exports (GDPR Article 20) ─────────────────────────────────────────────
 
-  /**
-   * POST /api/dashboard/exports
-   * Request a full data export. Processed async — returns 202 immediately.
-   */
   @Post('exports')
   @UseGuards(DashboardGuard)
   requestExport(@CurrentUser() user: any, @Res() res: Response) {
@@ -118,21 +144,12 @@ export class DashboardController {
       .then((result) => res.status(HttpStatus.ACCEPTED).json(result));
   }
 
-  /**
-   * GET /api/dashboard/exports/:id
-   * Poll the status of an export request.
-   */
   @Get('exports/:id')
   @UseGuards(DashboardGuard)
   getExportStatus(@CurrentUser() user: any, @Param('id') id: string) {
     return this.exportsService.getStatus(id, user.tenantId, user.tenantUserId);
   }
 
-  /**
-   * GET /api/dashboard/exports/:id/download
-   * Download the completed export as a JSON attachment.
-   * Returns 410 Gone if the 24-hour download window has expired.
-   */
   @Get('exports/:id/download')
   @UseGuards(DashboardGuard)
   async downloadExport(
@@ -155,10 +172,6 @@ export class DashboardController {
 
   // ─── Deletions (GDPR Article 17) ──────────────────────────────────────────
 
-  /**
-   * POST /api/dashboard/deletions
-   * Request erasure of all user audit data. Processed async.
-   */
   @Post('deletions')
   @UseGuards(DashboardGuard)
   requestDeletion(@CurrentUser() user: any, @Res() res: Response) {
@@ -167,10 +180,6 @@ export class DashboardController {
       .then((result) => res.status(HttpStatus.ACCEPTED).json(result));
   }
 
-  /**
-   * GET /api/dashboard/deletions/:id
-   * Poll the status of a deletion request.
-   */
   @Get('deletions/:id')
   @UseGuards(DashboardGuard)
   getDeletionStatus(@CurrentUser() user: any, @Param('id') id: string) {
@@ -179,11 +188,6 @@ export class DashboardController {
 
   // ─── AI Chat ──────────────────────────────────────────────────────────────
 
-  /**
-   * POST /api/dashboard/ai-chat
-   * Send a chat message. The AI receives the user's recent audit events as context.
-   * Body: { message: string, sessionId?: string }
-   */
   @Post('ai-chat')
   @UseGuards(DashboardAnyGuard)
   async aiChat(
@@ -193,11 +197,6 @@ export class DashboardController {
     return this.aiChatService.sendMessage(user, body.message, body.sessionId);
   }
 
-  /**
-   * GET /api/dashboard/ai-chat/history
-   * Returns paginated list of past chat sessions.
-   * Query: ?page=1&limit=20
-   */
   @Get('ai-chat/history')
   @UseGuards(DashboardAnyGuard)
   async getChatHistory(
@@ -213,11 +212,6 @@ export class DashboardController {
     );
   }
 
-  /**
-   * GET /api/dashboard/ai-analysis
-   * Returns AI risk analysis history from MongoDB (full context + findings).
-   * Only available for dashboard_session (per-tenant).
-   */
   @Get('ai-analysis')
   @UseGuards(DashboardGuard)
   async getAnalysisHistory(@CurrentUser() user: any) {
@@ -226,11 +220,6 @@ export class DashboardController {
 
   // ─── Privacy Health Score ──────────────────────────────────────────────────
 
-  /**
-   * GET /api/dashboard/privacy-score
-   * Returns a 0-100 privacy health score for the authenticated user's tenant.
-   * Breakdown: consent rate (30), opt-out (20), third-party (20), sensitivity (20), critical (10).
-   */
   @Get('privacy-score')
   @UseGuards(DashboardAnyGuard)
   getPrivacyScore(@CurrentUser() user: any) {
@@ -239,11 +228,6 @@ export class DashboardController {
 
   // ─── PDF Compliance Report ─────────────────────────────────────────────────
 
-  /**
-   * GET /api/dashboard/compliance-report/download
-   * Generates and streams a PDF compliance report (GDPR Art.30 record).
-   * Covers: event log summary, retention policy, deletion proof, hash chain, risk alerts.
-   */
   @Get('compliance-report/download')
   @UseGuards(DashboardGuard)
   async downloadComplianceReport(
@@ -258,12 +242,6 @@ export class DashboardController {
 
   // ─── AI Risk Alerts ────────────────────────────────────────────────────────
 
-  /**
-   * GET /api/dashboard/risk-alerts
-   *
-   * Returns the most recent AI-generated privacy risk alerts for the user's
-   * tenant(s). Accepts both dashboard_session and google_session.
-   */
   @Get('risk-alerts')
   @UseGuards(DashboardAnyGuard)
   async getRiskAlerts(@CurrentUser() user: any) {
@@ -278,4 +256,49 @@ export class DashboardController {
 
     return this.riskService.getAlertsForUser(user, linkedTenantIds);
   }
+
+  // ─── Data Minimisation Violations (GDPR Article 5(1)(c)) ─────────────────
+
+  /**
+   * GET /api/dashboard/violations
+   *
+   * Returns data minimisation violations detected for the authenticated user.
+   * A violation occurs when a tenant app accessed a data field not declared
+   * in its allowedDataFields policy — proving GDPR Article 5(1)(c) enforcement.
+   */
+  @Get('violations')
+  @UseGuards(DashboardAnyGuard)
+  async getViolations(@CurrentUser() user: any) {
+    if (user.type === 'dashboard_session') {
+      return this.dataMinimisationService.getViolationsForUser(
+        user.tenantId,
+        user.tenantUserId,
+      );
+    }
+
+    const linked = await this.dashboardUsersService.getLinkedAccounts(
+      user.dashboardUserId,
+    );
+    const pairs = linked.map((l) => ({
+      tenantId: l.tenantId,
+      tenantUserId: l.tenantUserId,
+    }));
+    return this.dataMinimisationService.getViolationsForTenants(pairs);
+  }
+
+  // ─── Hash Chain Integrity (GDPR Article 30) ────────────────────────────────
+
+  /**
+   * GET /api/dashboard/chain-integrity
+   *
+   * Verifies the SHA-256 hash chain for the user's audit log.
+   * Any modification to a stored event breaks the chain, proving tamper-evidence.
+   * Demonstrates GDPR Article 30 accountability in real time.
+   */
+  @Get('chain-integrity')
+  @UseGuards(DashboardAnyGuard)
+  verifyChainIntegrity(@CurrentUser() user: any) {
+    return this.dashboardService.verifyUserChain(user);
+  }
+
 }

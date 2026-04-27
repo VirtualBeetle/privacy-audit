@@ -25,6 +25,15 @@ export class Tenant {
   @Column({ default: true })
   isActive: boolean;
 
+  /**
+   * GDPR Article 5(1)(c) — Data Minimisation.
+   * Exhaustive list of data field names this tenant is permitted to process.
+   * Any event that includes a field not in this list is flagged as a violation.
+   * Null means no policy configured — no violations will be raised.
+   */
+  @Column({ name: 'allowed_data_fields', type: 'jsonb', nullable: true })
+  allowedDataFields: string[] | null;
+
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
 }

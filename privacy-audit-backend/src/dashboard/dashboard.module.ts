@@ -11,6 +11,8 @@ import { DeletionsModule } from '../deletions/deletions.module';
 import { DashboardUsersModule } from '../dashboard-users/dashboard-users.module';
 import { RiskModule } from '../risk/risk.module';
 import { AiChatModule } from '../ai-chat/ai-chat.module';
+import { DataMinimisationModule } from '../data-minimisation/data-minimisation.module';
+import { EventsModule } from '../events/events.module';
 import { ApiKeyGuard } from '../common/guards/api-key.guard';
 import { DashboardGuard, DashboardAnyGuard } from '../common/guards/dashboard.guard';
 
@@ -23,6 +25,8 @@ import { DashboardGuard, DashboardAnyGuard } from '../common/guards/dashboard.gu
     DashboardUsersModule,
     RiskModule,
     AiChatModule,
+    DataMinimisationModule,
+    EventsModule,
     JwtModule.registerAsync({
       imports: [ConfigModule],
       inject: [ConfigService],

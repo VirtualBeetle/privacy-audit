@@ -7,6 +7,11 @@ import { hashApiKey } from '../tenants/tenants.service';
 /**
  * Fixed demo tenant UUIDs and API keys — match docker-compose defaults.
  * These are seeded once on first boot and are idempotent.
+ *
+ * allowedDataFields implements GDPR Article 5(1)(c) — Data Minimisation.
+ * Any event containing a field outside this list will be flagged as a violation.
+ * Demo violations are triggered by sending fields like biometric_data or
+ * financial_data that are intentionally excluded from the allowed list.
  */
 const DEMO_TENANTS = [
   {
@@ -14,12 +19,34 @@ const DEMO_TENANTS = [
     name: 'HealthTrack',
     email: 'admin@healthdemo.internal',
     apiKey: 'health-tenant-api-key',
+    allowedDataFields: [
+      'email',
+      'name',
+      'date_of_birth',
+      'appointment_date',
+      'medical_record',
+      'insurance_details',
+      'phone_number',
+      'diagnosis',
+      'prescription',
+      'blood_type',
+    ],
   },
   {
     id: '22222222-2222-2222-2222-222222222222',
     name: 'ConnectSocial',
     email: 'admin@socialdemo.internal',
     apiKey: 'social-tenant-api-key',
+    allowedDataFields: [
+      'email',
+      'username',
+      'posts',
+      'location',
+      'friends_list',
+      'profile_picture',
+      'bio',
+      'check_in',
+    ],
   },
 ];
 
@@ -39,6 +66,13 @@ export class SeedService implements OnApplicationBootstrap {
       });
 
       if (existing) {
+        // Update allowedDataFields if they've changed or are missing
+        if (!existing.allowedDataFields || existing.allowedDataFields.length === 0) {
+          await this.tenantsRepository.update(demo.id, {
+            allowedDataFields: demo.allowedDataFields,
+          });
+          this.logger.log(`Updated allowedDataFields for: ${demo.name}`);
+        }
         this.logger.log(`Demo tenant already exists: ${demo.name}`);
         continue;
       }
@@ -50,6 +84,7 @@ export class SeedService implements OnApplicationBootstrap {
         apiKeyHash: hashApiKey(demo.apiKey),
         retentionDays: 90,
         isActive: true,
+        allowedDataFields: demo.allowedDataFields,
       });
 
       await this.tenantsRepository.save(tenant);
