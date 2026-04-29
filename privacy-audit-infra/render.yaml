@@ -41,6 +41,9 @@ databases:
 services:
 
   # ── Redis (must be a service, not a database) ────────────────────────────────
+  # NOTE: Render free Redis auto-suspends after 30 min inactivity.
+  # For a more reliable demo, use Upstash Redis (https://upstash.com — free tier).
+  # Just set REDIS_URL in the audit-backend env to the Upstash rediss:// URL.
   - type: redis
     name: privacy-redis
     plan: free

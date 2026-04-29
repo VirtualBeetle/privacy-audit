@@ -406,28 +406,36 @@ Last updated: 2026-04-14 (All 14 phases complete — 174/174 tasks — both buil
 ### Step 5 — Google OAuth (Unlocks Google login)
 | # | Task | Status | Notes |
 |---|---|---|---|
-| DEPLOY-11 | Create Google Cloud project + OAuth 2.0 credentials (Web Application type) | ⏳ Not Started | Add redirect URI: `https://<actual-audit-backend-url>/api/auth/google/callback` |
-| DEPLOY-12 | Set `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `GOOGLE_CALLBACK_URL` in Render dashboard | ⏳ Not Started | Unlocks "Sign in with Google" on the dashboard login page |
+| DEPLOY-11 | Create Google Cloud project + OAuth 2.0 credentials (Web Application type) | ⏳ Not Started | Add redirect URI: `https://audit-backend-ddew.onrender.com/api/auth/google/callback` |
+| DEPLOY-12 | Set `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` in Render dashboard for audit-backend | ⏳ Not Started | GOOGLE_CALLBACK_URL is already set in render.yaml. Unlocks "Sign in with Google" |
 
 ### Step 6 — AI Features (Unlocks AI risk analysis + AI Chat)
 | # | Task | Status | Notes |
 |---|---|---|---|
-| DEPLOY-13 | Set `ANTHROPIC_API_KEY` in Render dashboard for audit-backend | ⏳ Not Started | Unlocks AI risk analysis cron (every 6h) + ANTHROPIC_API_KEY fallback for AI chat |
-| DEPLOY-14 | Create MongoDB Atlas free cluster (M0) and get connection string | ⏳ Not Started | atlas.mongodb.com — free tier, no credit card. Unlocks AI chat history + AI analysis records |
-| DEPLOY-15 | Set `MONGODB_URI` in Render dashboard for audit-backend | ⏳ Not Started | Format: `mongodb+srv://user:pass@cluster.mongodb.net/privacy_audit` |
+| DEPLOY-13 | Get Anthropic API key from platform.anthropic.com | ⏳ Not Started | Free credits available on new accounts |
+| DEPLOY-14 | Set `ANTHROPIC_API_KEY` in Render dashboard for audit-backend | ⏳ Not Started | Unlocks AI risk analysis cron (every 6h) and AI chat fallback |
+| DEPLOY-15 | Create MongoDB Atlas free cluster (M0) at atlas.mongodb.com | ⏳ Not Started | Free tier, no credit card needed. Whitelist 0.0.0.0/0 for Render |
+| DEPLOY-16 | Set `MONGODB_URI` in Render dashboard for audit-backend | ⏳ Not Started | Format: `mongodb+srv://user:pass@cluster.mongodb.net/privacy_audit`. Unlocks AI chat history + AI analysis records |
 
 ### Step 7 — Email Notifications (Unlocks risk alert emails)
 | # | Task | Status | Notes |
 |---|---|---|---|
-| DEPLOY-16 | Create Mailtrap account (free) for demo SMTP | ⏳ Not Started | mailtrap.io — easiest for demo, no real emails sent |
-| DEPLOY-17 | Set `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `FROM_EMAIL` in Render dashboard | ⏳ Not Started | Unlocks HIGH/CRITICAL alert emails + Monday 09:00 weekly digest |
+| DEPLOY-17 | Create Mailtrap account (free) at mailtrap.io | ⏳ Not Started | No real emails sent — safe for demo |
+| DEPLOY-18 | Set `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `FROM_EMAIL` in Render dashboard | ⏳ Not Started | Unlocks HIGH/CRITICAL alert emails + Monday 09:00 weekly digest |
 
-### Step 8 — Seed Demo Data + Smoke Test
+### Step 8 — DB Dump & Restore Script (Disaster recovery / URL migration)
 | # | Task | Status | Notes |
 |---|---|---|---|
-| DEPLOY-18 | Seed 20 demo events via `POST /dev/seed-events` using DEV_TOKEN | ⏳ Not Started | Requires DEPLOY-7 + DEPLOY-8/9/10 |
-| DEPLOY-19 | Trigger manual AI risk analysis via `POST /dev/trigger-risk-analysis` | ⏳ Not Started | Requires DEPLOY-13 |
-| DEPLOY-20 | Smoke test full demo flow end-to-end (login → events → AI chat → export → delete) | ⏳ Not Started | Final verification |
+| DEPLOY-19 | Write `scripts/db-dump.sh` — dumps all 3 Render Postgres DBs to local `.sql` files | ⏳ Not Started | Uses `pg_dump` with Render connection strings |
+| DEPLOY-20 | Write `scripts/db-restore.sh` — restores `.sql` dumps into new Postgres DBs | ⏳ Not Started | Useful if Render DB URLs change or DBs need to be recreated from scratch |
+| DEPLOY-21 | Test dump + restore cycle end-to-end | ⏳ Not Started | Verify data survives round-trip |
+
+### Step 9 — Seed Demo Data + Smoke Test
+| # | Task | Status | Notes |
+|---|---|---|---|
+| DEPLOY-22 | Seed 20 demo events via `POST /dev/seed-events` using DEV_TOKEN | ⏳ Not Started | Requires DEPLOY-7 + DEPLOY-8/9/10 |
+| DEPLOY-23 | Trigger manual AI risk analysis via `POST /dev/trigger-risk-analysis` | ⏳ Not Started | Requires DEPLOY-14 |
+| DEPLOY-24 | Smoke test full demo flow end-to-end (login → events → AI chat → export → delete) | ⏳ Not Started | Final verification |
 
 ---
 
@@ -455,9 +463,9 @@ Last updated: 2026-04-14 (All 14 phases complete — 174/174 tasks — both buil
 | Phase 12 — Architecture Diagram | 1 | 1 |
 | Phase 13 — Tenant Onboarding | 6 | 6 |
 | Phase 14 — Complexity Boosters | 6 | 6 |
-| Phase 15 — Render Full Feature Unlock | 1 | 20 |
+| Phase 15 — Render Full Feature Unlock | 1 | 24 |
 | **Phase 1–6 Total** | **115** | **115** |
 | **Phases 7–8 Total** | **15** | **15** |
 | **Phases 9–14 Total** | **44** | **44** |
-| **Phase 15 Total** | **1** | **20** |
-| **Grand Total** | **175** | **194** |
+| **Phase 15 Total** | **1** | **24** |
+| **Grand Total** | **175** | **198** |

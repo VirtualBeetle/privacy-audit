@@ -94,13 +94,20 @@ import { AppController } from './app.controller';
       inject: [ConfigService],
       useFactory: (configService: ConfigService) => {
         const redisUrl = configService.get<string>('REDIS_URL');
+        const baseConnection = redisUrl
+          ? { url: redisUrl }
+          : {
+              host: configService.get<string>('REDIS_HOST') ?? 'localhost',
+              port: configService.get<number>('REDIS_PORT') ?? 6379,
+            };
         return {
-          connection: redisUrl
-            ? { url: redisUrl }
-            : {
-                host: configService.get<string>('REDIS_HOST') ?? 'localhost',
-                port: configService.get<number>('REDIS_PORT') ?? 6379,
-              },
+          connection: {
+            ...baseConnection,
+            // Retry with increasing delay, cap at 30s — prevents log spam on Render free tier
+            retryStrategy: (times: number) => Math.min(times * 500, 30_000),
+            maxRetriesPerRequest: null,
+            enableReadyCheck: false,
+          },
         };
       },
     }),

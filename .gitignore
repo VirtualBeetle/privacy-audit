@@ -32,6 +32,9 @@ vendor/
 .DS_Store
 Thumbs.db
 
+# ── DB dumps — keep the folder tracked but not the .sql files ─────────────────
+dumps/*.sql
+
 # ── IDEs ──────────────────────────────────────────────────────────────────────
 .idea/
 .vscode/
