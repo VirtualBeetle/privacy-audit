@@ -17,7 +17,9 @@
 #   - privacy-audit-db  (Render managed PostgreSQL)
 #   - privacy-health-db (Render managed PostgreSQL)
 #   - privacy-social-db (Render managed PostgreSQL)
-#   - privacy-redis     (Render managed Redis)
+#
+# Cache:
+#   - privacy-redis     (Render managed Redis — defined under services)
 #
 # MongoDB: Use MongoDB Atlas (https://www.mongodb.com/atlas) — free M0 tier.
 #          Set MONGODB_URI manually in the Render dashboard.
@@ -36,11 +38,13 @@ databases:
     plan: free
     databaseName: social_tenant
 
-  - name: privacy-redis
+services:
+
+  # ── Redis (must be a service, not a database) ────────────────────────────────
+  - type: redis
+    name: privacy-redis
     plan: free
     ipAllowList: []
-
-services:
 
   # ── Core Audit Backend (NestJS) ─────────────────────────────────────────────
   - type: web
