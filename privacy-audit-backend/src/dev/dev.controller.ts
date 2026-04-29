@@ -10,7 +10,9 @@ import {
   ForbiddenException,
   HttpCode,
   HttpStatus,
+  NotFoundException,
 } from '@nestjs/common';
+import { randomUUID } from 'crypto';
 import { ConfigService } from '@nestjs/config';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
@@ -22,6 +24,8 @@ import { RiskService } from '../risk/risk.service';
 import { RetentionService } from '../retention/retention.service';
 import { EmailService } from '../email/email.service';
 import { AuditEvent } from '../events/audit-event.entity';
+import { Tenant } from '../tenants/tenant.entity';
+import { hashApiKey } from '../tenants/tenants.service';
 import { AUDIT_EVENTS_QUEUE } from '../queue/queue.constants';
 
 /**
@@ -50,6 +54,7 @@ export class DevController {
     private readonly emailService: EmailService,
     @InjectQueue(AUDIT_EVENTS_QUEUE) private readonly auditQueue: Queue,
     @InjectRepository(AuditEvent) private readonly eventsRepo: Repository<AuditEvent>,
+    @InjectRepository(Tenant) private readonly tenantsRepo: Repository<Tenant>,
   ) {}
 
   private guard(token: string | undefined): void {
@@ -282,6 +287,50 @@ export class DevController {
       failed,
       delayed,
       health: failed > 10 ? 'degraded' : 'ok',
+    };
+  }
+
+  // ── Tenant Management ─────────────────────────────────────────────────────
+
+  /**
+   * GET /api/dev/tenants
+   * List all registered tenants (id, name, email). Use this to get tenant IDs
+   * before calling reset-key.
+   */
+  @Get('tenants')
+  async listTenants(@Headers('x-dev-token') token: string) {
+    this.guard(token);
+    const tenants = await this.tenantsRepo.find({
+      select: ['id', 'name', 'email', 'isActive', 'createdAt'],
+      order: { createdAt: 'ASC' },
+    });
+    return { tenants };
+  }
+
+  /**
+   * POST /api/dev/tenants/:id/reset-key
+   * Generate a brand-new API key for an existing tenant.
+   * The new plaintext key is returned once — save it immediately.
+   * Use this when the original key was lost (e.g. after duplicate registration).
+   */
+  @Post('tenants/:id/reset-key')
+  async resetTenantKey(
+    @Headers('x-dev-token') token: string,
+    @Param('id') id: string,
+  ) {
+    this.guard(token);
+    const tenant = await this.tenantsRepo.findOne({ where: { id } });
+    if (!tenant) throw new NotFoundException(`Tenant ${id} not found`);
+
+    const newKey = `pak_${randomUUID().replace(/-/g, '')}`;
+    tenant.apiKeyHash = hashApiKey(newKey);
+    await this.tenantsRepo.save(tenant);
+
+    return {
+      message: 'API key reset. Save this key — it will not be shown again.',
+      tenantId: tenant.id,
+      tenantName: tenant.name,
+      apiKey: newKey,
     };
   }
 }
