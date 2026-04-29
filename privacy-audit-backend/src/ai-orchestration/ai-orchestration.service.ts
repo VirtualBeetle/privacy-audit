@@ -1,4 +1,4 @@
-import { Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException, Optional } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import Anthropic from '@anthropic-ai/sdk';
@@ -33,15 +33,17 @@ export class AiOrchestrationService {
   private readonly logger = new Logger(AiOrchestrationService.name);
 
   constructor(
+    @Optional()
     @InjectModel(AiProviderSetting.name)
-    private readonly settingModel: Model<AiProviderSettingDocument>,
+    private readonly settingModel: Model<AiProviderSettingDocument> | null,
   ) {}
 
   // ── Provider Management ──────────────────────────────────────────────────
 
   async listProviders(): Promise<AiProviderSettingDocument[]> {
+    if (!this.settingModel) return [];
     return this.settingModel
-      .find({}, { encryptedApiKey: 0 }) // never expose key
+      .find({}, { encryptedApiKey: 0 })
       .sort({ isActive: -1, createdAt: 1 })
       .lean()
       .exec() as Promise<AiProviderSettingDocument[]>;
@@ -54,6 +56,7 @@ export class AiOrchestrationService {
     apiKey: string;
     updatedBy?: string;
   }): Promise<AiProviderSettingDocument> {
+    if (!this.settingModel) throw new NotFoundException('MongoDB not configured');
     const doc = await this.settingModel.create({
       provider: dto.provider,
       label: dto.label,
@@ -67,6 +70,7 @@ export class AiOrchestrationService {
   }
 
   async activateProvider(id: string, updatedBy = 'dev'): Promise<void> {
+    if (!this.settingModel) throw new NotFoundException('MongoDB not configured');
     const target = await this.settingModel.findById(id);
     if (!target) throw new NotFoundException(`Provider ${id} not found`);
     // Deactivate all, then activate the chosen one
@@ -78,11 +82,13 @@ export class AiOrchestrationService {
   }
 
   async deleteProvider(id: string): Promise<void> {
+    if (!this.settingModel) throw new NotFoundException('MongoDB not configured');
     await this.settingModel.findByIdAndDelete(id);
     this.logger.log(`Deleted AI provider setting: ${id}`);
   }
 
   async getActiveProvider(): Promise<AiProviderSettingDocument | null> {
+    if (!this.settingModel) return null;
     return this.settingModel.findOne({ isActive: true }).exec();
   }
 

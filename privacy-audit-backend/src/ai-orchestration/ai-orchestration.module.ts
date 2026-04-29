@@ -6,12 +6,12 @@ import {
 } from './schemas/ai-provider-setting.schema';
 import { AiOrchestrationService } from './ai-orchestration.service';
 
+const mongooseFeature = process.env.MONGODB_URI
+  ? [MongooseModule.forFeature([{ name: AiProviderSetting.name, schema: AiProviderSettingSchema }])]
+  : [];
+
 @Module({
-  imports: [
-    MongooseModule.forFeature([
-      { name: AiProviderSetting.name, schema: AiProviderSettingSchema },
-    ]),
-  ],
+  imports: [...mongooseFeature],
   providers: [AiOrchestrationService],
   exports: [AiOrchestrationService],
 })

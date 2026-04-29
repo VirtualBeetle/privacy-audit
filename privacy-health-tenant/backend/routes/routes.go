@@ -23,6 +23,9 @@ func Setup(r *gin.Engine, db *gorm.DB) {
 	doctorH := &handlers.DoctorHandler{DB: db}
 	privacyH := &handlers.PrivacyHandler{DB: db}
 
+	// Health check for Render
+	r.GET("/health", func(c *gin.Context) { c.JSON(200, gin.H{"status": "ok"}) })
+
 	api := r.Group("/api")
 
 	// Public
