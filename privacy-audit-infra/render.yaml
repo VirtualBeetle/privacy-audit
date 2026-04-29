@@ -87,9 +87,9 @@ services:
       - key: GOOGLE_CLIENT_SECRET
         sync: false   # Set manually
       - key: GOOGLE_CALLBACK_URL
-        value: https://audit-backend.onrender.com/api/auth/google/callback
+        value: https://audit-backend-ddew.onrender.com/api/auth/google/callback
       - key: DASHBOARD_BASE_URL
-        value: https://audit-frontend.onrender.com
+        value: https://audit-frontend-2n0n.onrender.com
       - key: ANTHROPIC_API_KEY
         sync: false   # Set manually
       - key: MONGODB_URI
@@ -104,6 +104,8 @@ services:
         sync: false
       - key: FROM_EMAIL
         sync: false
+      - key: ENCRYPTION_KEY
+        sync: false   # 32+ char random string — encrypts AI provider API keys in MongoDB
       - key: DEV_TOKEN
         sync: false   # Set a random secret for /dev/* endpoints
       - key: PORT
@@ -129,7 +131,7 @@ services:
         destination: /index.html
     envVars:
       - key: VITE_API_URL
-        value: https://audit-backend.onrender.com
+        value: https://audit-backend-ddew.onrender.com
 
   # ── HealthTrack Tenant Backend (Go) ─────────────────────────────────────────
   - type: web
@@ -165,11 +167,11 @@ services:
       - key: JWT_SECRET
         value: health-demo-secret
       - key: AUDIT_SERVICE_URL
-        value: https://audit-backend.onrender.com
+        value: https://audit-backend-ddew.onrender.com
       - key: AUDIT_API_KEY
         value: health-tenant-api-key
       - key: DASHBOARD_BASE_URL
-        value: https://audit-frontend.onrender.com
+        value: https://audit-frontend-2n0n.onrender.com
 
   # ── HealthTrack Tenant Frontend (Vite/React static site) ────────────────────
   - type: web
@@ -184,7 +186,7 @@ services:
         destination: /index.html
     envVars:
       - key: VITE_API_URL
-        value: https://health-backend.onrender.com
+        value: https://health-backend-ni1n.onrender.com
 
   # ── ConnectSocial Tenant Backend (FastAPI/Python) ───────────────────────────
   - type: web
@@ -208,11 +210,11 @@ services:
       - key: ACCESS_TOKEN_EXPIRE_MINUTES
         value: "1440"
       - key: AUDIT_SERVICE_URL
-        value: https://audit-backend.onrender.com
+        value: https://audit-backend-ddew.onrender.com
       - key: AUDIT_API_KEY
         value: social-tenant-api-key
       - key: DASHBOARD_BASE_URL
-        value: https://audit-frontend.onrender.com
+        value: https://audit-frontend-2n0n.onrender.com
 
   # ── ConnectSocial Tenant Frontend (Vite/React static site) ──────────────────
   - type: web
@@ -227,4 +229,4 @@ services:
         destination: /index.html
     envVars:
       - key: VITE_API_URL
-        value: https://social-backend.onrender.com
+        value: https://social-backend-gl0c.onrender.com

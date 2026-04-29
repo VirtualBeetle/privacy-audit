@@ -370,6 +370,67 @@ Last updated: 2026-04-14 (All 14 phases complete — 174/174 tasks — both buil
 
 ---
 
+---
+
+## Phase 15 — Render Full Feature Unlock (Demo-Ready Production)
+
+> Goal: Get all features working on the live Render deployment for dissertation demo.
+> All 174 original tasks are done locally. This phase wires up the missing env vars and external services.
+
+### Step 1 — URL Fixes (Blocker for everything else)
+| # | Task | Status | Notes |
+|---|---|---|---|
+| DEPLOY-1 | Collect all actual Render service URLs (they include a random suffix like `-ni1n`) | ⏳ Not Started | User must check Render dashboard and provide the real URLs |
+| DEPLOY-2 | Update `render.yaml` + Render dashboard env vars with correct service URLs | ⏳ Not Started | Affects: AUDIT_SERVICE_URL, VITE_API_URL for all frontends, GOOGLE_CALLBACK_URL, DASHBOARD_BASE_URL |
+| DEPLOY-3 | Redeploy all 3 frontends after VITE_API_URL is corrected (VITE_* are baked at build time) | ⏳ Not Started | Manual deploy trigger in Render dashboard for audit-frontend, health-frontend, social-frontend |
+
+### Step 2 — Core Auth (Unblocks login)
+| # | Task | Status | Notes |
+|---|---|---|---|
+| DEPLOY-4 | Set `JWT_SECRET` in Render dashboard for audit-backend | ⏳ Not Started | Any random string e.g. `openssl rand -hex 32`. Without this, JWT auth silently breaks |
+| DEPLOY-5 | Set `ENCRYPTION_KEY` in Render dashboard for audit-backend | ⏳ Not Started | Any 32+ char random string. Used to encrypt AI provider API keys in MongoDB. Has insecure default |
+| DEPLOY-6 | Add `ENCRYPTION_KEY` to render.yaml (currently missing) | ✅ Done | Added as `sync: false` — must be set manually in Render dashboard |
+
+### Step 3 — Dev Tools (Unblocks demo seeding)
+| # | Task | Status | Notes |
+|---|---|---|---|
+| DEPLOY-7 | Set `DEV_TOKEN` in Render dashboard for audit-backend | ⏳ Not Started | Any secret string. Unlocks /dev/* endpoints for seeding + triggering analysis |
+
+### Step 4 — Register Tenants + Fix API Keys (Unblocks event flow)
+| # | Task | Status | Notes |
+|---|---|---|---|
+| DEPLOY-8 | Register health-tenant via `POST /tenants/register` on the live audit-backend | ⏳ Not Started | Gets a real API key. Hardcoded `health-tenant-api-key` in render.yaml will not match DB |
+| DEPLOY-9 | Register social-tenant via `POST /tenants/register` on the live audit-backend | ⏳ Not Started | Same — gets a real API key for ConnectSocial |
+| DEPLOY-10 | Update `AUDIT_API_KEY` env var for health-backend and social-backend in Render dashboard with real keys | ⏳ Not Started | Set after DEPLOY-8/9 — triggers redeploy |
+
+### Step 5 — Google OAuth (Unlocks Google login)
+| # | Task | Status | Notes |
+|---|---|---|---|
+| DEPLOY-11 | Create Google Cloud project + OAuth 2.0 credentials (Web Application type) | ⏳ Not Started | Add redirect URI: `https://<actual-audit-backend-url>/api/auth/google/callback` |
+| DEPLOY-12 | Set `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `GOOGLE_CALLBACK_URL` in Render dashboard | ⏳ Not Started | Unlocks "Sign in with Google" on the dashboard login page |
+
+### Step 6 — AI Features (Unlocks AI risk analysis + AI Chat)
+| # | Task | Status | Notes |
+|---|---|---|---|
+| DEPLOY-13 | Set `ANTHROPIC_API_KEY` in Render dashboard for audit-backend | ⏳ Not Started | Unlocks AI risk analysis cron (every 6h) + ANTHROPIC_API_KEY fallback for AI chat |
+| DEPLOY-14 | Create MongoDB Atlas free cluster (M0) and get connection string | ⏳ Not Started | atlas.mongodb.com — free tier, no credit card. Unlocks AI chat history + AI analysis records |
+| DEPLOY-15 | Set `MONGODB_URI` in Render dashboard for audit-backend | ⏳ Not Started | Format: `mongodb+srv://user:pass@cluster.mongodb.net/privacy_audit` |
+
+### Step 7 — Email Notifications (Unlocks risk alert emails)
+| # | Task | Status | Notes |
+|---|---|---|---|
+| DEPLOY-16 | Create Mailtrap account (free) for demo SMTP | ⏳ Not Started | mailtrap.io — easiest for demo, no real emails sent |
+| DEPLOY-17 | Set `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `FROM_EMAIL` in Render dashboard | ⏳ Not Started | Unlocks HIGH/CRITICAL alert emails + Monday 09:00 weekly digest |
+
+### Step 8 — Seed Demo Data + Smoke Test
+| # | Task | Status | Notes |
+|---|---|---|---|
+| DEPLOY-18 | Seed 20 demo events via `POST /dev/seed-events` using DEV_TOKEN | ⏳ Not Started | Requires DEPLOY-7 + DEPLOY-8/9/10 |
+| DEPLOY-19 | Trigger manual AI risk analysis via `POST /dev/trigger-risk-analysis` | ⏳ Not Started | Requires DEPLOY-13 |
+| DEPLOY-20 | Smoke test full demo flow end-to-end (login → events → AI chat → export → delete) | ⏳ Not Started | Final verification |
+
+---
+
 ## Summary
 
 | Area | Done | Total |
@@ -394,7 +455,9 @@ Last updated: 2026-04-14 (All 14 phases complete — 174/174 tasks — both buil
 | Phase 12 — Architecture Diagram | 1 | 1 |
 | Phase 13 — Tenant Onboarding | 6 | 6 |
 | Phase 14 — Complexity Boosters | 6 | 6 |
+| Phase 15 — Render Full Feature Unlock | 1 | 20 |
 | **Phase 1–6 Total** | **115** | **115** |
 | **Phases 7–8 Total** | **15** | **15** |
 | **Phases 9–14 Total** | **44** | **44** |
-| **Grand Total** | **174** | **174** |
+| **Phase 15 Total** | **1** | **20** |
+| **Grand Total** | **175** | **194** |
