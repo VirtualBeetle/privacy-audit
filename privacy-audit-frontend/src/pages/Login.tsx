@@ -42,7 +42,7 @@ export default function Login() {
       login(data.sessionToken);
       navigate('/dashboard');
     } catch {
-      setError('This token has expired (tokens are valid for 15 minutes). Go back to the app and click "View my privacy" again to get a fresh link.');
+      setError('This token has expired (tokens are valid for 24 hours). Go back to the app and click "View my privacy" again to get a fresh link.');
     } finally {
       setLoading(false);
     }
@@ -59,7 +59,7 @@ export default function Login() {
         .then((data) => { login(data.sessionToken); navigate('/dashboard'); })
         .catch(() => {
           setAutoLogging(false);
-          setError('This link has expired (valid for 15 minutes). Go back to the app and click "View my privacy" again.');
+          setError('This link has expired (valid for 24 hours). Go back to the app and click "View my privacy" again.');
         });
     }
   }, []);

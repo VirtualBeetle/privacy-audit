@@ -27,7 +27,7 @@ export class DashboardService {
 
   /**
    * issueToken — called by tenant apps (API key auth).
-   * Returns a 15-minute handshake JWT the user exchanges for a session.
+   * Returns a 24-hour handshake JWT the user exchanges for a session.
    */
   issueToken(
     tenantId: string,
@@ -35,7 +35,7 @@ export class DashboardService {
   ): { token: string; expiresIn: string; redirectUrl: string } {
     const token = this.jwtService.sign(
       { type: DASHBOARD_TOKEN_TYPE, tenantId, tenantUserId: dto.tenantUserId },
-      { expiresIn: '15m' },
+      { expiresIn: '24h' },
     );
 
     const baseUrl =
@@ -43,7 +43,7 @@ export class DashboardService {
 
     return {
       token,
-      expiresIn: '15 minutes',
+      expiresIn: '24 hours',
       redirectUrl: `${baseUrl}/auth/redirect?token=${token}`,
     };
   }

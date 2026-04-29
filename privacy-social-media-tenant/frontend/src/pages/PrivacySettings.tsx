@@ -1,16 +1,23 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import client from '../api/client';
 
 export default function PrivacySettings() {
-  const [dashboardUrl, setDashboardUrl] = useState('');
   const [exportMsg, setExportMsg] = useState('');
   const [deleteMsg, setDeleteMsg] = useState('');
   const [confirmDelete, setConfirmDelete] = useState(false);
-  const [loading, setLoading] = useState({ export: false, delete: false });
+  const [loading, setLoading] = useState({ export: false, delete: false, dashboard: false });
 
-  useEffect(() => {
-    client.get('/api/privacy/dashboard-token').then(r => setDashboardUrl(r.data.url));
-  }, []);
+  const handleViewDashboard = async () => {
+    setLoading(l => ({ ...l, dashboard: true }));
+    try {
+      const r = await client.get('/api/privacy/dashboard-token');
+      window.location.href = r.data.url;
+    } catch {
+      // ignore — stay on page
+    } finally {
+      setLoading(l => ({ ...l, dashboard: false }));
+    }
+  };
 
   const handleExport = async () => {
     setLoading(l => ({ ...l, export: true }));
@@ -54,16 +61,13 @@ export default function PrivacySettings() {
           <p style={{ color: '#64748b', fontSize: 14, margin: '0 0 14px' }}>
             See the complete history of how your data has been accessed — who read it, why, and whether it was shared with third parties.
           </p>
-          {dashboardUrl ? (
-            <button
-              onClick={() => { window.location.href = dashboardUrl; }}
-              style={primaryBtn}
-            >
-              View My Privacy Dashboard →
-            </button>
-          ) : (
-            <span style={{ color: '#334155', fontSize: 14 }}>Loading...</span>
-          )}
+          <button
+            onClick={handleViewDashboard}
+            disabled={loading.dashboard}
+            style={primaryBtn}
+          >
+            {loading.dashboard ? 'Opening...' : 'View My Privacy Dashboard →'}
+          </button>
         </div>
 
         {/* What's being tracked */}

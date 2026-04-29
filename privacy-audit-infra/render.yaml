@@ -27,17 +27,14 @@ databases:
   - name: privacy-audit-db
     plan: free
     databaseName: privacy_audit
-    user: postgres
 
   - name: privacy-health-db
     plan: free
     databaseName: health_tenant
-    user: postgres
 
   - name: privacy-social-db
     plan: free
     databaseName: social_tenant
-    user: postgres
 
   - name: privacy-redis
     plan: free
@@ -74,21 +71,11 @@ services:
         fromDatabase:
           name: privacy-audit-db
           property: database
-      - key: REDIS_HOST
+      - key: REDIS_URL
         fromService:
           type: redis
           name: privacy-redis
-          property: host
-      - key: REDIS_PORT
-        fromService:
-          type: redis
-          name: privacy-redis
-          property: port
-      - key: REDIS_PASSWORD
-        fromService:
-          type: redis
-          name: privacy-redis
-          property: password
+          property: connectionString
       - key: JWT_SECRET
         sync: false   # Set manually in Render dashboard
       - key: GOOGLE_CLIENT_ID
@@ -176,7 +163,9 @@ services:
       - key: AUDIT_SERVICE_URL
         value: https://audit-backend.onrender.com
       - key: AUDIT_API_KEY
-        sync: false   # Set manually — must match key registered in audit service
+        value: health-tenant-api-key
+      - key: DASHBOARD_BASE_URL
+        value: https://audit-frontend.onrender.com
 
   # ── HealthTrack Tenant Frontend (Vite/React static site) ────────────────────
   - type: web
@@ -217,7 +206,9 @@ services:
       - key: AUDIT_SERVICE_URL
         value: https://audit-backend.onrender.com
       - key: AUDIT_API_KEY
-        sync: false   # Set manually — must match key registered in audit service
+        value: social-tenant-api-key
+      - key: DASHBOARD_BASE_URL
+        value: https://audit-frontend.onrender.com
 
   # ── ConnectSocial Tenant Frontend (Vite/React static site) ──────────────────
   - type: web

@@ -28,7 +28,7 @@ import HelpIcon from '@mui/icons-material/Help';
 import KeyboardArrowLeftIcon from '@mui/icons-material/KeyboardArrowLeft';
 import KeyboardArrowRightIcon from '@mui/icons-material/KeyboardArrowRight';
 import VerifiedIcon from '@mui/icons-material/Verified';
-import ErrorOutlineIcon from '@mui/icons-material/ErrorOutline';
+import ErrorOutlineIcon from '@mui/icons-material/ErrorOutlined';
 import GppBadIcon from '@mui/icons-material/GppBad';
 import AutorenewIcon from '@mui/icons-material/Autorenew';
 import StatsBar from '../components/StatsBar/StatsBar';
