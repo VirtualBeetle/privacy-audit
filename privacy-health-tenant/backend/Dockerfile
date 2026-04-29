@@ -10,7 +10,6 @@ FROM alpine:3.19
 RUN apk --no-cache add ca-certificates tzdata
 WORKDIR /app
 COPY --from=builder /app/health-backend .
-COPY --from=builder /app/.env .
 
 EXPOSE 8081
 CMD ["./health-backend", "--seed"]

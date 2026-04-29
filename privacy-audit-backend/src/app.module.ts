@@ -3,6 +3,8 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { MongooseModule } from '@nestjs/mongoose';
 import { BullModule } from '@nestjs/bullmq';
+
+const MONGODB_URI = process.env.MONGODB_URI;
 import { ScheduleModule } from '@nestjs/schedule';
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 import { APP_GUARD } from '@nestjs/core';
@@ -79,16 +81,12 @@ import { AppController } from './app.controller';
       }),
     }),
 
-    // ── MongoDB (AI Chat + AI Analysis storage) ────────────────────────────
-    MongooseModule.forRootAsync({
-      imports: [ConfigModule],
-      inject: [ConfigService],
-      useFactory: (configService: ConfigService) => ({
-        uri:
-          configService.get<string>('MONGODB_URI') ??
-          'mongodb://localhost:27017/privacy_audit_ai',
-      }),
-    }),
+    // ── MongoDB (AI Chat + AI Analysis storage) — optional ─────────────────
+    // Only loaded when MONGODB_URI is set. Without it, AI features are
+    // disabled but the rest of the app boots normally.
+    ...(MONGODB_URI
+      ? [MongooseModule.forRoot(MONGODB_URI)]
+      : []),
 
     // ── Queue (BullMQ / Redis) ──────────────────────────────────────────────
     BullModule.forRootAsync({
@@ -129,8 +127,7 @@ import { AppController } from './app.controller';
     DashboardUsersModule,
     RetentionModule,
     RiskModule,
-    AiOrchestrationModule,
-    AiChatModule,
+    ...(MONGODB_URI ? [AiOrchestrationModule, AiChatModule] : []),
     DevModule,
     ConsentsModule,
     BreachModule,
