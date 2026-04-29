@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Optional } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -19,10 +19,12 @@ export class AiChatService {
   private readonly logger = new Logger(AiChatService.name);
 
   constructor(
+    @Optional()
     @InjectModel(AiChatSession.name)
-    private readonly sessionModel: Model<AiChatSessionDocument>,
+    private readonly sessionModel: Model<AiChatSessionDocument> | null,
+    @Optional()
     @InjectModel(AiAnalysisRecord.name)
-    private readonly analysisModel: Model<AiAnalysisRecordDocument>,
+    private readonly analysisModel: Model<AiAnalysisRecordDocument> | null,
     private readonly aiService: AiOrchestrationService,
     @InjectRepository(AuditEvent)
     private readonly eventsRepo: Repository<AuditEvent>,
@@ -40,6 +42,7 @@ export class AiChatService {
     message: string,
     sessionId?: string,
   ): Promise<{ sessionId: string; reply: string; provider: string; model: string }> {
+    if (!this.sessionModel) throw new Error('AI chat requires MongoDB — set MONGODB_URI');
     // Load or create session
     let session = sessionId
       ? await this.sessionModel.findById(sessionId)
@@ -110,6 +113,7 @@ Keep responses concise — under 200 words unless detail is needed.`;
     page = 1,
     limit = 20,
   ): Promise<{ sessions: AiChatSessionDocument[]; total: number }> {
+    if (!this.sessionModel) return { sessions: [], total: 0 };
     const [sessions, total] = await Promise.all([
       this.sessionModel
         .find({ userId })
@@ -129,6 +133,7 @@ Keep responses concise — under 200 words unless detail is needed.`;
     tenantId: string,
     limit = 10,
   ): Promise<AiAnalysisRecordDocument[]> {
+    if (!this.analysisModel) return [];
     return this.analysisModel
       .find({ tenantId }, { rawResponse: 0 }) // omit raw response from list
       .sort({ createdAt: -1 })
@@ -154,7 +159,8 @@ Keep responses concise — under 200 words unless detail is needed.`;
     rawResponse: string;
     periodStart: Date;
     periodEnd: Date;
-  }): Promise<AiAnalysisRecordDocument> {
+  }): Promise<AiAnalysisRecordDocument | null> {
+    if (!this.analysisModel) return null;
     return this.analysisModel.create(data);
   }
 
