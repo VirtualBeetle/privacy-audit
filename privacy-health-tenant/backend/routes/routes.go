@@ -26,6 +26,9 @@ func Setup(r *gin.Engine, db *gorm.DB) {
 	// Health check for Render
 	r.GET("/health", func(c *gin.Context) { c.JSON(200, gin.H{"status": "ok"}) })
 
+	// Catch-all OPTIONS handler so CORS middleware fires on every preflight
+	r.OPTIONS("/*path", func(c *gin.Context) { c.Status(204) })
+
 	api := r.Group("/api")
 
 	// Public
