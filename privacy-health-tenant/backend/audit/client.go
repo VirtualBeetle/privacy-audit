@@ -34,21 +34,20 @@ type SensitivityField struct {
 }
 
 type Event struct {
-	TenantID           string                 `json:"tenant_id"`
-	TenantUserID       string                 `json:"tenant_user_id"`
-	EventID            string                 `json:"event_id"`
-	Timestamp          string                 `json:"timestamp"`
+	TenantUserID       string                 `json:"tenantUserId"`
+	EventID            string                 `json:"eventId"`
+	OccurredAt         string                 `json:"occurredAt"`
 	Action             ActionField            `json:"action"`
-	DataFields         []string               `json:"data_fields"`
+	DataFields         []string               `json:"dataFields"`
 	Reason             ReasonField            `json:"reason"`
 	Actor              ActorField             `json:"actor"`
 	Sensitivity        SensitivityField       `json:"sensitivity"`
-	ThirdPartyInvolved bool                   `json:"third_party_involved"`
-	ThirdPartyName     string                 `json:"third_party_name"`
-	RetentionDays      int                    `json:"retention_days"`
+	ThirdPartyInvolved bool                   `json:"thirdPartyInvolved"`
+	ThirdPartyName     string                 `json:"thirdPartyName"`
+	RetentionDays      int                    `json:"retentionDays"`
 	Region             string                 `json:"region"`
-	ConsentObtained    bool                   `json:"consent_obtained"`
-	UserOptedOut       bool                   `json:"user_opted_out"`
+	ConsentObtained    bool                   `json:"consentObtained"`
+	UserOptedOut       bool                   `json:"userOptedOut"`
 	Meta               map[string]interface{} `json:"meta"`
 }
 
@@ -62,8 +61,7 @@ func Send(e Event) {
 	}
 
 	e.EventID = uuid.New().String()
-	e.Timestamp = time.Now().UTC().Format(time.RFC3339)
-	e.TenantID = os.Getenv("AUDIT_TENANT_ID")
+	e.OccurredAt = time.Now().UTC().Format(time.RFC3339)
 	e.RetentionDays = 90
 	e.Region = "IE"
 	e.ConsentObtained = true

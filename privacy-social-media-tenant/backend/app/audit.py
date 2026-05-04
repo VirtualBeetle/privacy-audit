@@ -48,12 +48,11 @@ class AuditEvent:
 
     def to_dict(self) -> dict:
         return {
-            "tenant_id": config.AUDIT_TENANT_ID,
-            "tenant_user_id": self.tenant_user_id,
-            "event_id": str(uuid.uuid4()),
-            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "tenantUserId": self.tenant_user_id,
+            "eventId": str(uuid.uuid4()),
+            "occurredAt": datetime.now(timezone.utc).isoformat(),
             "action": {"code": self.action_code, "label": self.action_label},
-            "data_fields": self.data_fields,
+            "dataFields": self.data_fields,
             "reason": {"code": self.reason_code, "label": self.reason_label},
             "actor": {
                 "type": self.actor_type,
@@ -61,12 +60,12 @@ class AuditEvent:
                 "identifier": self.actor_identifier,
             },
             "sensitivity": {"code": self.sensitivity_code, "label": self.sensitivity_label},
-            "third_party_involved": self.third_party_involved,
-            "third_party_name": self.third_party_name,
-            "retention_days": 90,
+            "thirdPartyInvolved": self.third_party_involved,
+            "thirdPartyName": self.third_party_name,
+            "retentionDays": 90,
             "region": "IE",
-            "consent_obtained": True,
-            "user_opted_out": False,
+            "consentObtained": True,
+            "userOptedOut": False,
             "meta": {**self.meta, "app": "social-tenant"},
         }
 
