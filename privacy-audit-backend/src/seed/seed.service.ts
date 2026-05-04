@@ -66,14 +66,12 @@ export class SeedService implements OnApplicationBootstrap {
       });
 
       if (existing) {
-        // Update allowedDataFields if they've changed or are missing
-        if (!existing.allowedDataFields || existing.allowedDataFields.length === 0) {
-          await this.tenantsRepository.update(demo.id, {
-            allowedDataFields: demo.allowedDataFields,
-          });
-          this.logger.log(`Updated allowedDataFields for: ${demo.name}`);
-        }
-        this.logger.log(`Demo tenant already exists: ${demo.name}`);
+        // Always sync apiKeyHash + allowedDataFields so they can't drift from config
+        await this.tenantsRepository.update(demo.id, {
+          apiKeyHash: hashApiKey(demo.apiKey),
+          allowedDataFields: demo.allowedDataFields,
+        });
+        this.logger.log(`Demo tenant synced: ${demo.name}`);
         continue;
       }
 
