@@ -43,10 +43,6 @@ func buildDashboardURL(userID string) (string, error) {
 		auditURL = "http://localhost:8080"
 	}
 	apiKey := os.Getenv("AUDIT_API_KEY")
-	dashboardURL := os.Getenv("DASHBOARD_BASE_URL")
-	if dashboardURL == "" {
-		dashboardURL = "http://localhost:3000"
-	}
 
 	body := fmt.Sprintf(`{"tenantUserId":"%s"}`, userID)
 	req, err := http.NewRequest("POST", auditURL+"/api/dashboard/token", strings.NewReader(body))
@@ -67,12 +63,12 @@ func buildDashboardURL(userID string) (string, error) {
 		return "", fmt.Errorf("invalid audit response")
 	}
 
-	token, ok := result["token"].(string)
-	if !ok || token == "" {
-		return "", fmt.Errorf("no token returned by audit service")
+	redirectUrl, ok := result["redirectUrl"].(string)
+	if !ok || redirectUrl == "" {
+		return "", fmt.Errorf("no redirect URL returned by audit service")
 	}
 
-	return fmt.Sprintf("%s/login?token=%s", dashboardURL, token), nil
+	return redirectUrl, nil
 }
 
 func (h *PrivacyHandler) Export(c *gin.Context) {
