@@ -25,6 +25,7 @@ import { RetentionService } from '../retention/retention.service';
 import { EmailService } from '../email/email.service';
 import { AuditEvent } from '../events/audit-event.entity';
 import { Tenant } from '../tenants/tenant.entity';
+import { BreachReport } from '../breach/breach-report.entity';
 import { hashApiKey } from '../tenants/tenants.service';
 import { AUDIT_EVENTS_QUEUE } from '../queue/queue.constants';
 
@@ -55,6 +56,7 @@ export class DevController {
     @InjectQueue(AUDIT_EVENTS_QUEUE) private readonly auditQueue: Queue,
     @InjectRepository(AuditEvent) private readonly eventsRepo: Repository<AuditEvent>,
     @InjectRepository(Tenant) private readonly tenantsRepo: Repository<Tenant>,
+    @InjectRepository(BreachReport) private readonly breachRepo: Repository<BreachReport>,
   ) {}
 
   private guard(token: string | undefined): void {
@@ -359,6 +361,66 @@ export class DevController {
       tenantId: tenant.id,
       tenantName: tenant.name,
       apiKey: newKey,
+    };
+  }
+
+  /**
+   * POST /api/dev/clear-events
+   * Delete all audit events for a tenant (fresh demo start).
+   * Body: { tenantId: string }
+   */
+  @Post('clear-events')
+  async clearEvents(
+    @Headers('x-dev-token') token: string,
+    @Body() body: { tenantId: string },
+  ) {
+    this.guard(token);
+    if (!body.tenantId) return { error: 'tenantId is required' };
+    const result = await this.eventsRepo.delete({ tenantId: body.tenantId });
+    return {
+      message: `Cleared all events for tenant ${body.tenantId}`,
+      deleted: result.affected ?? 0,
+    };
+  }
+
+  /**
+   * POST /api/dev/trigger-breach
+   * Create a simulated breach report for demo purposes.
+   * Body: { tenantId, tenantUserId?, description?, severity? }
+   * Returns the breach with hoursRemaining countdown.
+   */
+  @Post('trigger-breach')
+  async triggerBreach(
+    @Headers('x-dev-token') token: string,
+    @Body() body: { tenantId: string; tenantUserId?: string; description?: string; severity?: string },
+  ) {
+    this.guard(token);
+    if (!body.tenantId) return { error: 'tenantId is required' };
+
+    const reportedAt = new Date();
+    const notifyDeadline = new Date(reportedAt.getTime() + 72 * 60 * 60 * 1000);
+
+    const report = this.breachRepo.create({
+      tenantId: body.tenantId,
+      tenantUserId: body.tenantUserId ?? 'demo-user-001',
+      description: body.description ?? 'Simulated data breach: unauthorised access to patient records detected in access logs.',
+      severity: body.severity ?? 'high',
+      notifyDeadline,
+    });
+
+    const saved = await this.breachRepo.save(report);
+    const hoursRemaining = 72;
+
+    return {
+      message: 'Breach report created. 72h GDPR countdown started.',
+      breachId: saved.id,
+      tenantId: saved.tenantId,
+      tenantUserId: saved.tenantUserId,
+      description: saved.description,
+      severity: saved.severity,
+      notifyDeadline: saved.notifyDeadline,
+      hoursRemaining,
+      deadlineExceeded: false,
     };
   }
 }

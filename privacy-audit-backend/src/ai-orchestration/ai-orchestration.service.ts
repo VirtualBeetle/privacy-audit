@@ -126,23 +126,34 @@ export class AiOrchestrationService {
     const setting = await this.getActiveProvider();
     if (setting) return setting;
 
-    // Fallback: if no DB provider is configured, use ANTHROPIC_API_KEY from env
-    const envKey = process.env.ANTHROPIC_API_KEY;
-    if (envKey) {
-      this.logger.warn(
-        'No active AI provider in DB — falling back to ANTHROPIC_API_KEY env var',
-      );
+    // Fallback 1: GEMINI_API_KEY (free tier — preferred for demo)
+    const geminiKey = process.env.GEMINI_API_KEY;
+    if (geminiKey) {
+      this.logger.warn('No active AI provider in DB — falling back to GEMINI_API_KEY env var');
+      return {
+        provider: 'gemini',
+        model: 'gemini-1.5-flash',
+        encryptedApiKey: encrypt(geminiKey),
+        isActive: true,
+        label: 'env-fallback-gemini',
+      } as unknown as AiProviderSettingDocument;
+    }
+
+    // Fallback 2: ANTHROPIC_API_KEY
+    const anthropicKey = process.env.ANTHROPIC_API_KEY;
+    if (anthropicKey) {
+      this.logger.warn('No active AI provider in DB — falling back to ANTHROPIC_API_KEY env var');
       return {
         provider: 'claude',
         model: 'claude-opus-4-6',
-        encryptedApiKey: encrypt(envKey),
+        encryptedApiKey: encrypt(anthropicKey),
         isActive: true,
-        label: 'env-fallback',
+        label: 'env-fallback-claude',
       } as unknown as AiProviderSettingDocument;
     }
 
     throw new NotFoundException(
-      'No active AI provider configured. Add one via POST /api/dev/ai-providers and activate it.',
+      'No active AI provider configured. Set GEMINI_API_KEY in Render env, or add one via POST /api/dev/ai-providers.',
     );
   }
 

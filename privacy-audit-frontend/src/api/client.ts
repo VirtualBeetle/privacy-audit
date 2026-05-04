@@ -134,6 +134,34 @@ export const dashboardApi = {
   getViolations: () =>
     api.get('/dashboard/violations').then((r) => r.data),
 
+  /** Download GDPR Art.30 PDF compliance report via blob URL (works cross-origin). */
+  downloadPdfReport: async () => {
+    const res = await api.get('/dashboard/compliance-report/download', { responseType: 'blob' });
+    const url = URL.createObjectURL(res.data);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'compliance-report.pdf';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(url), 10000);
+  },
+
+  /** Download a completed export as a JSON file via blob URL (works cross-origin). */
+  downloadExport: async (requestId: string) => {
+    const res = await api.get(`/dashboard/exports/${requestId}/download`, {
+      responseType: 'blob',
+    });
+    const url = URL.createObjectURL(res.data);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `privacy-export-${requestId}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(url), 10000);
+  },
+
   /**
    * GDPR Article 30 — Tamper-Evident Hash Chain Verification.
    * Walks the entire audit log and recomputes every SHA-256 hash.
@@ -150,6 +178,29 @@ export const dashboardApi = {
     const token = localStorage.getItem('session_token') ?? '';
     return `${BASE_URL}/api/dashboard/events/stream?token=${encodeURIComponent(token)}`;
   },
+};
+
+// ─── Onboarding API helpers ─────────────────────────────────────────────────
+
+// ─── Dev / Admin API helpers ────────────────────────────────────────────────
+
+const devHeaders = (token: string) => ({ 'x-dev-token': token });
+
+export const devApi = {
+  listAiProviders: (token: string) =>
+    api.get('/dev/ai-providers', { headers: devHeaders(token) }).then((r) => r.data),
+
+  getActiveAiProvider: (token: string) =>
+    api.get('/dev/ai-providers/active', { headers: devHeaders(token) }).then((r) => r.data),
+
+  addAiProvider: (token: string, body: { provider: string; label: string; model: string; apiKey: string }) =>
+    api.post('/dev/ai-providers', body, { headers: devHeaders(token) }).then((r) => r.data),
+
+  activateAiProvider: (token: string, id: string) =>
+    api.put(`/dev/ai-providers/${id}/activate`, {}, { headers: devHeaders(token) }).then((r) => r.data),
+
+  deleteAiProvider: (token: string, id: string) =>
+    api.delete(`/dev/ai-providers/${id}`, { headers: devHeaders(token) }),
 };
 
 // ─── Onboarding API helpers ─────────────────────────────────────────────────

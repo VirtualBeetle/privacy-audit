@@ -3,6 +3,7 @@ package routes
 import (
 	"github.com/VirtualBeetle/privacy-health-tenant/handlers"
 	"github.com/VirtualBeetle/privacy-health-tenant/middleware"
+	"github.com/VirtualBeetle/privacy-health-tenant/simulation"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
@@ -22,6 +23,10 @@ func Setup(r *gin.Engine, db *gorm.DB) {
 	patientH := &handlers.PatientHandler{DB: db}
 	doctorH := &handlers.DoctorHandler{DB: db}
 	privacyH := &handlers.PrivacyHandler{DB: db}
+	devH := &handlers.DevHandler{DB: db}
+
+	// Start background simulation scheduler
+	simulation.RunScheduler(db)
 
 	// Health check for Render
 	r.GET("/health", func(c *gin.Context) { c.JSON(200, gin.H{"status": "ok"}) })
@@ -63,4 +68,7 @@ func Setup(r *gin.Engine, db *gorm.DB) {
 		privacy.POST("/export", privacyH.Export)
 		privacy.DELETE("/delete", privacyH.Delete)
 	}
+
+	// Dev routes — no auth, for demo/testing only
+	api.POST("/dev/simulate", devH.Simulate)
 }

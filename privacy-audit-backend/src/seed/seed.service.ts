@@ -1,23 +1,17 @@
 import { Injectable, Logger, OnApplicationBootstrap } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import * as bcrypt from 'bcrypt';
 import { Tenant } from '../tenants/tenant.entity';
+import { User, UserRole } from '../users/user.entity';
 import { hashApiKey } from '../tenants/tenants.service';
 
-/**
- * Fixed demo tenant UUIDs and API keys — match docker-compose defaults.
- * These are seeded once on first boot and are idempotent.
- *
- * allowedDataFields implements GDPR Article 5(1)(c) — Data Minimisation.
- * Any event containing a field outside this list will be flagged as a violation.
- * Demo violations are triggered by sending fields like biometric_data or
- * financial_data that are intentionally excluded from the allowed list.
- */
 const DEMO_TENANTS = [
   {
     id: '11111111-1111-1111-1111-111111111111',
     name: 'HealthTrack',
     email: 'admin@healthdemo.internal',
+    password: 'HealthDemo123!',
     apiKey: 'health-tenant-api-key',
     allowedDataFields: [
       'email',
@@ -36,6 +30,7 @@ const DEMO_TENANTS = [
     id: '22222222-2222-2222-2222-222222222222',
     name: 'ConnectSocial',
     email: 'admin@socialdemo.internal',
+    password: 'SocialDemo123!',
     apiKey: 'social-tenant-api-key',
     allowedDataFields: [
       'email',
@@ -57,6 +52,8 @@ export class SeedService implements OnApplicationBootstrap {
   constructor(
     @InjectRepository(Tenant)
     private tenantsRepository: Repository<Tenant>,
+    @InjectRepository(User)
+    private usersRepository: Repository<User>,
   ) {}
 
   async onApplicationBootstrap() {
@@ -66,27 +63,41 @@ export class SeedService implements OnApplicationBootstrap {
       });
 
       if (existing) {
-        // Always sync apiKeyHash + allowedDataFields so they can't drift from config
         await this.tenantsRepository.update(demo.id, {
           apiKeyHash: hashApiKey(demo.apiKey),
           allowedDataFields: demo.allowedDataFields,
         });
         this.logger.log(`Demo tenant synced: ${demo.name}`);
-        continue;
+      } else {
+        const tenant = this.tenantsRepository.create({
+          id: demo.id,
+          name: demo.name,
+          email: demo.email,
+          apiKeyHash: hashApiKey(demo.apiKey),
+          retentionDays: 90,
+          isActive: true,
+          allowedDataFields: demo.allowedDataFields,
+        });
+        await this.tenantsRepository.save(tenant);
+        this.logger.log(`Seeded demo tenant: ${demo.name} (id=${demo.id})`);
       }
 
-      const tenant = this.tenantsRepository.create({
-        id: demo.id,
-        name: demo.name,
-        email: demo.email,
-        apiKeyHash: hashApiKey(demo.apiKey),
-        retentionDays: 90,
-        isActive: true,
-        allowedDataFields: demo.allowedDataFields,
+      // Ensure admin user exists for this tenant (idempotent)
+      const existingUser = await this.usersRepository.findOne({
+        where: { email: demo.email },
       });
-
-      await this.tenantsRepository.save(tenant);
-      this.logger.log(`Seeded demo tenant: ${demo.name} (id=${demo.id})`);
+      if (!existingUser) {
+        const passwordHash = await bcrypt.hash(demo.password, 10);
+        const user = this.usersRepository.create({
+          email: demo.email,
+          passwordHash,
+          tenantId: demo.id,
+          role: UserRole.TENANT_ADMIN,
+          isActive: true,
+        });
+        await this.usersRepository.save(user);
+        this.logger.log(`Seeded admin user: ${demo.email}`);
+      }
     }
   }
 }

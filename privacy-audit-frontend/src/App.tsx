@@ -8,6 +8,7 @@ import Login from './pages/Login';
 import AuthRedirect from './pages/AuthRedirect';
 import Onboard from './pages/Onboard';
 import Webhooks from './pages/Webhooks';
+import AISettings from './pages/AISettings';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 
 const theme = createTheme({
@@ -38,6 +39,7 @@ function AppRoutes() {
         {/* Protected */}
         <Route path="/dashboard" element={<PrivateRoute element={<Dashboard />} />} />
         <Route path="/webhooks" element={<PrivateRoute element={<Webhooks />} />} />
+        <Route path="/ai-settings" element={<AISettings />} />
 
         {/* Default redirect */}
         <Route path="*" element={<Navigate to="/dashboard" replace />} />

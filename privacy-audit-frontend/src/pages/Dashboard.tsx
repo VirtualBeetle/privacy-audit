@@ -31,6 +31,8 @@ import VerifiedIcon from '@mui/icons-material/Verified';
 import ErrorOutlineIcon from '@mui/icons-material/ErrorOutlined';
 import GppBadIcon from '@mui/icons-material/GppBad';
 import AutorenewIcon from '@mui/icons-material/Autorenew';
+import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
+import LinkIcon from '@mui/icons-material/Link';
 import StatsBar from '../components/StatsBar/StatsBar';
 import SensitivityChart from '../components/SensitivityChart/SensitivityChart';
 import DataFieldsChart from '../components/DataFieldsChart/DataFieldsChart';
@@ -150,6 +152,9 @@ export default function Dashboard() {
   const [chainResult, setChainResult] = useState<ChainIntegrityResult | null>(null);
   const [chainVerifying, setChainVerifying] = useState(false);
 
+  // Event date filter: 'all' | '24h' | '7d' | '30d'
+  const [dateFilter, setDateFilter] = useState<'all' | '24h' | '7d' | '30d'>('all');
+
   // Live update indicator
   const [liveFlash, setLiveFlash] = useState(false);
 
@@ -249,9 +254,18 @@ export default function Dashboard() {
     }
   };
 
-  // ── Tenant tab filtering ─────────────────────────────────────────────────
-  // tab is either 'all' or an actual tenantId UUID
-  const filtered = tab === 'all' ? events : events.filter((e) => e.tenantId === tab);
+  // ── Tenant tab + date filtering ──────────────────────────────────────────
+  const filtered = (() => {
+    let evts = tab === 'all' ? events : events.filter((e) => e.tenantId === tab);
+    if (dateFilter !== 'all') {
+      const cutoff = new Date();
+      if (dateFilter === '24h') cutoff.setHours(cutoff.getHours() - 24);
+      else if (dateFilter === '7d') cutoff.setDate(cutoff.getDate() - 7);
+      else if (dateFilter === '30d') cutoff.setDate(cutoff.getDate() - 30);
+      evts = evts.filter((e) => new Date(e.occurredAt) >= cutoff);
+    }
+    return evts;
+  })();
 
   const eventCounts: Record<string, number> = { all: events.length };
   events.forEach((e) => {
@@ -271,11 +285,7 @@ export default function Dashboard() {
         setExportStatus({ id: res.requestId, status: status.status });
         if (status.status === 'completed') {
           clearInterval(poll);
-          // Trigger download
-          const a = document.createElement('a');
-          a.href = `/api/dashboard/exports/${res.requestId}/download`;
-          a.download = `privacy-export-${res.requestId}.json`;
-          a.click();
+          await dashboardApi.downloadExport(res.requestId);
         }
         if (status.status === 'failed') clearInterval(poll);
       }, 2000);
@@ -556,8 +566,7 @@ export default function Dashboard() {
                     variant="outlined"
                     size="small"
                     startIcon={<DownloadIcon />}
-                    href="/api/dashboard/compliance-report/download"
-                    target="_blank"
+                    onClick={() => dashboardApi.downloadPdfReport()}
                     sx={{ textTransform: 'none', fontWeight: 600, whiteSpace: 'nowrap' }}
                   >
                     PDF Report
@@ -655,9 +664,9 @@ export default function Dashboard() {
         {/* ── Hash Chain Integrity (GDPR Article 30) ── */}
         <Box className="anim-fade-up delay-3" sx={{ mb: 4 }}>
           <Paper elevation={0} sx={{ borderRadius: 3, border: '1px solid #e2e8f0', p: 3 }}>
-            <Box sx={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'wrap', gap: 2 }}>
+            <Box sx={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'wrap', gap: 2, mb: 1.5 }}>
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-                <VerifiedIcon sx={{ color: '#6366f1', fontSize: 24 }} />
+                <LinkIcon sx={{ color: '#6366f1', fontSize: 24 }} />
                 <Box>
                   <Typography variant="h6" sx={{ fontWeight: 700, color: '#0f172a', lineHeight: 1.2 }}>
                     Audit Log Integrity
@@ -675,19 +684,103 @@ export default function Dashboard() {
                 startIcon={chainVerifying ? <AutorenewIcon className="spin" /> : <VerifiedIcon />}
                 sx={{ textTransform: 'none', fontWeight: 700, borderColor: '#6366f1', color: '#6366f1', whiteSpace: 'nowrap' }}
               >
-                {chainVerifying ? 'Verifying…' : 'Verify Now'}
+                {chainVerifying ? 'Verifying…' : 'Verify Chain'}
               </Button>
             </Box>
-            <Typography variant="body2" sx={{ color: '#64748b', mt: 1.5, mb: chainResult ? 2 : 0, lineHeight: 1.6 }}>
-              Every audit event is SHA-256 hashed with the previous event's hash, forming an unbreakable chain.
-              Any modification to any event invalidates all subsequent hashes — proving the log has not been tampered with.
+
+            {/* Blockchain visual */}
+            <Box sx={{ overflowX: 'auto', pb: 1 }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 0, minWidth: 'max-content', py: 1 }}>
+                {/* Genesis block */}
+                <Box sx={{
+                  width: 110, minHeight: 88, borderRadius: 2, border: '2px solid #6366f1',
+                  background: 'linear-gradient(135deg,#6366f1 0%,#818cf8 100%)',
+                  p: 1.2, display: 'flex', flexDirection: 'column', gap: 0.5, flexShrink: 0,
+                }}>
+                  <Typography variant="caption" sx={{ color: '#fff', fontWeight: 800, fontSize: '0.6rem', letterSpacing: 1 }}>GENESIS</Typography>
+                  <Typography variant="caption" sx={{ color: '#e0e7ff', fontFamily: 'monospace', fontSize: '0.58rem', wordBreak: 'break-all' }}>
+                    000000...
+                  </Typography>
+                  <Chip label="ORIGIN" size="small" sx={{ background: 'rgba(255,255,255,0.2)', color: '#fff', fontSize: '0.55rem', height: 16, mt: 'auto' }} />
+                </Box>
+
+                {/* Event blocks from the last 5 events */}
+                {[...filtered].reverse().slice(0, 5).reverse().map((ev, idx, arr) => {
+                  const isbroken = !chainResult?.valid && chainResult?.brokenAtEventId === ev.id;
+                  const isVerified = chainResult?.valid;
+                  const blockColor = isbroken ? '#fef2f2' : isVerified ? '#f0fdf4' : '#f8fafc';
+                  const borderColor = isbroken ? '#fca5a5' : isVerified ? '#86efac' : '#cbd5e1';
+                  const hashLabel = isVerified
+                    ? (idx === arr.length - 1 && chainResult?.latestHash
+                        ? chainResult.latestHash.slice(0, 16) + '…'
+                        : 'verified ✓')
+                    : isbroken ? 'BROKEN!' : 'run verify →';
+                  return (
+                    <Box key={ev.id} sx={{ display: 'flex', alignItems: 'center', flexShrink: 0 }}>
+                      <ArrowForwardIcon sx={{ color: isbroken ? '#fca5a5' : '#94a3b8', fontSize: 18, mx: 0.25 }} />
+                      <Box sx={{
+                        width: 120, minHeight: 88, borderRadius: 2,
+                        border: `2px solid ${borderColor}`,
+                        background: blockColor,
+                        p: 1.2, display: 'flex', flexDirection: 'column', gap: 0.4,
+                      }}>
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <Typography variant="caption" sx={{ color: '#475569', fontWeight: 700, fontSize: '0.58rem' }}>
+                            #{filtered.length - (arr.length - 1 - idx)}
+                          </Typography>
+                          {isbroken && <ErrorOutlineIcon sx={{ color: '#dc2626', fontSize: 12 }} />}
+                          {isVerified && <VerifiedIcon sx={{ color: '#16a34a', fontSize: 12 }} />}
+                        </Box>
+                        <Chip
+                          label={ev.actionCode}
+                          size="small"
+                          sx={{
+                            fontSize: '0.55rem', height: 16, fontWeight: 700,
+                            background: ev.actionCode === 'READ' ? '#dbeafe' : ev.actionCode === 'SHARE' ? '#fef3c7' : '#fce7f3',
+                            color: ev.actionCode === 'READ' ? '#1d4ed8' : ev.actionCode === 'SHARE' ? '#92400e' : '#9d174d',
+                          }}
+                        />
+                        <Typography variant="caption" sx={{ color: '#64748b', fontSize: '0.57rem', lineHeight: 1.2 }}>
+                          {ev.dataFields?.slice(0, 2).join(', ')}{(ev.dataFields?.length ?? 0) > 2 ? '…' : ''}
+                        </Typography>
+                        <Typography variant="caption" sx={{
+                          fontFamily: 'monospace', fontSize: '0.56rem', wordBreak: 'break-all',
+                          color: isbroken ? '#b91c1c' : isVerified ? '#15803d' : '#94a3b8',
+                          mt: 'auto',
+                        }}>
+                          {hashLabel}
+                        </Typography>
+                      </Box>
+                    </Box>
+                  );
+                })}
+
+                {/* "more" indicator if there are events beyond the 5 shown */}
+                {filtered.length > 5 && (
+                  <Box sx={{ display: 'flex', alignItems: 'center', flexShrink: 0 }}>
+                    <ArrowForwardIcon sx={{ color: '#94a3b8', fontSize: 18, mx: 0.25 }} />
+                    <Box sx={{
+                      width: 72, minHeight: 88, borderRadius: 2, border: '2px dashed #cbd5e1',
+                      background: '#f8fafc', p: 1.2, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 0.5,
+                    }}>
+                      <Typography variant="caption" sx={{ color: '#94a3b8', fontSize: '0.6rem', textAlign: 'center' }}>
+                        +{filtered.length - 5}
+                      </Typography>
+                      <Typography variant="caption" sx={{ color: '#94a3b8', fontSize: '0.56rem', textAlign: 'center' }}>more events</Typography>
+                    </Box>
+                  </Box>
+                )}
+              </Box>
+            </Box>
+
+            <Typography variant="caption" sx={{ color: '#94a3b8', display: 'block', mt: 0.5, mb: chainResult ? 1.5 : 0 }}>
+              Showing last {Math.min(filtered.length, 5)} of {filtered.length} events. Each block's SHA-256 hash links to its predecessor — any modification breaks the chain.
             </Typography>
+
             {chainResult && (
               <Box
                 sx={{
-                  mt: 1.5,
-                  p: 2,
-                  borderRadius: 2,
+                  p: 2, borderRadius: 2,
                   background: chainResult.valid ? '#f0fdf4' : '#fef2f2',
                   border: `1px solid ${chainResult.valid ? '#bbf7d0' : '#fca5a5'}`,
                 }}
@@ -696,22 +789,29 @@ export default function Dashboard() {
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, flexWrap: 'wrap' }}>
                     <VerifiedIcon sx={{ color: '#16a34a', fontSize: 20 }} />
                     <Typography variant="body2" sx={{ fontWeight: 700, color: '#15803d' }}>
-                      Chain intact — {chainResult.eventCount} events verified, no tampering detected
+                      Chain intact — all {chainResult.eventCount} events verified, no tampering detected
                     </Typography>
                     {chainResult.latestHash && (
-                      <Chip
-                        label={`Latest hash: ${chainResult.latestHash}`}
-                        size="small"
-                        sx={{ background: '#dcfce7', color: '#15803d', fontFamily: 'monospace', fontSize: '0.68rem' }}
-                      />
+                      <Tooltip title="SHA-256 hash of the latest event — any modification would change this value">
+                        <Chip
+                          label={`Latest: ${chainResult.latestHash.slice(0, 32)}…`}
+                          size="small"
+                          sx={{ background: '#dcfce7', color: '#15803d', fontFamily: 'monospace', fontSize: '0.68rem' }}
+                        />
+                      </Tooltip>
                     )}
                   </Box>
                 ) : (
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
                     <ErrorOutlineIcon sx={{ color: '#dc2626', fontSize: 20 }} />
-                    <Typography variant="body2" sx={{ fontWeight: 700, color: '#b91c1c' }}>
-                      Chain broken at event {chainResult.brokenAtEventId?.slice(0, 8)}… — tampering detected!
-                    </Typography>
+                    <Box>
+                      <Typography variant="body2" sx={{ fontWeight: 700, color: '#b91c1c' }}>
+                        Chain broken — tampering detected!
+                      </Typography>
+                      <Typography variant="caption" sx={{ color: '#dc2626' }}>
+                        First invalid event: {chainResult.brokenAtEventId?.slice(0, 8)}… — all subsequent hashes are invalid
+                      </Typography>
+                    </Box>
                   </Box>
                 )}
               </Box>
@@ -899,6 +999,32 @@ export default function Dashboard() {
               </Tooltip>
             </Box>
           </Box>
+          {/* Date range quick filter */}
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1.5, flexWrap: 'wrap' }}>
+            <Typography variant="caption" sx={{ color: '#64748b', fontWeight: 600 }}>Filter:</Typography>
+            {(['all', '24h', '7d', '30d'] as const).map((range) => (
+              <Chip
+                key={range}
+                label={range === 'all' ? 'All time' : range === '24h' ? 'Last 24h' : range === '7d' ? 'Last 7 days' : 'Last 30 days'}
+                size="small"
+                onClick={() => setDateFilter(range)}
+                sx={{
+                  cursor: 'pointer',
+                  fontWeight: 700,
+                  background: dateFilter === range ? '#0f172a' : '#f1f5f9',
+                  color: dateFilter === range ? '#fff' : '#475569',
+                  '&:hover': { background: dateFilter === range ? '#0f172a' : '#e2e8f0' },
+                }}
+              />
+            ))}
+            {dateFilter !== 'all' && (
+              <Chip
+                label={`${filtered.length} of ${(tab === 'all' ? events : events.filter((e) => e.tenantId === tab)).length} events`}
+                size="small"
+                sx={{ background: '#dbeafe', color: '#1d4ed8', fontWeight: 600 }}
+              />
+            )}
+          </Box>
           <EventFeed events={filtered} />
         </Box>
 
@@ -1067,7 +1193,7 @@ export default function Dashboard() {
             </Box>
 
             {/* Article 7 — Consent Management */}
-            {consents.length > 0 && (
+            {(consents.length > 0 || violations.length > 0) && (
               <>
                 <Divider sx={{ my: 3 }} />
                 <Box>
@@ -1077,45 +1203,112 @@ export default function Dashboard() {
                   <Typography variant="caption" sx={{ color: '#64748b', display: 'block', mb: 2 }}>
                     Control which categories of personal data you consent to being processed. Toggle off to revoke consent for that data type.
                   </Typography>
-                  <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
-                    {consents.map((c) => (
-                      <Box
-                        key={c.dataType}
-                        sx={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          px: 1.5,
-                          py: 0.5,
-                          borderRadius: 2,
-                          border: '1px solid',
-                          borderColor: c.granted ? '#bbf7d0' : '#fecaca',
-                          background: c.granted ? '#f0fdf4' : '#fff7f7',
-                          minWidth: 160,
-                        }}
-                      >
-                        <FormControlLabel
-                          control={
-                            <Switch
-                              size="small"
-                              checked={c.granted}
-                              onChange={(e) => handleConsentToggle(c.dataType, e.target.checked)}
-                              disabled={consentToggling === c.dataType}
-                              color="success"
-                            />
-                          }
-                          label={
-                            <Typography variant="caption" sx={{ fontWeight: 600, color: '#374151', textTransform: 'capitalize' }}>
-                              {c.dataType.replace(/_/g, ' ')}
-                              {consentToggling === c.dataType && (
-                                <CircularProgress size={10} sx={{ ml: 0.5, verticalAlign: 'middle' }} />
-                              )}
-                            </Typography>
-                          }
-                          sx={{ m: 0 }}
-                        />
+
+                  {/* Violation-derived consent requests */}
+                  {violations.length > 0 && (() => {
+                    const violatingFields = [...new Set(violations.flatMap((v) => v.violatingFields))];
+                    const unconsentedFields = violatingFields.filter(
+                      (f) => !consents.find((c) => c.dataType === f),
+                    );
+                    if (unconsentedFields.length === 0) return null;
+                    return (
+                      <Box sx={{ mb: 2, p: 2, borderRadius: 2, background: '#fff7ed', border: '1px solid #fed7aa' }}>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+                          <WarningAmberIcon sx={{ color: '#f97316', fontSize: 16 }} />
+                          <Typography variant="caption" sx={{ fontWeight: 700, color: '#c2410c' }}>
+                            {unconsentedFields.length} field{unconsentedFields.length > 1 ? 's were' : ' was'} accessed without your explicit consent
+                          </Typography>
+                        </Box>
+                        <Typography variant="caption" sx={{ color: '#64748b', display: 'block', mb: 1.5 }}>
+                          The following data fields were accessed by tenant apps beyond their declared policy.
+                          Grant or deny consent for each field below.
+                        </Typography>
+                        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.75 }}>
+                          {unconsentedFields.map((field) => {
+                            const existing = consents.find((c) => c.dataType === field);
+                            const granted = existing?.granted ?? false;
+                            return (
+                              <Box
+                                key={field}
+                                sx={{
+                                  display: 'flex', alignItems: 'center',
+                                  px: 1.5, py: 0.5, borderRadius: 2,
+                                  border: '1px solid', borderColor: granted ? '#bbf7d0' : '#fed7aa',
+                                  background: granted ? '#f0fdf4' : '#fff7ed',
+                                  minWidth: 160,
+                                }}
+                              >
+                                <FormControlLabel
+                                  control={
+                                    <Switch
+                                      size="small"
+                                      checked={granted}
+                                      onChange={(e) => handleConsentToggle(field, e.target.checked)}
+                                      disabled={consentToggling === field}
+                                      color="warning"
+                                    />
+                                  }
+                                  label={
+                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                                      <Typography variant="caption" sx={{ fontWeight: 600, color: '#374151', textTransform: 'capitalize' }}>
+                                        {field.replace(/_/g, ' ')}
+                                      </Typography>
+                                      <Chip label="flagged" size="small" sx={{ height: 14, fontSize: '0.5rem', background: '#fed7aa', color: '#92400e' }} />
+                                      {consentToggling === field && <CircularProgress size={10} />}
+                                    </Box>
+                                  }
+                                  sx={{ m: 0 }}
+                                />
+                              </Box>
+                            );
+                          })}
+                        </Box>
                       </Box>
-                    ))}
-                  </Box>
+                    );
+                  })()}
+
+                  {/* Regular consent toggles */}
+                  {consents.length > 0 && (
+                    <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                      {consents.map((c) => (
+                        <Box
+                          key={c.dataType}
+                          sx={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            px: 1.5,
+                            py: 0.5,
+                            borderRadius: 2,
+                            border: '1px solid',
+                            borderColor: c.granted ? '#bbf7d0' : '#fecaca',
+                            background: c.granted ? '#f0fdf4' : '#fff7f7',
+                            minWidth: 160,
+                          }}
+                        >
+                          <FormControlLabel
+                            control={
+                              <Switch
+                                size="small"
+                                checked={c.granted}
+                                onChange={(e) => handleConsentToggle(c.dataType, e.target.checked)}
+                                disabled={consentToggling === c.dataType}
+                                color="success"
+                              />
+                            }
+                            label={
+                              <Typography variant="caption" sx={{ fontWeight: 600, color: '#374151', textTransform: 'capitalize' }}>
+                                {c.dataType.replace(/_/g, ' ')}
+                                {consentToggling === c.dataType && (
+                                  <CircularProgress size={10} sx={{ ml: 0.5, verticalAlign: 'middle' }} />
+                                )}
+                              </Typography>
+                            }
+                            sx={{ m: 0 }}
+                          />
+                        </Box>
+                      ))}
+                    </Box>
+                  )}
                 </Box>
               </>
             )}
