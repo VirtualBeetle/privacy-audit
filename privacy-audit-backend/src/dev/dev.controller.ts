@@ -242,6 +242,7 @@ export class DevController {
       const isSensitive = ['HIGH', 'CRITICAL'].includes(sensitivity);
 
       return this.eventsRepo.create({
+        eventId: randomUUID(),
         tenantId: body.tenantId,
         tenantUserId: userId,
         actionCode: ACTIONS[Math.floor(Math.random() * ACTIONS.length)],
