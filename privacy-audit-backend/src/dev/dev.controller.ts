@@ -221,9 +221,29 @@ export class DevController {
     const userId = body.tenantUserId ?? 'demo-user-001';
     const now = new Date();
 
-    const ACTIONS = ['READ', 'WRITE', 'DELETE', 'EXPORT', 'SHARE', 'LOGIN', 'PROFILE_UPDATE'];
+    const ACTIONS = [
+      { code: 'READ', label: 'Read data' },
+      { code: 'WRITE', label: 'Write data' },
+      { code: 'DELETE', label: 'Delete data' },
+      { code: 'EXPORT', label: 'Export data' },
+      { code: 'SHARE', label: 'Share data' },
+      { code: 'LOGIN', label: 'User login' },
+      { code: 'PROFILE_UPDATE', label: 'Profile update' },
+    ];
     const SENSITIVITIES = ['LOW', 'MEDIUM', 'HIGH', 'CRITICAL'];
-    const ACTOR_TYPES = ['user', 'service', 'third_party', 'admin'];
+    const ACTORS = [
+      { type: 'user', label: 'End user' },
+      { type: 'service', label: 'Internal service' },
+      { type: 'third_party', label: 'Third-party partner' },
+      { type: 'admin', label: 'Admin operator' },
+    ];
+    const REASONS = [
+      { code: 'SERVICE', label: 'Service operation' },
+      { code: 'AD_TARGETING', label: 'Ad targeting' },
+      { code: 'ANALYTICS', label: 'Analytics' },
+      { code: 'LEGAL', label: 'Legal obligation' },
+      { code: 'SUPPORT', label: 'Customer support' },
+    ];
     const DATA_FIELD_SETS = [
       ['email', 'name'],
       ['location', 'ip_address'],
@@ -236,24 +256,31 @@ export class DevController {
     ];
 
     const events = Array.from({ length: 20 }, (_, i) => {
-      const occurredAt = new Date(now.getTime() - i * 3 * 60 * 60 * 1000); // spread over 60 hours
+      const occurredAt = new Date(now.getTime() - i * 3 * 60 * 60 * 1000);
       const sensitivity = SENSITIVITIES[Math.floor(Math.random() * SENSITIVITIES.length)];
-      const actorType = ACTOR_TYPES[Math.floor(Math.random() * ACTOR_TYPES.length)];
+      const actor = ACTORS[Math.floor(Math.random() * ACTORS.length)];
+      const action = ACTIONS[Math.floor(Math.random() * ACTIONS.length)];
+      const reason = REASONS[Math.floor(Math.random() * REASONS.length)];
       const isSensitive = ['HIGH', 'CRITICAL'].includes(sensitivity);
 
       return this.eventsRepo.create({
         eventId: randomUUID(),
         tenantId: body.tenantId,
         tenantUserId: userId,
-        actionCode: ACTIONS[Math.floor(Math.random() * ACTIONS.length)],
+        actionCode: action.code,
+        actionLabel: action.label,
+        reasonCode: reason.code,
+        reasonLabel: reason.label,
+        actorType: actor.type,
+        actorLabel: actor.label,
         sensitivityCode: sensitivity,
-        actorType,
         dataFields: DATA_FIELD_SETS[Math.floor(Math.random() * DATA_FIELD_SETS.length)],
-        thirdPartyInvolved: actorType === 'third_party' || Math.random() < 0.25,
+        thirdPartyInvolved: actor.type === 'third_party' || Math.random() < 0.25,
         consentObtained: isSensitive ? Math.random() < 0.5 : true,
         userOptedOut: isSensitive && Math.random() < 0.2,
         occurredAt,
         retentionDays: 90,
+        hash: randomUUID(), // placeholder — real hash chain computed by AuditEventProcessor
       });
     });
 
