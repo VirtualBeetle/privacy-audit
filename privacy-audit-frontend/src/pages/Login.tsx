@@ -204,7 +204,6 @@ export default function Login() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               sx={{ '& .MuiOutlinedInput-root': { color: '#f1f5f9', '& fieldset': { borderColor: 'rgba(255,255,255,0.2)' }, '&:hover fieldset': { borderColor: 'rgba(255,255,255,0.35)' }, '&.Mui-focused fieldset': { borderColor: '#38bdf8' } }, '& input::placeholder': { color: '#64748b' } }}
-              inputProps={{ 'aria-label': 'Email' }}
             />
             <TextField
               fullWidth
@@ -215,7 +214,6 @@ export default function Login() {
               onChange={(e) => setPassword(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && handleEmailLogin()}
               sx={{ '& .MuiOutlinedInput-root': { color: '#f1f5f9', '& fieldset': { borderColor: 'rgba(255,255,255,0.2)' }, '&:hover fieldset': { borderColor: 'rgba(255,255,255,0.35)' }, '&.Mui-focused fieldset': { borderColor: '#38bdf8' } }, '& input::placeholder': { color: '#64748b' } }}
-              inputProps={{ 'aria-label': 'Password' }}
             />
             <Button
               fullWidth
