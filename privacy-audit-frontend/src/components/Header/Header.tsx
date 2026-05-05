@@ -101,7 +101,11 @@ export default function Header() {
               }}
             >
               <Typography sx={{ color: '#94a3b8', fontSize: '0.68rem', fontWeight: 600 }}>
-                {user.type === 'google_session' ? 'Google' : 'Tenant session'}
+                {user.type === 'google_session'
+                  ? 'Google'
+                  : (!user.tenantUserId && user.email)
+                  ? 'Admin'
+                  : 'Tenant session'}
               </Typography>
             </Box>
           )}

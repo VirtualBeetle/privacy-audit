@@ -178,7 +178,7 @@ export default function Dashboard() {
         dashboardApi.getAnalysisHistory().catch(() => []),
         dashboardApi.getPrivacyScore().catch(() => null),
         dashboardApi.getBreachReports().catch(() => []),
-        userId ? dashboardApi.getConsents(userId).catch(() => null) : Promise.resolve(null),
+        user?.tenantUserId ? dashboardApi.getConsents(user.tenantUserId).catch(() => null) : Promise.resolve(null),
         user?.type === 'google_session' ? dashboardApi.getLinkedAccounts().catch(() => ({ linkedAccounts: [] })) : Promise.resolve({ linkedAccounts: [] }),
         dashboardApi.getViolations().catch(() => []),
       ]);
@@ -1095,6 +1095,7 @@ export default function Dashboard() {
         )}
 
         {/* GDPR Controls */}
+        {user?.tenantUserId && (
         <Box className="anim-fade-up delay-4">
           <Paper
             elevation={0}
@@ -1335,6 +1336,7 @@ export default function Dashboard() {
             </Box>
           </Paper>
         </Box>
+        )}
 
         </>} {/* end main content guard */}
 
