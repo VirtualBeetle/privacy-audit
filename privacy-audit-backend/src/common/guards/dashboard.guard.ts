@@ -35,7 +35,10 @@ export class DashboardGuard implements CanActivate {
 
     request.user = {
       tenantId: payload.tenantId,
-      tenantUserId: payload.tenantUserId,
+      tenantUserId: payload.tenantUserId ?? null,
+      role: payload.role,
+      email: payload.email,
+      displayName: payload.displayName,
       type: 'dashboard_session',
     };
 
@@ -84,7 +87,10 @@ export class DashboardAnyGuard extends DashboardGuard {
     if (payload.type === 'dashboard_session') {
       request.user = {
         tenantId: payload.tenantId,
-        tenantUserId: payload.tenantUserId,
+        tenantUserId: payload.tenantUserId ?? null,
+        role: payload.role,
+        email: payload.email,
+        displayName: payload.displayName,
         type: 'dashboard_session',
       };
     } else if (payload.type === 'google_session') {

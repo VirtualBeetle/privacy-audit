@@ -22,6 +22,12 @@ export default function Login() {
   const [error, setError] = useState('');
   const [autoLogging, setAutoLogging] = useState(false);
 
+  // Email/password form state
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [pwLoading, setPwLoading] = useState(false);
+  const [showPwForm, setShowPwForm] = useState(false);
+
   const isJwt = (t: string) => t.trim().split('.').length === 3;
   const isUuid = (t: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(t.trim());
 
@@ -65,6 +71,27 @@ export default function Login() {
   }, []);
 
   const handleTokenLogin = () => attemptLogin(token);
+
+  const handleEmailLogin = async () => {
+    if (!email.trim() || !password.trim()) return;
+    setPwLoading(true);
+    setError('');
+    try {
+      const res = await fetch(`${API_URL}/api/auth/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: email.trim(), password }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message ?? 'Invalid credentials');
+      login(data.access_token);
+      navigate('/dashboard');
+    } catch (e: any) {
+      setError(e.message ?? 'Login failed');
+    } finally {
+      setPwLoading(false);
+    }
+  };
 
   return (
     <Box
@@ -151,6 +178,59 @@ export default function Login() {
         >
           Continue with Google
         </Button>
+
+        {/* Tenant admin email/password login */}
+        <Divider sx={{ borderColor: 'rgba(255,255,255,0.1)', mb: 2 }}>
+          <Typography sx={{ color: '#64748b', fontSize: '0.75rem', px: 1 }}>
+            or sign in as tenant admin
+          </Typography>
+        </Divider>
+
+        {!showPwForm ? (
+          <Button
+            fullWidth
+            variant="text"
+            onClick={() => setShowPwForm(true)}
+            sx={{ color: '#94a3b8', textTransform: 'none', fontWeight: 600, mb: 2, border: '1px solid rgba(255,255,255,0.1)', borderRadius: 2, py: 1.2, '&:hover': { background: 'rgba(255,255,255,0.05)' } }}
+          >
+            Sign in with email &amp; password
+          </Button>
+        ) : (
+          <Box sx={{ mb: 2, display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+            <TextField
+              fullWidth
+              size="small"
+              placeholder="admin@healthdemo.internal"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              sx={{ '& .MuiOutlinedInput-root': { color: '#f1f5f9', '& fieldset': { borderColor: 'rgba(255,255,255,0.2)' }, '&:hover fieldset': { borderColor: 'rgba(255,255,255,0.35)' }, '&.Mui-focused fieldset': { borderColor: '#38bdf8' } }, '& input::placeholder': { color: '#64748b' } }}
+              inputProps={{ 'aria-label': 'Email' }}
+            />
+            <TextField
+              fullWidth
+              size="small"
+              type="password"
+              placeholder="Password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && handleEmailLogin()}
+              sx={{ '& .MuiOutlinedInput-root': { color: '#f1f5f9', '& fieldset': { borderColor: 'rgba(255,255,255,0.2)' }, '&:hover fieldset': { borderColor: 'rgba(255,255,255,0.35)' }, '&.Mui-focused fieldset': { borderColor: '#38bdf8' } }, '& input::placeholder': { color: '#64748b' } }}
+              inputProps={{ 'aria-label': 'Password' }}
+            />
+            <Button
+              fullWidth
+              variant="contained"
+              onClick={handleEmailLogin}
+              disabled={pwLoading || !email.trim() || !password.trim()}
+              sx={{ background: 'linear-gradient(135deg, #6366f1, #818cf8)', color: '#fff', textTransform: 'none', fontWeight: 700, py: 1.2, '&:disabled': { opacity: 0.5 } }}
+            >
+              {pwLoading ? <CircularProgress size={20} color="inherit" /> : 'Sign in'}
+            </Button>
+            <Button size="small" onClick={() => setShowPwForm(false)} sx={{ color: '#64748b', textTransform: 'none' }}>
+              Cancel
+            </Button>
+          </Box>
+        )}
 
         <Divider sx={{ borderColor: 'rgba(255,255,255,0.1)', mb: 3 }}>
           <Typography sx={{ color: '#64748b', fontSize: '0.75rem', px: 1 }}>

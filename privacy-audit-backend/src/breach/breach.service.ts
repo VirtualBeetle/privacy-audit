@@ -28,11 +28,10 @@ export class BreachService {
     return this.withCountdown(report);
   }
 
-  async listBreaches(tenantId: string, tenantUserId: string) {
-    const reports = await this.breachRepo.find({
-      where: { tenantId, tenantUserId },
-      order: { reportedAt: 'DESC' },
-    });
+  async listBreaches(tenantId: string, tenantUserId: string | null) {
+    const where: any = { tenantId };
+    if (tenantUserId) where.tenantUserId = tenantUserId;
+    const reports = await this.breachRepo.find({ where, order: { reportedAt: 'DESC' } });
     return reports.map((r) => this.withCountdown(r));
   }
 

@@ -97,12 +97,14 @@ export class DashboardService {
     dashboardUserId?: string;
   }): Promise<AuditEvent[]> {
     if (user.type === 'dashboard_session') {
-      return this.eventsRepository
+      const qb = this.eventsRepository
         .createQueryBuilder('event')
-        .where('event.tenant_id = :tenantId', { tenantId: user.tenantId })
-        .andWhere('event.tenant_user_id = :tenantUserId', { tenantUserId: user.tenantUserId })
-        .orderBy('event.occurred_at', 'DESC')
-        .getMany();
+        .where('event.tenant_id = :tenantId', { tenantId: user.tenantId });
+      // Admin sessions have no tenantUserId — show all events for the tenant
+      if (user.tenantUserId) {
+        qb.andWhere('event.tenant_user_id = :tenantUserId', { tenantUserId: user.tenantUserId });
+      }
+      return qb.orderBy('event.occurred_at', 'DESC').getMany();
     }
 
     // google_session: aggregate across all linked tenant accounts

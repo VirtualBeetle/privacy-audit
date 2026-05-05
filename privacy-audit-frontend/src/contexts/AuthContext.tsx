@@ -16,6 +16,7 @@ export interface SessionUser {
   tenantUserId?: string;
   // google_session
   dashboardUserId?: string;
+  // both (admin dashboard_session also carries email/displayName)
   email?: string;
   displayName?: string;
   avatarUrl?: string;
@@ -64,7 +65,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         : {
             type: 'dashboard_session',
             tenantId: payload.tenantId,
-            tenantUserId: payload.tenantUserId,
+            tenantUserId: payload.tenantUserId ?? undefined,
+            // Admin logins include email/displayName in the JWT
+            email: payload.email,
+            displayName: payload.displayName,
           };
 
     localStorage.setItem('session_user', JSON.stringify(sessionUser));

@@ -12,14 +12,12 @@ export class DataMinimisationService {
 
   async getViolationsForUser(
     tenantId: string,
-    tenantUserId: string,
+    tenantUserId: string | null,
     limit = 20,
   ): Promise<DataMinimisationViolation[]> {
-    return this.violationsRepo.find({
-      where: { tenantId, tenantUserId },
-      order: { detectedAt: 'DESC' },
-      take: limit,
-    });
+    const where: any = { tenantId };
+    if (tenantUserId) where.tenantUserId = tenantUserId;
+    return this.violationsRepo.find({ where, order: { detectedAt: 'DESC' }, take: limit });
   }
 
   async getViolationsForTenants(
