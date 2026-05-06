@@ -171,7 +171,6 @@ export default function Dashboard() {
     setLoading(true);
     setError('');
     try {
-      const userId = user?.tenantUserId ?? user?.dashboardUserId ?? '';
       const [eventsData, alertsData, analysisData, scoreData, breachData, consentsData, linkedData, violationsData] = await Promise.all([
         dashboardApi.getEvents(),
         dashboardApi.getRiskAlerts(),
