@@ -40,7 +40,7 @@ import EventFeed from '../components/EventFeed/EventFeed';
 import AIChatButton from '../components/AIChatButton/AIChatButton';
 import TenantTabs, { HEALTH_TENANT_ID, SOCIAL_TENANT_ID } from '../components/TenantTabs/TenantTabs';
 import ConnectAppModal from '../components/ConnectAppModal/ConnectAppModal';
-import { dashboardApi } from '../api/client';
+import { dashboardApi, devApi } from '../api/client';
 import { useAuth } from '../contexts/AuthContext';
 import type { AuditEvent, LinkedAccount, TenantFilter } from '../types';
 
@@ -55,6 +55,16 @@ const SEVERITY_COLOR: Record<string, string> = {
   MEDIUM: '#eab308',
   LOW: '#22c55e',
 };
+
+function timeAgo(dateStr: string): string {
+  const mins = Math.floor((Date.now() - new Date(dateStr).getTime()) / 60000);
+  if (mins < 1) return 'just now';
+  if (mins < 60) return `${mins} minute${mins === 1 ? '' : 's'} ago`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs} hour${hrs === 1 ? '' : 's'} ago`;
+  const days = Math.floor(hrs / 24);
+  return `${days} day${days === 1 ? '' : 's'} ago`;
+}
 
 interface RiskAlert {
   id: string;
@@ -166,6 +176,10 @@ export default function Dashboard() {
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [deleteStatus, setDeleteStatus] = useState<{ id: string; status: string } | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState(false);
+
+  // Run Analysis Now (admin)
+  const [runAnalysisLoading, setRunAnalysisLoading] = useState(false);
+  const [runAnalysisMsg, setRunAnalysisMsg] = useState('');
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -352,6 +366,32 @@ export default function Dashboard() {
       const updated = await dashboardApi.notifyRegulator(id);
       setBreachReports((prev) => prev.map((r) => r.id === id ? { ...r, ...updated } : r));
     } catch { /* silently handle */ }
+  };
+
+  // ── Run Analysis Now (admin) ─────────────────────────────────────────────
+  const getDevToken = () =>
+    (import.meta.env.VITE_DEV_TOKEN as string | undefined) ||
+    localStorage.getItem('dev_token') ||
+    '';
+
+  const handleRunAnalysis = async () => {
+    const token = getDevToken();
+    if (!token) {
+      setRunAnalysisMsg('Dev token not set. Go to AI Settings to configure it first.');
+      return;
+    }
+    setRunAnalysisLoading(true);
+    setRunAnalysisMsg('');
+    try {
+      const result = await devApi.triggerRiskAnalysis(token);
+      const newHistory = await dashboardApi.getAnalysisHistory().catch(() => []);
+      setAnalysisHistory(Array.isArray(newHistory) ? newHistory : []);
+      setRunAnalysisMsg(`Done — ${result?.alerts ?? 0} alert(s) generated.`);
+    } catch {
+      setRunAnalysisMsg('Analysis failed. Check your dev token in AI Settings.');
+    } finally {
+      setRunAnalysisLoading(false);
+    }
   };
 
   // ── Demo Tour ────────────────────────────────────────────────────────────
@@ -1028,67 +1068,111 @@ export default function Dashboard() {
         </Box>
 
         {/* AI Analysis History */}
-        {analysisHistory.length > 0 && (
+        {(analysisHistory.length > 0 || !user?.tenantUserId) && (
           <Box className="anim-fade-up delay-4" sx={{ mb: 4 }}>
             <Paper elevation={0} sx={{ borderRadius: 3, border: '1px solid #e2e8f0', p: 3 }}>
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 2 }}>
+              {/* Header row */}
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: analysisHistory.length > 0 ? 0.5 : 2 }}>
                 <PsychologyIcon sx={{ color: '#6366f1', fontSize: 22 }} />
                 <Typography variant="h6" sx={{ fontWeight: 700, color: '#0f172a' }}>
                   AI Analysis History
                 </Typography>
-                <Chip
-                  label={analysisHistory.length}
-                  size="small"
-                  sx={{ background: '#6366f1', color: '#fff', fontWeight: 700, fontSize: '0.72rem' }}
-                />
+                {analysisHistory.length > 0 && (
+                  <Chip
+                    label={analysisHistory.length}
+                    size="small"
+                    sx={{ background: '#6366f1', color: '#fff', fontWeight: 700, fontSize: '0.72rem' }}
+                  />
+                )}
+                {/* Run Analysis Now — admin only */}
+                {!user?.tenantUserId && (
+                  <Box sx={{ ml: 'auto', display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <Button
+                      size="small"
+                      variant="outlined"
+                      startIcon={runAnalysisLoading ? <CircularProgress size={14} /> : <AutorenewIcon />}
+                      onClick={handleRunAnalysis}
+                      disabled={runAnalysisLoading}
+                      sx={{ textTransform: 'none', fontWeight: 600, borderColor: '#6366f1', color: '#6366f1', '&:hover': { borderColor: '#4f46e5', background: '#eef2ff' } }}
+                    >
+                      {runAnalysisLoading ? 'Running…' : 'Run Analysis Now'}
+                    </Button>
+                  </Box>
+                )}
               </Box>
-              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-                {analysisHistory.map((record) => (
-                  <Accordion
-                    key={record._id}
-                    elevation={0}
-                    sx={{ border: '1px solid #e2e8f0', borderRadius: '12px !important', '&:before': { display: 'none' } }}
-                  >
-                    <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, width: '100%', flexWrap: 'wrap' }}>
-                        <Typography variant="body2" sx={{ fontWeight: 600, color: '#0f172a' }}>
-                          {new Date(record.createdAt).toLocaleDateString('en-IE', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
-                        </Typography>
-                        <Chip label={record.provider} size="small" sx={{ background: '#f1f5f9', color: '#475569', fontSize: '0.68rem', height: 20 }} />
-                        <Chip label={record.aiModel} size="small" sx={{ background: '#f1f5f9', color: '#475569', fontSize: '0.68rem', height: 20 }} />
-                        <Typography variant="caption" sx={{ color: '#64748b', ml: 'auto' }}>
-                          {record.eventCount} events analysed · {record.findings?.length ?? 0} findings
-                        </Typography>
-                      </Box>
-                    </AccordionSummary>
-                    <AccordionDetails sx={{ pt: 0 }}>
-                      {record.findings?.length > 0 ? (
-                        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
-                          {record.findings.map((f, i) => (
-                            <Box
-                              key={i}
-                              sx={{ borderLeft: `4px solid ${SEVERITY_COLOR[f.severity] ?? '#94a3b8'}`, pl: 2, py: 0.5 }}
-                            >
-                              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
-                                <Chip
-                                  label={f.severity}
-                                  size="small"
-                                  sx={{ background: SEVERITY_COLOR[f.severity] ?? '#94a3b8', color: '#fff', fontWeight: 700, fontSize: '0.65rem', height: 20 }}
-                                />
-                                <Typography variant="body2" sx={{ fontWeight: 600, color: '#0f172a' }}>{f.title}</Typography>
-                              </Box>
-                              <Typography variant="body2" sx={{ color: '#475569', mb: 0.5 }}>{f.description}</Typography>
-                              <Typography variant="caption" sx={{ color: '#64748b' }}>Suggested: {f.suggestedAction}</Typography>
-                            </Box>
-                          ))}
+
+              {/* Last analysis banner */}
+              {analysisHistory.length > 0 && (
+                <Typography variant="caption" sx={{ color: '#64748b', display: 'block', mb: 2 }}>
+                  Last analysis: {timeAgo(analysisHistory[0].createdAt)} · {analysisHistory[0].findings?.length ?? 0} findings
+                </Typography>
+              )}
+
+              {/* Feedback message after triggering */}
+              {runAnalysisMsg && (
+                <Alert
+                  severity={runAnalysisMsg.startsWith('Done') ? 'success' : 'warning'}
+                  sx={{ mb: 2, py: 0.5, borderRadius: 1.5 }}
+                  onClose={() => setRunAnalysisMsg('')}
+                >
+                  {runAnalysisMsg}
+                </Alert>
+              )}
+
+              {/* Records */}
+              {analysisHistory.length > 0 ? (
+                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                  {analysisHistory.map((record) => (
+                    <Accordion
+                      key={record._id}
+                      elevation={0}
+                      sx={{ border: '1px solid #e2e8f0', borderRadius: '12px !important', '&:before': { display: 'none' } }}
+                    >
+                      <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, width: '100%', flexWrap: 'wrap' }}>
+                          <Typography variant="body2" sx={{ fontWeight: 600, color: '#0f172a' }}>
+                            {new Date(record.createdAt).toLocaleDateString('en-IE', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                          </Typography>
+                          <Chip label={record.provider} size="small" sx={{ background: '#f1f5f9', color: '#475569', fontSize: '0.68rem', height: 20 }} />
+                          <Chip label={record.aiModel} size="small" sx={{ background: '#f1f5f9', color: '#475569', fontSize: '0.68rem', height: 20 }} />
+                          <Typography variant="caption" sx={{ color: '#64748b', ml: 'auto' }}>
+                            {record.eventCount} events analysed · {record.findings?.length ?? 0} findings
+                          </Typography>
                         </Box>
-                      ) : (
-                        <Typography variant="body2" sx={{ color: '#94a3b8' }}>No findings for this analysis run.</Typography>
-                      )}
-                    </AccordionDetails>
-                  </Accordion>
-                ))}
-              </Box>
+                      </AccordionSummary>
+                      <AccordionDetails sx={{ pt: 0 }}>
+                        {record.findings?.length > 0 ? (
+                          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+                            {record.findings.map((f, i) => (
+                              <Box
+                                key={i}
+                                sx={{ borderLeft: `4px solid ${SEVERITY_COLOR[f.severity] ?? '#94a3b8'}`, pl: 2, py: 0.5 }}
+                              >
+                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
+                                  <Chip
+                                    label={f.severity}
+                                    size="small"
+                                    sx={{ background: SEVERITY_COLOR[f.severity] ?? '#94a3b8', color: '#fff', fontWeight: 700, fontSize: '0.65rem', height: 20 }}
+                                  />
+                                  <Typography variant="body2" sx={{ fontWeight: 600, color: '#0f172a' }}>{f.title}</Typography>
+                                </Box>
+                                <Typography variant="body2" sx={{ color: '#475569', mb: 0.5 }}>{f.description}</Typography>
+                                <Typography variant="caption" sx={{ color: '#64748b' }}>Suggested: {f.suggestedAction}</Typography>
+                              </Box>
+                            ))}
+                          </Box>
+                        ) : (
+                          <Typography variant="body2" sx={{ color: '#94a3b8' }}>No findings for this analysis run.</Typography>
+                        )}
+                      </AccordionDetails>
+                    </Accordion>
+                  ))}
+                </Box>
+              ) : (
+                <Typography variant="body2" sx={{ color: '#94a3b8' }}>
+                  No analysis records yet. Click "Run Analysis Now" to trigger the first analysis.
+                </Typography>
+              )}
             </Paper>
           </Box>
         )}

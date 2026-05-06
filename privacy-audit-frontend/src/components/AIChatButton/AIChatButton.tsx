@@ -44,7 +44,7 @@ export default function AIChatButton() {
     try {
       const res = await dashboardApi.aiChat(text, sessionId);
       setSessionId(res.sessionId);
-      setProviderLabel(`${res.provider} / ${res.model}`);
+      setProviderLabel('Online');
       setMessages((prev) => [...prev, { role: 'ai', text: res.reply }]);
     } catch {
       setMessages((prev) => [

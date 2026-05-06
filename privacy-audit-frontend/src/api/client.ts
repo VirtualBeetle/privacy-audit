@@ -201,6 +201,9 @@ export const devApi = {
 
   deleteAiProvider: (token: string, id: string) =>
     api.delete(`/dev/ai-providers/${id}`, { headers: devHeaders(token) }),
+
+  triggerRiskAnalysis: (token: string) =>
+    api.post('/dev/trigger-risk-analysis', {}, { headers: devHeaders(token) }).then((r) => r.data),
 };
 
 // ─── Onboarding API helpers ─────────────────────────────────────────────────

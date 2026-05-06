@@ -5,7 +5,7 @@
 > 🔄 In Progress — partially built or in active development
 > ⏳ Not Started — planned, not yet begun
 
-Last updated: 2026-04-14 (All 14 phases complete — 174/174 tasks — both builds clean)
+Last updated: 2026-05-06 (Phase 16 — AI-Q6, SCHED-4, SCHED-5 done; INFRA-1/2 pending manual Render step)
 
 ---
 
@@ -380,62 +380,112 @@ Last updated: 2026-04-14 (All 14 phases complete — 174/174 tasks — both buil
 ### Step 1 — URL Fixes (Blocker for everything else)
 | # | Task | Status | Notes |
 |---|---|---|---|
-| DEPLOY-1 | Collect all actual Render service URLs (they include a random suffix like `-ni1n`) | ⏳ Not Started | User must check Render dashboard and provide the real URLs |
-| DEPLOY-2 | Update `render.yaml` + Render dashboard env vars with correct service URLs | ⏳ Not Started | Affects: AUDIT_SERVICE_URL, VITE_API_URL for all frontends, GOOGLE_CALLBACK_URL, DASHBOARD_BASE_URL |
-| DEPLOY-3 | Redeploy all 3 frontends after VITE_API_URL is corrected (VITE_* are baked at build time) | ⏳ Not Started | Manual deploy trigger in Render dashboard for audit-frontend, health-frontend, social-frontend |
+| DEPLOY-1 | Collect all actual Render service URLs | ✅ Done | Backend: `audit-backend-ddew.onrender.com` |
+| DEPLOY-2 | Update `render.yaml` + Render dashboard env vars with correct service URLs | ✅ Done | VITE_API_URL, GOOGLE_CALLBACK_URL all set |
+| DEPLOY-3 | Redeploy all 3 frontends after VITE_API_URL is corrected | ✅ Done | All frontends live |
 
 ### Step 2 — Core Auth (Unblocks login)
 | # | Task | Status | Notes |
 |---|---|---|---|
-| DEPLOY-4 | Set `JWT_SECRET` in Render dashboard for audit-backend | ⏳ Not Started | Any random string e.g. `openssl rand -hex 32`. Without this, JWT auth silently breaks |
-| DEPLOY-5 | Set `ENCRYPTION_KEY` in Render dashboard for audit-backend | ⏳ Not Started | Any 32+ char random string. Used to encrypt AI provider API keys in MongoDB. Has insecure default |
-| DEPLOY-6 | Add `ENCRYPTION_KEY` to render.yaml (currently missing) | ✅ Done | Added as `sync: false` — must be set manually in Render dashboard |
+| DEPLOY-4 | Set `JWT_SECRET` in Render dashboard for audit-backend | ✅ Done | Login working |
+| DEPLOY-5 | Set `ENCRYPTION_KEY` in Render dashboard for audit-backend | ✅ Done | AI provider keys encrypted |
+| DEPLOY-6 | Add `ENCRYPTION_KEY` to render.yaml | ✅ Done | `sync: false` — set manually |
 
 ### Step 3 — Dev Tools (Unblocks demo seeding)
 | # | Task | Status | Notes |
 |---|---|---|---|
-| DEPLOY-7 | Set `DEV_TOKEN` in Render dashboard for audit-backend | ⏳ Not Started | Any secret string. Unlocks /dev/* endpoints for seeding + triggering analysis |
+| DEPLOY-7 | Set `DEV_TOKEN` in Render dashboard for audit-backend | ✅ Done | `/ai-settings` page working |
 
 ### Step 4 — Register Tenants + Fix API Keys (Unblocks event flow)
 | # | Task | Status | Notes |
 |---|---|---|---|
-| DEPLOY-8 | Register health-tenant via `POST /tenants/register` on the live audit-backend | ⏳ Not Started | Gets a real API key. Hardcoded `health-tenant-api-key` in render.yaml will not match DB |
-| DEPLOY-9 | Register social-tenant via `POST /tenants/register` on the live audit-backend | ⏳ Not Started | Same — gets a real API key for ConnectSocial |
-| DEPLOY-10 | Update `AUDIT_API_KEY` env var for health-backend and social-backend in Render dashboard with real keys | ⏳ Not Started | Set after DEPLOY-8/9 — triggers redeploy |
+| DEPLOY-8 | Register health-tenant on live audit-backend | ✅ Done | HealthTrack tenant seeded |
+| DEPLOY-9 | Register social-tenant on live audit-backend | ✅ Done | ConnectSocial tenant seeded |
+| DEPLOY-10 | Update `AUDIT_API_KEY` for health-backend and social-backend | ✅ Done | Events flowing |
 
 ### Step 5 — Google OAuth (Unlocks Google login)
 | # | Task | Status | Notes |
 |---|---|---|---|
-| DEPLOY-11 | Create Google Cloud project + OAuth 2.0 credentials (Web Application type) | ⏳ Not Started | Add redirect URI: `https://audit-backend-ddew.onrender.com/api/auth/google/callback` |
-| DEPLOY-12 | Set `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` in Render dashboard for audit-backend | ⏳ Not Started | GOOGLE_CALLBACK_URL is already set in render.yaml. Unlocks "Sign in with Google" |
+| DEPLOY-11 | Create Google Cloud project + OAuth 2.0 credentials | ⏳ Not Started | Optional for demo — admin login works without it |
+| DEPLOY-12 | Set `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` in Render | ⏳ Not Started | Skip if using admin login only for demo |
 
 ### Step 6 — AI Features (Unlocks AI risk analysis + AI Chat)
 | # | Task | Status | Notes |
 |---|---|---|---|
-| DEPLOY-13 | Get Anthropic API key from platform.anthropic.com | ⏳ Not Started | Free credits available on new accounts |
-| DEPLOY-14 | Set `ANTHROPIC_API_KEY` in Render dashboard for audit-backend | ⏳ Not Started | Unlocks AI risk analysis cron (every 6h) and AI chat fallback |
-| DEPLOY-15 | Create MongoDB Atlas free cluster (M0) at atlas.mongodb.com | ⏳ Not Started | Free tier, no credit card needed. Whitelist 0.0.0.0/0 for Render |
-| DEPLOY-16 | Set `MONGODB_URI` in Render dashboard for audit-backend | ⏳ Not Started | Format: `mongodb+srv://user:pass@cluster.mongodb.net/privacy_audit`. Unlocks AI chat history + AI analysis records |
+| DEPLOY-13 | Get Gemini API key (Google AI Studio — free tier) | ✅ Done | Using `gemini-flash-latest` via DB provider |
+| DEPLOY-14 | Set active AI provider via `/ai-settings` UI | ✅ Done | `gemini / gemini-flash-latest` active in MongoDB |
+| DEPLOY-15 | Create MongoDB Atlas free cluster (M0) | ✅ Done | Connected, AI chat sessions and analysis records saving |
+| DEPLOY-16 | Set `MONGODB_URI` in Render dashboard | ✅ Done | Chat history + analysis history working |
 
-### Step 7 — Email Notifications (Unlocks risk alert emails)
+### Step 7 — Email Notifications
 | # | Task | Status | Notes |
 |---|---|---|---|
-| DEPLOY-17 | Create Mailtrap account (free) at mailtrap.io | ⏳ Not Started | No real emails sent — safe for demo |
-| DEPLOY-18 | Set `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `FROM_EMAIL` in Render dashboard | ⏳ Not Started | Unlocks HIGH/CRITICAL alert emails + Monday 09:00 weekly digest |
+| DEPLOY-17 | Create Mailtrap account (free) | ⏳ Skipped | Skipped for demo — SMTP env vars not set |
+| DEPLOY-18 | Set SMTP env vars in Render dashboard | ⏳ Skipped | Email notifications gracefully no-op without SMTP |
 
-### Step 8 — DB Dump & Restore Script (Disaster recovery / URL migration)
+### Step 8 — DB Dump & Restore Script
 | # | Task | Status | Notes |
 |---|---|---|---|
-| DEPLOY-19 | Write `scripts/db-dump.sh` — dumps all 3 Render Postgres DBs to local `.sql` files | ⏳ Not Started | Uses `pg_dump` with Render connection strings |
-| DEPLOY-20 | Write `scripts/db-restore.sh` — restores `.sql` dumps into new Postgres DBs | ⏳ Not Started | Useful if Render DB URLs change or DBs need to be recreated from scratch |
-| DEPLOY-21 | Test dump + restore cycle end-to-end | ⏳ Not Started | Verify data survives round-trip |
+| DEPLOY-19 | Write `scripts/db-dump.sh` | ⏳ Not Started | Nice-to-have for disaster recovery |
+| DEPLOY-20 | Write `scripts/db-restore.sh` | ⏳ Not Started | |
+| DEPLOY-21 | Test dump + restore cycle | ⏳ Not Started | |
 
 ### Step 9 — Seed Demo Data + Smoke Test
 | # | Task | Status | Notes |
 |---|---|---|---|
-| DEPLOY-22 | Seed 20 demo events via `POST /dev/seed-events` using DEV_TOKEN | ⏳ Not Started | Requires DEPLOY-7 + DEPLOY-8/9/10 |
-| DEPLOY-23 | Trigger manual AI risk analysis via `POST /dev/trigger-risk-analysis` | ⏳ Not Started | Requires DEPLOY-14 |
-| DEPLOY-24 | Smoke test full demo flow end-to-end (login → events → AI chat → export → delete) | ⏳ Not Started | Final verification |
+| DEPLOY-22 | Seed 20 demo events via `POST /dev/seed-events` | ✅ Done | Both tenants have events |
+| DEPLOY-23 | Trigger manual AI risk analysis via `POST /dev/trigger-risk-analysis` | ✅ Done | Analysis records in MongoDB |
+| DEPLOY-24 | Smoke test full demo flow | ✅ Done | Login → events → AI chat → breach report all working |
+
+---
+
+---
+
+## Phase 16 — AI Quality + Admin UX + Production Polish
+
+> Started: 2026-05-06. Goal: sharpen the AI experience, fix admin-specific UX gaps, and stabilise the live deployment.
+
+### 16A — AI Persona & Prompt Quality (Session 2026-05-06)
+| # | Task | Status | Notes |
+|---|---|---|---|
+| AI-Q1 | Restrict DataGuard AI to privacy/GDPR topics only — refuse off-topic questions | ✅ Done | `ai-chat.service.ts` — strong system prompt with STRICT RULES block |
+| AI-Q2 | AI never reveals it is Gemini/Claude/OpenAI — always identifies as "DataGuard AI" | ✅ Done | Rule added to system prompt |
+| AI-Q3 | Defined response format: 1-sentence answer → bullet points → 150-word cap | ✅ Done | FORMAT rules in system prompt |
+| AI-Q4 | Hide provider/model label from chat UI header — was leaking "gemini / gemini-flash-latest" | ✅ Done | `AIChatButton.tsx` — always shows "Online" |
+| AI-Q5 | Fix Gemini model name: `gemini-flash-latest` (resolves to `gemini-3-flash-preview`) | ✅ Done | AISettings.tsx + ai-orchestration.service.ts fallback updated |
+| AI-Q6 | **Improve Risk Analysis prompt** — add structured output enforcement, severity definitions | ✅ Done | `risk.service.ts` — GDPR article citations, severity thresholds, strict JSON-only output |
+
+### 16B — Admin UX Fixes (Session 2026-05-06)
+| # | Task | Status | Notes |
+|---|---|---|---|
+| ADMIN-1 | Header badge shows "Admin" instead of "Tenant session" for admin logins | ✅ Done | `Header.tsx` — detects `!tenantUserId && email` |
+| ADMIN-2 | Hide Consent Management (Art.7) section for admin — it's end-user only | ✅ Done | `Dashboard.tsx` — wrapped with `{user?.tenantUserId && ...}` |
+| ADMIN-3 | Hide GDPR Rights section (export/erasure) for admin | ✅ Done | Same wrapper as ADMIN-2 |
+| ADMIN-4 | Skip `getConsents()` API call for admin (no tenantUserId) | ✅ Done | `Dashboard.tsx` — only calls when `user?.tenantUserId` exists |
+| ADMIN-5 | Breach report NOT NULL crash when admin submits (tenantUserId = null) | ✅ Done | `breach-report.entity.ts` nullable, `breach.service.ts` where-clause fixed |
+
+### 16C — AI Scheduler & Analysis Visibility
+| # | Task | Status | Notes |
+|---|---|---|---|
+| SCHED-1 | Risk analysis cron runs every 6h — already implemented | ✅ Done | `risk.service.ts` `@Cron('0 */6 * * *')` |
+| SCHED-2 | Analysis results saved to MongoDB (`ai_analysis_records`) — already implemented | ✅ Done | `AiChatService.saveAnalysisRecord()` |
+| SCHED-3 | AI Analysis History accordion shown in Dashboard — already implemented | ✅ Done | `Dashboard.tsx` expandable cards with provider/model/findings |
+| SCHED-4 | **"Last AI Analysis" summary banner** — show time of last run + finding count at top of Analysis section | ✅ Done | `Dashboard.tsx` — "Last analysis: X ago · N findings" caption below section heading |
+| SCHED-5 | **"Run Analysis Now" button** in Dashboard for admin — calls `POST /dev/trigger-risk-analysis` | ✅ Done | `Dashboard.tsx` — reads `VITE_DEV_TOKEN` env or localStorage `dev_token`; admin-only |
+
+### 16D — Infrastructure / Reliability
+| # | Task | Status | Notes |
+|---|---|---|---|
+| INFRA-1 | **Redis eviction policy must be `noeviction`** (currently `allkeys-lru`) | ✅ Done | Changed to `noeviction` in Render dashboard — 2026-05-06 |
+| INFRA-2 | Verify BullMQ queue health after Redis eviction policy fix | 🔄 In Progress | **MANUAL:** After INFRA-1, call `GET /dev/queue-status` with `x-dev-token` header to confirm 0 failed jobs |
+
+### 16E — Remaining Nice-to-Haves (Pre-Dissertation)
+| # | Task | Status | Notes |
+|---|---|---|---|
+| NICE-1 | Google OAuth on Render (DEPLOY-11/12) | ⏳ Not Started | Enables "Sign in with Google" for end-user demo flow |
+| NICE-2 | DB backup scripts (`db-dump.sh` / `db-restore.sh`) | ⏳ Not Started | Safety net before dissertation demo day |
+| NICE-3 | Demo run-sheet for dissertation presentation | ✅ Done | `DEMO_GUIDE.md` at project root — 30-min flow, prepared Q&A answers, pre-demo checklist, break-glass recovery table |
+| NICE-4 | Update Phase 9 tracker: mark MONGO-11 note — chat no longer shows provider label | ✅ Done | Provider label now always "Online" — `AIChatButton.tsx` line 47 |
 
 ---
 
@@ -463,9 +513,25 @@ Last updated: 2026-04-14 (All 14 phases complete — 174/174 tasks — both buil
 | Phase 12 — Architecture Diagram | 1 | 1 |
 | Phase 13 — Tenant Onboarding | 6 | 6 |
 | Phase 14 — Complexity Boosters | 6 | 6 |
-| Phase 15 — Render Full Feature Unlock | 1 | 24 |
-| **Phase 1–6 Total** | **115** | **115** |
-| **Phases 7–8 Total** | **15** | **15** |
-| **Phases 9–14 Total** | **44** | **44** |
-| **Phase 15 Total** | **1** | **24** |
-| **Grand Total** | **175** | **198** |
+| Phase 15 — Render Full Feature Unlock | 18 | 24 |
+| Phase 16A — AI Persona & Prompt Quality | 6 | 6 |
+| Phase 16B — Admin UX Fixes | 5 | 5 |
+| Phase 16C — AI Scheduler & Analysis Visibility | 5 | 5 |
+| Phase 16D — Infrastructure / Reliability | 1 | 2 |
+| Phase 16E — Nice-to-Haves | 2 | 4 |
+| **Grand Total** | **201** | **216** |
+
+---
+
+## Next Session — Pick Up Here
+
+> Priority order for the next coding session:
+
+| # | Task | File / Location |
+|---|---|---|
+| 1 | 🔴 **MANUAL** — Fix Redis eviction policy → `noeviction` | Render dashboard → Redis service → Advanced → Eviction Policy |
+| 2 | 🔴 **MANUAL** — Verify queue health after Redis fix | `GET /dev/queue-status` with `x-dev-token` header |
+| 3 | 🟡 **MANUAL (optional)** — Google OAuth on Render | Render env vars: `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` |
+| — | ~~Run Analysis Now button~~ | ✅ Done — `Dashboard.tsx` |
+| — | ~~Last analysis banner~~ | ✅ Done — `Dashboard.tsx` |
+| — | ~~Improve risk analysis prompt~~ | ✅ Done — `risk.service.ts` |

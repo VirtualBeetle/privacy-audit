@@ -156,19 +156,37 @@ export class RiskService {
       criticalCount,
     };
 
-    const prompt = `You are a GDPR privacy compliance auditor reviewing audit events for a SaaS tenant.
+    const prompt = `You are an automated GDPR compliance auditor (Article 35 DPIA). Analyse the 24-hour audit summary below and return a JSON array of findings.
 
-The following statistics summarise data access events from the last 24 hours:
+AUDIT SUMMARY (last 24 hours):
 ${JSON.stringify(analysisSummary, null, 2)}
 
-Identify privacy risks, GDPR compliance gaps, or anomalies. For each finding return a JSON object with:
-- "severity": one of "LOW" | "MEDIUM" | "HIGH" | "CRITICAL"
-- "title": concise title, max 80 characters
-- "description": explanation of the risk, max 300 characters
-- "suggestedAction": recommended remediation step, max 200 characters
-- "affectedEventCount": integer count of events contributing to this risk
+SEVERITY DEFINITIONS — use exactly one per finding:
+- CRITICAL: Imminent legal exposure. Examples: >20% events with no consent obtained, CRITICAL-sensitivity data accessed by THIRD_PARTY without consent, opt-out rate >30%.
+- HIGH: Significant GDPR risk requiring prompt action. Examples: noConsentCount >10% of total, thirdPartyCount >15% of total, CRITICAL events >5% of total.
+- MEDIUM: Compliance gap that should be addressed. Examples: recurring access to HIGH-sensitivity fields without clear purpose, actor type anomalies, moderate opt-out rate.
+- LOW: Informational observation or minor best-practice gap.
 
-Return ONLY a JSON array. If no risks are found, return [].`;
+GDPR ARTICLES TO REFERENCE WHERE RELEVANT:
+- Art.5(1)(a): Lawfulness, fairness, transparency — flag missing consent
+- Art.5(1)(c): Data minimisation — flag excessive field access
+- Art.6: Legal basis — flag processing without valid basis
+- Art.7: Consent — flag revoked or missing consent events
+- Art.17: Right to erasure — flag retention of data for opted-out users
+- Art.33: Breach notification — flag anomalous access spikes
+
+OUTPUT FORMAT — respond with ONLY a valid JSON array, no markdown, no explanation:
+[
+  {
+    "severity": "HIGH",
+    "title": "Concise title under 80 chars",
+    "description": "Specific risk explanation referencing the stats, max 300 chars",
+    "suggestedAction": "Concrete remediation step, max 200 chars",
+    "affectedEventCount": 12
+  }
+]
+
+If there are no risks, return exactly: []`;
 
     let rawText = '[]';
     let provider = 'unknown';
