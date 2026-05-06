@@ -132,7 +132,7 @@ export class AiOrchestrationService {
       this.logger.warn('No active AI provider in DB — falling back to GEMINI_API_KEY env var');
       return {
         provider: 'gemini',
-        model: 'gemini-1.5-flash',
+        model: 'gemini-2.0-flash',
         encryptedApiKey: encrypt(geminiKey),
         isActive: true,
         label: 'env-fallback-gemini',

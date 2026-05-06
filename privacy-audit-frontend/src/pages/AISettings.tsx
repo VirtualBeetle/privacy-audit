@@ -38,7 +38,7 @@ const PROVIDER_META: Record<AiProvider, { name: string; color: string; bg: strin
     name: 'Google Gemini',
     color: '#0369a1',
     bg: '#e0f2fe',
-    models: ['gemini-2.0-flash-exp', 'gemini-1.5-flash-latest', 'gemini-1.5-pro-latest'],
+    models: ['gemini-2.0-flash', 'gemini-2.0-flash-lite', 'gemini-1.5-pro'],
   },
   claude: {
     name: 'Anthropic Claude',
