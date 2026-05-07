@@ -322,7 +322,7 @@ function EmptyState({ firstName, onPrompt }: { firstName: string; onPrompt: (t: 
           <circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/>
         </svg>
         <span>
-          Type <kbd style={{ padding: '1px 5px', background: '#18181b', border: `1px solid ${C.border2}`, borderRadius: 4, fontSize: 10, color: C.textDim, fontFamily: C.mono }}/</kbd> for commands like{' '}
+          Type <kbd style={{ padding: '1px 5px', background: '#18181b', border: `1px solid ${C.border2}`, borderRadius: 4, fontSize: 10, color: C.textDim, fontFamily: C.mono }}>/</kbd> for commands like{' '}
           {['/explain', '/draft', '/compare'].map((c) => (
             <code key={c} style={{ color: C.accent, fontFamily: C.mono, fontSize: 11 }}>{c} </code>
           ))}

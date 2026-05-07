@@ -1,159 +1,134 @@
-# Deployment Guide
+# DataGuard — Deployment Guide
 
-## Option A — Local (Docker Compose) — Fastest
+---
 
-### Prerequisites
-- Docker Desktop (or Docker Engine + Compose v2)
-- No other dependencies needed
+## Option A — Local (Docker Compose)
 
-### Steps
+**Requires Docker Desktop only.**
 
 ```bash
-# 1. Clone the project
-git clone <your-repo-url>
-cd project
+git clone <repo-url>
+cd privacy-audit
 
-# 2. Start everything (auto-copies .env.example if missing)
 chmod +x start.sh
-./start.sh
-
-# OR using Make
-make start
+./start.sh          # auto-copies .env.example, starts all 9 services
 ```
 
-That's it. The script handles `.env` setup and starts all 9 services.
+### Local URLs
 
-### Service URLs (local)
 | Service | URL |
 |---|---|
-| Privacy Dashboard | http://localhost:3000 |
+| DataGuard Dashboard | http://localhost:3000 |
 | Audit API | http://localhost:8080/api |
 | API Docs (Swagger) | http://localhost:8080/api/docs |
-| HealthTrack App | http://localhost:3001 |
-| ConnectSocial App | http://localhost:3002 |
+| HealthTrack | http://localhost:3001 |
+| ConnectSocial | http://localhost:3002 |
 
-### Useful commands
+### Useful Commands
+
 ```bash
-make logs           # tail all logs
-make logs-backend   # tail audit-backend only
-make ps             # show service health
-make seed           # seed demo data
-make stop           # stop (keep data)
-make reset          # stop + wipe data (fresh start)
+make start               # start everything
+make stop                # stop (keep data)
+make reset               # stop + wipe all data
+make logs                # tail all logs
+make logs-backend        # tail audit-backend only
+make ps                  # show service health
 
-# Manual triggers for demo:
 export DEV_TOKEN=dev-secret-change-me
-make dev-analysis   # run AI risk analysis now
-make dev-digest     # send weekly email digest now
+make dev-seed-events TENANT_ID=<uuid>   # seed 20 demo events
+make dev-analysis                        # run AI risk analysis now
+make dev-digest                          # send weekly email digest now
 ```
 
 ---
 
-## Google OAuth Setup (Local Dev)
+## Google OAuth Setup (Local)
 
-Google OAuth requires real credentials — the app works without them (token login still works) but "Continue with Google" will fail.
-
-### One-time setup
+Works without Google OAuth (email/token login still works), but "Continue with Google" requires credentials.
 
 1. Go to [Google Cloud Console](https://console.cloud.google.com)
-2. Create a project (e.g. "Privacy Audit")
-3. **APIs & Services → OAuth consent screen**
-   - User type: External → Create
-   - App name: `DataGuard`, fill in your email, save through all steps
-   - **Test users → Add Users** → add your own Gmail (required while app is in Testing mode)
-4. **APIs & Services → Credentials → Create Credentials → OAuth 2.0 Client ID**
-   - Application type: Web application
-   - Authorised redirect URIs — add:
-     ```
-     http://localhost:8080/api/auth/google/callback
-     ```
-   - Click Create, copy **Client ID** and **Client Secret**
-5. Edit `privacy-audit-infra/.env`:
+2. **APIs & Services → OAuth consent screen** → External → fill app name, add yourself as test user
+3. **APIs & Services → Credentials → Create → OAuth 2.0 Client ID** → Web app
+4. Add redirect URI: `http://localhost:8080/api/auth/google/callback`
+5. Copy Client ID and Secret into `privacy-audit-infra/.env`:
    ```
-   GOOGLE_CLIENT_ID=<your-client-id>.apps.googleusercontent.com
-   GOOGLE_CLIENT_SECRET=<your-client-secret>
+   GOOGLE_CLIENT_ID=<id>.apps.googleusercontent.com
+   GOOGLE_CLIENT_SECRET=<secret>
    ```
 6. Restart: `make stop && make start`
 
-### How the flow works
-```
-Click "Continue with Google"
-  → browser → localhost:8080/api/auth/google
-  → Google consent screen
-  → Google → localhost:8080/api/auth/google/callback
-  → backend issues JWT, redirects to dataguard.local/auth/google/callback?token=...
-  → frontend stores JWT → /dashboard
-```
-
 ---
 
-## Option B — Render (Free Cloud Hosting) — Share with Mentor
+## Option B — Render (Cloud Hosting)
 
-Render lets you deploy all services for free. No credit card needed for the free tier.
+### Step 1 — MongoDB Atlas (free M0)
 
-### Step 1 — Push code to GitHub
+1. [mongodb.com/atlas](https://www.mongodb.com/atlas/database) → create free M0 cluster
+2. Set username/password, allow `0.0.0.0/0` access
+3. **Connect → Drivers** → copy connection string:
+   `mongodb+srv://user:pass@cluster.mongodb.net/privacy_audit_ai`
 
-Push all repos to a GitHub account (can be a single mono-repo or separate repos).
+### Step 2 — Deploy via Blueprint
 
-### Step 2 — Set up MongoDB Atlas (free)
+1. Push mono-repo to GitHub
+2. [dashboard.render.com](https://dashboard.render.com) → **New → Blueprint**
+3. Connect GitHub repo → Render finds `render.yaml` automatically → **Apply**
 
-MongoDB Atlas provides a free M0 cluster (512MB, enough for this project):
+### Step 3 — Set Secrets in Render Dashboard
 
-1. Go to https://www.mongodb.com/atlas/database
-2. Create a free account → "Build a database" → M0 Free tier
-3. Set username/password, allow access from `0.0.0.0/0` (for Render)
-4. Click "Connect" → "Drivers" → copy the connection string:
-   `mongodb+srv://username:password@cluster.mongodb.net/privacy_audit_ai`
+Go to each service's **Environment** tab:
 
-### Step 3 — Deploy to Render via Blueprint
-
-1. Go to https://dashboard.render.com
-2. Click **New** → **Blueprint**
-3. Connect your GitHub repo
-4. Render will find `render.yaml` at the repo root automatically
-5. Review the services and click **Apply**
-
-### Step 4 — Set required secrets in Render dashboard
-
-After blueprint deploys, go to each service's **Environment** tab and set:
-
-| Variable | Where | Notes |
+| Variable | Service | How to get |
 |---|---|---|
-| `JWT_SECRET` | audit-backend | Run `openssl rand -hex 32` |
-| `GOOGLE_CLIENT_ID` | audit-backend | From Google Cloud Console |
-| `GOOGLE_CLIENT_SECRET` | audit-backend | From Google Cloud Console |
-| `ANTHROPIC_API_KEY` | audit-backend | From console.anthropic.com |
-| `MONGODB_URI` | audit-backend | From MongoDB Atlas Step 2 |
-| `SMTP_HOST/USER/PASS` | audit-backend | From Mailtrap or Gmail |
+| `JWT_SECRET` | audit-backend | `openssl rand -hex 32` |
+| `ENCRYPTION_KEY` | audit-backend | `openssl rand -hex 32` (must be 32 chars) |
 | `DEV_TOKEN` | audit-backend | Any random secret |
-| `HEALTH_AUDIT_API_KEY` | health-backend | Must match what you register in audit service |
-| `SOCIAL_AUDIT_API_KEY` | social-backend | Must match what you register in audit service |
+| `SUPER_ADMIN_EMAIL` | audit-backend | Your email |
+| `SUPER_ADMIN_PASSWORD` | audit-backend | A secure password |
+| `MONGODB_URI` | audit-backend | Atlas connection string from Step 1 |
+| `GOOGLE_CLIENT_ID` | audit-backend | Google Cloud Console (optional) |
+| `GOOGLE_CLIENT_SECRET` | audit-backend | Google Cloud Console (optional) |
+| `ANTHROPIC_API_KEY` | audit-backend | console.anthropic.com (fallback AI) |
+| `HEALTH_AUDIT_API_KEY` | health-backend | Must match what's registered in audit service |
+| `SOCIAL_AUDIT_API_KEY` | social-backend | Must match what's registered in audit service |
+| `VITE_API_URL` | audit-frontend | `https://audit-backend-ddew.onrender.com/api` |
 
-### Step 5 — Update Google OAuth callback URL
+### Step 4 — Google OAuth Redirect URL (if using OAuth)
 
-In Google Cloud Console → Credentials → your OAuth 2.0 client, add:
+Add to Google Cloud Console → Credentials → your OAuth client:
 ```
-https://audit-backend.onrender.com/api/auth/google/callback
+https://audit-backend-ddew.onrender.com/api/auth/google/callback
 ```
 
-### Render URLs (after deploy)
-| Service | URL |
-|---|---|
-| Privacy Dashboard | https://audit-frontend.onrender.com |
-| Audit API | https://audit-backend.onrender.com/api |
-| API Docs | https://audit-backend.onrender.com/api/docs |
-| HealthTrack App | https://health-frontend.onrender.com |
-| ConnectSocial App | https://social-frontend.onrender.com |
+### Render Free Tier Notes
 
-### Notes on Render Free Tier
-- Free web services **spin down after 15 minutes of inactivity** — first request after sleep takes ~30s
-- Free PostgreSQL databases are deleted after 90 days (upgrade to $7/mo to persist)
-- For a dissertation demo, the free tier is fine — just visit the site once before the demo to wake services up
-- Render's free Redis has a 25MB limit — more than enough for this project
+- Web services **spin down after 15 minutes of inactivity** — first request after sleep takes ~30s
+  - Visit the site once before your demo to wake services up
+- Free PostgreSQL databases are deleted after 90 days
+- Free Redis: 25 MB limit — more than enough
+- Redis eviction policy: must be `noeviction` (not `allkeys-lru`) to prevent BullMQ data loss
+  - Set this in Render dashboard → Redis service → Configuration
 
 ---
 
-## Environment Variables Reference
+## Pre-Demo Checklist (Render)
+
+Run through this before your dissertation demo:
+
+| # | Check | How |
+|---|---|---|
+| 1 | Super admin env vars set | Render → audit-backend → Environment → `SUPER_ADMIN_EMAIL`, `SUPER_ADMIN_PASSWORD` |
+| 2 | Wake up services | Visit dashboard URL + API health: `/api/health` |
+| 3 | BullMQ queue health | Swagger → `GET /dev/queue-status` with `x-dev-token` → want `failed: 0` |
+| 4 | Dev token in browser | Dashboard → Settings → Security → paste `DEV_TOKEN` → Save |
+| 5 | AI provider configured | Dashboard → Settings → AI → verify active provider |
+| 6 | Seed demo events | Dashboard → Dev → "Seed Events" for both tenants |
+| 7 | Run risk analysis | Dashboard → Dev → "Trigger Risk Analysis" |
+| 8 | Check notifications | Bell icon → should show recent alerts |
+
+---
+
+## Environment Variables — Full Reference
 
 | Variable | Required | Default | Description |
 |---|---|---|---|
@@ -164,17 +139,21 @@ https://audit-backend.onrender.com/api/auth/google/callback
 | `DB_NAME` | Yes | privacy_audit | PostgreSQL database |
 | `REDIS_HOST` | Yes | localhost | Redis host |
 | `REDIS_PORT` | Yes | 6379 | Redis port |
-| `MONGODB_URI` | Yes | mongodb://... | MongoDB connection string |
-| `JWT_SECRET` | Yes | — | Shared JWT signing secret |
+| `MONGODB_URI` | Yes | mongodb://localhost:27017/... | MongoDB connection string |
+| `JWT_SECRET` | Yes | — | Signs all JWTs |
+| `ENCRYPTION_KEY` | Yes | — | AES-256-GCM for AI provider keys (32 chars) |
+| `DEV_TOKEN` | Yes | dev-secret | Guards `/api/dev/*` endpoints |
+| `SUPER_ADMIN_EMAIL` | Yes | — | Creates super admin on startup |
+| `SUPER_ADMIN_PASSWORD` | Yes | — | Super admin password |
 | `GOOGLE_CLIENT_ID` | OAuth only | — | Google OAuth 2.0 client ID |
 | `GOOGLE_CLIENT_SECRET` | OAuth only | — | Google OAuth 2.0 secret |
 | `GOOGLE_CALLBACK_URL` | OAuth only | — | Redirect URL after Google login |
 | `DASHBOARD_BASE_URL` | Yes | http://localhost:3000 | Frontend URL (for redirects) |
-| `ANTHROPIC_API_KEY` | AI only | — | Claude API key |
-| `SMTP_HOST` | Email only | sandbox.smtp.mailtrap.io | SMTP server |
+| `ANTHROPIC_API_KEY` | AI fallback | — | Claude fallback if no DB provider set |
+| `SMTP_HOST` | Email only | — | SMTP server (Mailtrap recommended) |
 | `SMTP_PORT` | Email only | 587 | SMTP port |
 | `SMTP_USER` | Email only | — | SMTP username |
 | `SMTP_PASS` | Email only | — | SMTP password |
 | `FROM_EMAIL` | Email only | — | Sender email address |
-| `DEV_TOKEN` | Dev only | dev-secret | Guards /api/dev/* endpoints |
 | `PORT` | Yes | 8080 | HTTP port |
+| `VITE_API_URL` | Frontend | — | Backend URL for React build |

@@ -592,7 +592,87 @@ Key env vars:
 
 ---
 
-## 20. Complexity Feature Matrix (Dissertation Value)
+## 20. Full API Endpoint Reference
+
+### Tenant & Auth
+```
+POST   /api/tenants/register                       create tenant + admin user, returns API key
+GET    /api/tenants/:id/onboarding-status           hasEvents, eventCount, dashboardReady
+POST   /api/auth/login                             email/password → JWT
+GET    /api/auth/google                            OAuth redirect
+GET    /api/auth/google/callback                   OAuth callback, issues google_session JWT
+GET    /api/health                                 DB + Redis health check
+```
+
+### Event Ingestion (`x-api-key` header)
+```
+POST   /api/events                                 ingest event (202 Accepted, queued)
+GET    /api/events                                 list events for tenant
+GET    /api/events/verify-chain                    verify SHA-256 hash chain integrity
+```
+
+### Dashboard (Bearer JWT — DashboardAnyGuard)
+```
+POST   /api/dashboard/token                        tenant app issues 15-min handshake token
+POST   /api/dashboard/session                      exchange handshake → 8h session JWT
+GET    /api/dashboard/events                       audit events for authenticated user
+GET    /api/dashboard/risk-alerts                  AI-generated privacy risk alerts
+GET    /api/dashboard/privacy-score                0-100 health score + grade + breakdown
+POST   /api/dashboard/exports                      request GDPR Art.20 data export (202)
+GET    /api/dashboard/exports/:id                  poll export status
+GET    /api/dashboard/exports/:id/download         download JSON (410 Gone if expired)
+POST   /api/dashboard/deletions                    request GDPR Art.17 erasure (202)
+GET    /api/dashboard/deletions/:id                poll deletion status + deleted count
+GET    /api/dashboard/compliance-report/download   PDF Art.30 compliance report
+POST   /api/dashboard/ai-chat                      send AI chat message (sync, legacy)
+POST   /api/dashboard/ai-chat/stream               send message, stream SSE response
+GET    /api/dashboard/ai-chat/history              paginated chat session list
+GET    /api/dashboard/ai-chat/sessions/:id         load past session messages
+GET    /api/dashboard/ai-analysis                  AI risk analysis history (MongoDB)
+POST   /api/dashboard/breach-report                start 72h GDPR Art.33 countdown
+GET    /api/dashboard/breach-report                list breach reports
+POST   /api/dashboard/breach-report/:id/notify     simulate regulator notification
+POST   /api/dashboard/link-account                 link Google identity to tenant account
+GET    /api/dashboard/linked-accounts              list linked tenant apps
+DELETE /api/dashboard/linked-accounts/:id          unlink a tenant account
+GET    /api/dashboard/gdpr/requests                all GDPR requests (admin view)
+GET    /api/dashboard/notifications                list user notifications
+GET    /api/dashboard/notifications/unread-count   unread count (bell badge, polled 60s)
+PUT    /api/dashboard/notifications/:id/read       mark notification as read
+GET    /api/dashboard/tenants/available            tenants available for linking
+GET    /api/dashboard/tenants/all                  all tenants (super admin)
+```
+
+### Consents (GDPR Art.7)
+```
+POST   /api/consents                               set/revoke consent for a data type
+GET    /api/consents/:userId                       all consent records (with defaults)
+```
+
+### Webhooks
+```
+POST   /api/webhooks                               register endpoint, returns signing secret
+GET    /api/webhooks                               list active webhooks (secrets hidden)
+DELETE /api/webhooks/:id                           deactivate webhook
+```
+
+### Dev Tools (`x-dev-token` header required)
+```
+POST   /api/dev/trigger-risk-analysis              run AI risk analysis now
+POST   /api/dev/trigger-retention                  run data retention purge now
+POST   /api/dev/trigger-weekly-digest              send weekly email digest now
+POST   /api/dev/seed-events                        inject 20 demo events { tenantId }
+GET    /api/dev/queue-status                       BullMQ queue depth + health flag
+GET    /api/dev/ai-providers                       list configured AI providers
+POST   /api/dev/ai-providers                       add provider (Claude/Gemini/OpenAI)
+PUT    /api/dev/ai-providers/:id/activate          switch active AI provider
+DELETE /api/dev/ai-providers/:id                   remove provider
+GET    /api/dev/ai-providers/active                show currently active provider
+```
+
+---
+
+## 21. Complexity Feature Matrix (Dissertation Value)
 
 | Feature | Files | Academic Relevance |
 |---|---|---|
