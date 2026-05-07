@@ -1,0 +1,404 @@
+import { useState, useEffect, useCallback } from 'react';
+import Alert from '@mui/material/Alert';
+import CircularProgress from '@mui/material/CircularProgress';
+import Accordion from '@mui/material/Accordion';
+import AccordionSummary from '@mui/material/AccordionSummary';
+import AccordionDetails from '@mui/material/AccordionDetails';
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import { dashboardApi, devApi } from '../api/client';
+import { BrainIcon, RefreshIcon, RiskIcon, CheckIcon } from '../components/icons/Icons';
+
+interface RiskAlert {
+  id: string;
+  severity: string;
+  title: string;
+  description: string;
+  suggestedAction: string;
+  affectedEventCount: number;
+  analysedAt: string;
+}
+
+interface AnalysisFinding { severity: string; title: string; description: string; suggestedAction: string; affectedEventCount: number; }
+interface AnalysisRecord { _id: string; provider: string; aiModel: string; eventCount: number; findings: AnalysisFinding[]; createdAt: string; periodStart: string; periodEnd: string; }
+
+const SEVERITY_COLOR: Record<string, string> = {
+  CRITICAL: '#ef4444',
+  HIGH:     '#f97316',
+  MEDIUM:   '#eab308',
+  LOW:      '#22c55e',
+};
+
+const SEVERITY_DIM: Record<string, string> = {
+  CRITICAL: 'rgba(239,68,68,0.08)',
+  HIGH:     'rgba(249,115,22,0.08)',
+  MEDIUM:   'rgba(234,179,8,0.08)',
+  LOW:      'rgba(34,197,94,0.08)',
+};
+
+function timeAgo(iso: string): string {
+  const diff = Date.now() - new Date(iso).getTime();
+  const m = Math.floor(diff / 60000);
+  if (m < 1) return 'just now';
+  if (m < 60) return `${m}m ago`;
+  const h = Math.floor(m / 60);
+  if (h < 24) return `${h}h ago`;
+  return `${Math.floor(h / 24)}d ago`;
+}
+
+function SkeletonCard() {
+  return (
+    <div style={{
+      padding: '16px 18px', borderRadius: 12,
+      border: '1px solid var(--border)', background: 'var(--surface-2)',
+    }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
+        <div className="skeleton" style={{ width: 50, height: 20, borderRadius: 5 }} />
+        <div className="skeleton skeleton-title" style={{ width: '45%' }} />
+      </div>
+      <div className="skeleton skeleton-text" style={{ width: '90%', marginBottom: 6 }} />
+      <div className="skeleton skeleton-text" style={{ width: '70%' }} />
+    </div>
+  );
+}
+
+function RiskCard({ alert, delay }: { alert: RiskAlert; delay: number }) {
+  const [expanded, setExpanded] = useState(false);
+  const col = SEVERITY_COLOR[alert.severity] ?? '#94a3b8';
+  const dim = SEVERITY_DIM[alert.severity] ?? 'rgba(148,163,184,0.08)';
+
+  return (
+    <div
+      className={`anim-fade-up d${Math.min(delay, 6)}`}
+      onClick={() => setExpanded(v => !v)}
+      style={{
+        background: dim, border: `1px solid ${col}30`, borderRadius: 12,
+        padding: '16px 18px', cursor: 'pointer', transition: 'box-shadow 0.18s ease',
+      }}
+      onMouseEnter={e => { (e.currentTarget as HTMLDivElement).style.boxShadow = 'var(--shadow-md)'; }}
+      onMouseLeave={e => { (e.currentTarget as HTMLDivElement).style.boxShadow = 'none'; }}
+    >
+      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
+        <div style={{
+          width: 8, height: 8, borderRadius: '50%', background: col,
+          marginTop: 6, flexShrink: 0, boxShadow: `0 0 0 3px ${col}30`,
+        }} />
+        <div style={{ flex: 1 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 5 }}>
+            <span style={{
+              padding: '3px 10px', borderRadius: 6, fontSize: 11, fontWeight: 700,
+              background: `${col}20`, color: col, fontFamily: "'JetBrains Mono', monospace",
+            }}>
+              {alert.severity}
+            </span>
+            <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--text)' }}>
+              {alert.title}
+            </span>
+          </div>
+          <div style={{ fontSize: 13, color: 'var(--text-2)', lineHeight: 1.6 }}>
+            {alert.description}
+          </div>
+          {expanded && (
+            <div className="anim-fade-in" style={{
+              marginTop: 12, padding: '12px 14px', background: 'var(--surface)',
+              borderRadius: 10, fontSize: 12.5, color: 'var(--text-2)', lineHeight: 1.65,
+              borderLeft: `3px solid ${col}`,
+            }}>
+              <strong style={{ color: col }}>Suggested action: </strong>
+              {alert.suggestedAction}
+            </div>
+          )}
+          <div style={{ marginTop: 8, fontSize: 11, color: 'var(--text-3)' }}>
+            {alert.affectedEventCount} event{alert.affectedEventCount !== 1 ? 's' : ''} affected · click to {expanded ? 'collapse' : 'expand'}
+          </div>
+        </div>
+        <span style={{ fontSize: 11, color: 'var(--text-3)', whiteSpace: 'nowrap', flexShrink: 0 }}>
+          {timeAgo(alert.analysedAt)}
+        </span>
+      </div>
+    </div>
+  );
+}
+
+export default function RiskPage() {
+  const [alerts, setAlerts] = useState<RiskAlert[]>([]);
+  const [analysisHistory, setAnalysisHistory] = useState<AnalysisRecord[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [runLoading, setRunLoading] = useState(false);
+  const [runMsg, setRunMsg] = useState('');
+  const [severityFilter, setSeverityFilter] = useState<string>('all');
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    setError('');
+    try {
+      const [alertsData, historyData] = await Promise.all([
+        dashboardApi.getRiskAlerts(),
+        dashboardApi.getAnalysisHistory().catch(() => []),
+      ]);
+      setAlerts(Array.isArray(alertsData) ? alertsData : []);
+      setAnalysisHistory(Array.isArray(historyData) ? historyData : []);
+    } catch {
+      setError('Failed to load risk alerts. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => { load(); }, [load]);
+
+  const handleRunAnalysis = async () => {
+    const token = localStorage.getItem('dev_token') || (window as any).__VITE_DEV_TOKEN__ || import.meta.env.VITE_DEV_TOKEN || '';
+    if (!token) { setRunMsg('No dev token found. Set DEV_TOKEN env or unlock in AI Settings.'); return; }
+    setRunLoading(true);
+    setRunMsg('');
+    try {
+      await devApi.triggerRiskAnalysis(token);
+      setRunMsg('Done! Analysis queued — refresh in ~30 seconds to see new findings.');
+      setTimeout(() => load(), 8000);
+    } catch (e: any) {
+      setRunMsg(e?.response?.data?.message ?? 'Failed to trigger analysis.');
+    } finally {
+      setRunLoading(false);
+    }
+  };
+
+  const filtered = severityFilter === 'all'
+    ? alerts
+    : alerts.filter(a => a.severity === severityFilter);
+
+  const counts = alerts.reduce<Record<string, number>>((acc, a) => {
+    acc[a.severity] = (acc[a.severity] ?? 0) + 1;
+    return acc;
+  }, {});
+
+  return (
+    <div style={{ height: '100%', overflowY: 'auto' }}>
+      <div style={{ maxWidth: 820, margin: '0 auto', padding: '32px 24px' }}>
+
+        {/* Header */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 28 }} className="anim-fade-up">
+          <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+            <div style={{
+              width: 44, height: 44, borderRadius: 12, flexShrink: 0,
+              background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.2)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+            }}>
+              <BrainIcon style={{ width: 20, height: 20, color: 'var(--red)' }} />
+            </div>
+            <div>
+              <h1 style={{
+                margin: 0, fontSize: 22, fontWeight: 800, color: 'var(--text)',
+                letterSpacing: '-0.4px', fontFamily: "'Space Grotesk', sans-serif",
+              }}>
+                AI Privacy Risk Alerts
+              </h1>
+              <p style={{ margin: '2px 0 0', fontSize: 13, color: 'var(--text-3)' }}>
+                AI-generated findings from your audit events — updated every 6 hours
+              </p>
+            </div>
+          </div>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button
+              onClick={load}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 6,
+                padding: '8px 14px', borderRadius: 10, border: '1px solid var(--border)',
+                background: 'transparent', color: 'var(--text-2)', fontSize: 12,
+                fontWeight: 600, cursor: 'pointer', fontFamily: "'DM Sans', sans-serif",
+                transition: 'background 0.12s',
+              }}
+              onMouseEnter={e => (e.currentTarget.style.background = 'var(--surface-2)')}
+              onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+            >
+              <RefreshIcon style={{ width: 13, height: 13 }} />
+              Refresh
+            </button>
+            <button
+              onClick={handleRunAnalysis}
+              disabled={runLoading}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 7,
+                padding: '8px 16px', borderRadius: 10, border: '1px solid var(--accent)',
+                background: 'var(--accent-dim)', color: 'var(--accent)', fontSize: 12,
+                fontWeight: 700, cursor: runLoading ? 'not-allowed' : 'pointer',
+                fontFamily: "'DM Sans', sans-serif", transition: 'all 0.15s',
+              }}
+              onMouseEnter={e => { if (!runLoading) { e.currentTarget.style.background = 'var(--accent)'; e.currentTarget.style.color = '#fff'; } }}
+              onMouseLeave={e => { e.currentTarget.style.background = 'var(--accent-dim)'; e.currentTarget.style.color = 'var(--accent)'; }}
+            >
+              {runLoading
+                ? <><CircularProgress size={12} sx={{ color: 'inherit' }} /> Running…</>
+                : <><RefreshIcon style={{ width: 13, height: 13 }} /> Run Analysis Now</>}
+            </button>
+          </div>
+        </div>
+
+        {runMsg && (
+          <Alert
+            severity={runMsg.startsWith('Done') ? 'success' : 'warning'}
+            onClose={() => setRunMsg('')}
+            sx={{ mb: 2, borderRadius: '10px', fontSize: 13 }}
+          >
+            {runMsg}
+          </Alert>
+        )}
+
+        {error && (
+          <Alert severity="error" onClose={() => setError('')} sx={{ mb: 2, borderRadius: '10px' }}>
+            {error}
+          </Alert>
+        )}
+
+        {/* Severity summary badges */}
+        {!loading && alerts.length > 0 && (
+          <div style={{ display: 'flex', gap: 8, marginBottom: 20, flexWrap: 'wrap' }} className="anim-fade-up d1">
+            {(['all', 'CRITICAL', 'HIGH', 'MEDIUM', 'LOW'] as const).map(s => {
+              const isActive = severityFilter === s;
+              const col = s === 'all' ? 'var(--accent)' : SEVERITY_COLOR[s];
+              const count = s === 'all' ? alerts.length : (counts[s] ?? 0);
+              return (
+                <button
+                  key={s}
+                  onClick={() => setSeverityFilter(s)}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: 6,
+                    padding: '5px 12px', borderRadius: 8,
+                    border: `1px solid ${isActive ? col : 'var(--border)'}`,
+                    background: isActive ? `${col === 'var(--accent)' ? 'rgba(91,94,246,0.12)' : col + '15'}` : 'transparent',
+                    color: isActive ? col : 'var(--text-3)',
+                    fontSize: 12, fontWeight: isActive ? 700 : 500,
+                    cursor: 'pointer', fontFamily: "'DM Sans', sans-serif",
+                    transition: 'all 0.15s',
+                  }}
+                >
+                  {s === 'all' ? 'All' : s}
+                  <span style={{
+                    minWidth: 18, height: 18, borderRadius: 5, padding: '0 4px',
+                    background: isActive ? col : 'var(--surface-2)',
+                    color: isActive ? '#fff' : 'var(--text-3)',
+                    fontSize: 10, fontWeight: 700,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  }}>
+                    {count}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        )}
+
+        {/* Alerts list */}
+        <div className="dg-card anim-fade-up d2" style={{ padding: '20px 22px', marginBottom: 16 }}>
+          {loading ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              {[...Array(4)].map((_, i) => <SkeletonCard key={i} />)}
+            </div>
+          ) : filtered.length === 0 ? (
+            <div style={{ textAlign: 'center', padding: '48px 0' }}>
+              <CheckIcon style={{ width: 40, height: 40, color: 'var(--green)', marginBottom: 12 }} />
+              <p style={{ margin: 0, fontSize: 14, fontWeight: 700, color: 'var(--text)' }}>
+                {severityFilter === 'all' ? 'No risk alerts found' : `No ${severityFilter} alerts`}
+              </p>
+              <p style={{ margin: '4px 0 0', fontSize: 12, color: 'var(--text-3)' }}>
+                {severityFilter === 'all'
+                  ? 'No issues detected. Click "Run Analysis Now" to generate fresh findings.'
+                  : 'Try a different severity filter.'}
+              </p>
+            </div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {filtered.map((alert, i) => (
+                <RiskCard key={alert.id} alert={alert} delay={i} />
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Analysis history */}
+        {analysisHistory.length > 0 && (
+          <div className="dg-card anim-fade-up d3" style={{ padding: '20px 22px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 14 }}>
+              <div style={{
+                width: 34, height: 34, borderRadius: 10,
+                background: 'var(--accent-dim)', display: 'flex', alignItems: 'center', justifyContent: 'center',
+              }}>
+                <RiskIcon style={{ width: 16, height: 16, color: 'var(--accent)' }} />
+              </div>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text)', fontFamily: "'Space Grotesk', sans-serif" }}>
+                  Analysis History
+                </div>
+                <div style={{ fontSize: 11, color: 'var(--text-3)' }}>
+                  Last: {timeAgo(analysisHistory[0].createdAt)} · {analysisHistory[0].findings?.length ?? 0} findings
+                </div>
+              </div>
+              <span style={{
+                padding: '3px 12px', background: 'var(--accent)', color: '#fff',
+                borderRadius: 20, fontSize: 11, fontWeight: 700,
+              }}>
+                {analysisHistory.length}
+              </span>
+            </div>
+            {analysisHistory.map((rec, ri) => (
+              <Accordion
+                key={rec._id}
+                disableGutters
+                elevation={0}
+                sx={{
+                  background: 'var(--surface-2)', border: '1px solid var(--border)',
+                  borderRadius: '10px !important', mb: 1,
+                  '&:before': { display: 'none' },
+                }}
+              >
+                <AccordionSummary expandIcon={<ExpandMoreIcon sx={{ color: 'var(--text-3)', fontSize: 18 }} />}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', paddingRight: 8 }}>
+                    <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text)', fontFamily: "'JetBrains Mono', monospace" }}>
+                      #{ri + 1}
+                    </span>
+                    <span style={{ fontSize: 12, color: 'var(--text-2)', flex: 1 }}>
+                      {timeAgo(rec.createdAt)} · {rec.eventCount} events · {rec.aiModel}
+                    </span>
+                    <span style={{
+                      padding: '2px 8px', borderRadius: 5,
+                      background: 'var(--accent-dim)', color: 'var(--accent)',
+                      fontSize: 10, fontWeight: 700,
+                    }}>
+                      {rec.findings?.length ?? 0} findings
+                    </span>
+                  </div>
+                </AccordionSummary>
+                <AccordionDetails sx={{ pt: 0 }}>
+                  {(rec.findings ?? []).length === 0 ? (
+                    <div style={{ fontSize: 12, color: 'var(--text-3)', padding: '4px 0' }}>No findings in this run.</div>
+                  ) : (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                      {rec.findings.map((f, fi) => {
+                        const fcol = SEVERITY_COLOR[f.severity] ?? '#94a3b8';
+                        return (
+                          <div key={fi} style={{
+                            borderLeft: `3px solid ${fcol}`, paddingLeft: 12,
+                            paddingTop: 4, paddingBottom: 4,
+                          }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: 3 }}>
+                              <span style={{ padding: '2px 8px', borderRadius: 6, fontSize: 11, fontWeight: 700, background: `${fcol}20`, color: fcol, fontFamily: "'JetBrains Mono', monospace" }}>
+                                {f.severity}
+                              </span>
+                              <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>{f.title}</span>
+                            </div>
+                            <div style={{ fontSize: 12, color: 'var(--text-2)', lineHeight: 1.55 }}>{f.description}</div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </AccordionDetails>
+              </Accordion>
+            ))}
+          </div>
+        )}
+
+      </div>
+    </div>
+  );
+}

@@ -57,6 +57,8 @@ export class SeedService implements OnApplicationBootstrap {
   ) {}
 
   async onApplicationBootstrap() {
+    await this.seedSuperAdmin();
+
     for (const demo of DEMO_TENANTS) {
       const existing = await this.tenantsRepository.findOne({
         where: { id: demo.id },
@@ -99,5 +101,36 @@ export class SeedService implements OnApplicationBootstrap {
         this.logger.log(`Seeded admin user: ${demo.email}`);
       }
     }
+  }
+
+  private async seedSuperAdmin() {
+    const email = process.env.SUPER_ADMIN_EMAIL;
+    const password = process.env.SUPER_ADMIN_PASSWORD;
+
+    if (!email || !password) {
+      this.logger.warn('SUPER_ADMIN_EMAIL / SUPER_ADMIN_PASSWORD not set — skipping super admin seed');
+      return;
+    }
+
+    const existing = await this.usersRepository.findOne({ where: { email } });
+    if (existing) {
+      if (existing.role !== UserRole.SUPER_ADMIN) {
+        await this.usersRepository.update(existing.id, { role: UserRole.SUPER_ADMIN });
+        this.logger.log(`Upgraded ${email} to SUPER_ADMIN`);
+      }
+      return;
+    }
+
+    const passwordHash = await bcrypt.hash(password, 10);
+    await this.usersRepository.save(
+      this.usersRepository.create({
+        email,
+        passwordHash,
+        tenantId: null as any,
+        role: UserRole.SUPER_ADMIN,
+        isActive: true,
+      }),
+    );
+    this.logger.log(`Super admin seeded: ${email}`);
   }
 }

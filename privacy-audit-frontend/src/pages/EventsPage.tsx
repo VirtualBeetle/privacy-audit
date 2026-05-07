@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { dashboardApi } from '../api/client';
 import type { AuditEvent } from '../types';
 import {
@@ -241,6 +242,39 @@ function EventCard({ event, idx }: { event: AuditEvent; idx: number }) {
               </div>
             </div>
           ))}
+          {/* SHA-256 hash chain */}
+          <div style={{
+            gridColumn: '1 / -1',
+            padding: '10px 12px',
+            background: 'rgba(5,150,105,0.04)',
+            borderRadius: 8,
+            border: '1px solid rgba(5,150,105,0.15)',
+          }}>
+            <div style={{ fontSize: 10, fontWeight: 700, color: '#059669', textTransform: 'uppercase', letterSpacing: '0.7px', marginBottom: 6 }}>
+              SHA-256 Hash Chain · GDPR Art.30
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-3)', width: 60, flexShrink: 0 }}>HASH</span>
+                <span style={{
+                  fontSize: 11, fontFamily: "'JetBrains Mono', monospace",
+                  color: '#059669', letterSpacing: '0.3px', wordBreak: 'break-all',
+                }}>
+                  {event.hash ? `${event.hash.slice(0, 16)}…${event.hash.slice(-8)}` : '—'}
+                </span>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-3)', width: 60, flexShrink: 0 }}>PREV</span>
+                <span style={{
+                  fontSize: 11, fontFamily: "'JetBrains Mono', monospace",
+                  color: event.prevHash ? 'var(--text-2)' : 'var(--text-3)', letterSpacing: '0.3px',
+                }}>
+                  {event.prevHash ? `${event.prevHash.slice(0, 16)}…${event.prevHash.slice(-8)}` : 'genesis block'}
+                </span>
+              </div>
+            </div>
+          </div>
+
           {event.meta && Object.keys(event.meta).length > 0 && (
             <div style={{
               gridColumn: '1 / -1',
@@ -299,6 +333,7 @@ function SelectFilter({
 
 /* ── Main page ────────────────────────────────────────────────── */
 export default function EventsPage() {
+  const navigate = useNavigate();
   const [events, setEvents] = useState<AuditEvent[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -406,28 +441,34 @@ export default function EventsPage() {
 
         <div style={{ flex: 1 }} />
 
-        {/* Queue + chain badges */}
+        {/* Queue + chain nav buttons */}
         <div style={{ display: 'flex', gap: 6 }}>
-          <span style={{
-            padding: '5px 12px',
-            borderRadius: 20,
-            background: 'var(--accent-dim)',
-            color: 'var(--accent)',
-            fontSize: 11,
-            fontWeight: 700,
-            fontFamily: "'JetBrains Mono', monospace",
-            border: '1px solid rgba(91,94,246,0.2)',
-          }}>BullMQ async queue</span>
-          <span style={{
-            padding: '5px 12px',
-            borderRadius: 20,
-            background: 'var(--green-dim)',
-            color: 'var(--green)',
-            fontSize: 11,
-            fontWeight: 700,
-            fontFamily: "'JetBrains Mono', monospace",
-            border: '1px solid rgba(5,150,105,0.2)',
-          }}>SHA-256 chained</span>
+          <button
+            onClick={() => navigate('/queue')}
+            style={{
+              padding: '5px 12px', borderRadius: 20,
+              background: 'var(--accent-dim)', color: 'var(--accent)',
+              fontSize: 11, fontWeight: 700,
+              fontFamily: "'JetBrains Mono', monospace",
+              border: '1px solid rgba(91,94,246,0.2)',
+              cursor: 'pointer',
+            }}
+          >
+            BullMQ queue →
+          </button>
+          <button
+            onClick={() => navigate('/queue')}
+            style={{
+              padding: '5px 12px', borderRadius: 20,
+              background: 'var(--green-dim)', color: 'var(--green)',
+              fontSize: 11, fontWeight: 700,
+              fontFamily: "'JetBrains Mono', monospace",
+              border: '1px solid rgba(5,150,105,0.2)',
+              cursor: 'pointer',
+            }}
+          >
+            SHA-256 chained →
+          </button>
         </div>
 
         {/* Refresh */}

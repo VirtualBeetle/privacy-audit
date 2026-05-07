@@ -10,6 +10,7 @@ import { AiOrchestrationService } from '../ai-orchestration/ai-orchestration.ser
 import { AiChatService } from '../ai-chat/ai-chat.service';
 import { EmailService } from '../email/email.service';
 import { WebhooksService } from '../webhooks/webhooks.service';
+import { NotificationsService } from '../notifications/notifications.service';
 
 /**
  * RiskService
@@ -39,6 +40,7 @@ export class RiskService {
     private readonly aiChatService: AiChatService,
     private readonly emailService: EmailService,
     private readonly webhooksService: WebhooksService,
+    private readonly notificationsService: NotificationsService,
   ) {}
 
   // ── Cron ────────────────────────────────────────────────────────────────────
@@ -256,6 +258,24 @@ If there are no risks, return exactly: []`;
         }).catch((err: Error) =>
           this.logger.warn(`Webhook fire failed: ${err.message}`),
         );
+
+        // Push notification to super_admin + tenant_admin
+        this.notificationsService.create({
+          recipientType: 'super_admin',
+          type: 'risk_alert',
+          severity: alert.severity,
+          title: `${alert.severity} Risk: ${String(alert.title ?? '').slice(0, 80)}`,
+          message: String(alert.description ?? '').slice(0, 200),
+        }).catch(() => {});
+
+        this.notificationsService.create({
+          recipientType: 'tenant_admin',
+          tenantId,
+          type: 'risk_alert',
+          severity: alert.severity,
+          title: `${alert.severity} Risk: ${String(alert.title ?? '').slice(0, 80)}`,
+          message: String(alert.description ?? '').slice(0, 200),
+        }).catch(() => {});
       }
 
       // Send email for HIGH and CRITICAL alerts

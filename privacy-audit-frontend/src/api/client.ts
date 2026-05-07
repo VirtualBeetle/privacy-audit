@@ -79,6 +79,10 @@ export const dashboardApi = {
   getLinkedAccounts: () =>
     api.get('/dashboard/linked-accounts').then((r) => r.data),
 
+  /** Unlink a tenant account (google_session only). */
+  unlinkAccount: (tenantId: string, tenantUserId: string) =>
+    api.delete(`/dashboard/linked-accounts/${tenantId}`, { data: { tenantUserId } }).then((r) => r.data),
+
   /** Send a message in the AI chat. Creates a new session if sessionId is omitted. */
   aiChat: (message: string, sessionId?: string) =>
     api.post('/dashboard/ai-chat', { message, sessionId }).then((r) => r.data),
@@ -162,6 +166,13 @@ export const dashboardApi = {
     setTimeout(() => URL.revokeObjectURL(url), 10000);
   },
 
+  /** Admin: get all exports + deletions across visible tenants. */
+  getGdprRequests: () =>
+    api.get('/dashboard/gdpr/requests').then((r) => r.data as {
+      exports: { id: string; tenantId: string; tenantUserId: string; status: string; eventCount: number | null; requestedAt: string; completedAt: string | null }[];
+      deletions: { id: string; tenantId: string; tenantUserId: string; status: string; requestedAt: string; completedAt: string | null }[];
+    }),
+
   /**
    * GDPR Article 30 — Tamper-Evident Hash Chain Verification.
    * Walks the entire audit log and recomputes every SHA-256 hash.
@@ -204,6 +215,37 @@ export const devApi = {
 
   triggerRiskAnalysis: (token: string) =>
     api.post('/dev/trigger-risk-analysis', {}, { headers: devHeaders(token) }).then((r) => r.data),
+};
+
+// ─── Notifications API helpers ──────────────────────────────────────────────
+
+export const notificationsApi = {
+  getAll: () =>
+    api.get('/notifications').then((r) => r.data),
+
+  getUnreadCount: () =>
+    api.get('/notifications/unread-count').then((r) => r.data as { count: number }),
+
+  markRead: (id: string) =>
+    api.put(`/notifications/${id}/read`).then((r) => r.data),
+
+  markAllRead: () =>
+    api.put('/notifications/read-all').then((r) => r.data),
+};
+
+// ─── Tenants API helpers ────────────────────────────────────────────────────
+
+export const tenantsApi = {
+  /** Active tenants (id + name) for Google user link picker. */
+  listAvailable: () =>
+    api.get('/tenants/available').then((r) => r.data as { id: string; name: string }[]),
+
+  /** All tenants with event counts — super admin only. */
+  listAll: () =>
+    api.get('/tenants/all').then((r) => r.data as {
+      id: string; name: string; email: string; isActive: boolean;
+      retentionDays: number; createdAt: string; eventCount: number;
+    }[]),
 };
 
 // ─── Onboarding API helpers ─────────────────────────────────────────────────

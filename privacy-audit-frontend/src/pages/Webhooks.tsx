@@ -247,7 +247,7 @@ export default function Webhooks() {
               <SkeletonCard />
             </div>
           ) : webhooks.length === 0 ? (
-            <div style={{ textAlign: 'center', padding: '48px 0' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '48px 0' }}>
               <WebhookIcon style={{ width: 40, height: 40, color: 'var(--text-3)', marginBottom: 12 }} />
               <p style={{ margin: 0, fontSize: 14, fontWeight: 600, color: 'var(--text-2)' }}>
                 No webhooks registered yet

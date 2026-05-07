@@ -9,6 +9,7 @@ import {
 import { Tenant } from '../tenants/tenant.entity';
 
 export enum UserRole {
+  SUPER_ADMIN = 'super_admin',
   TENANT_ADMIN = 'tenant_admin',
   END_USER = 'end_user',
 }
@@ -18,7 +19,7 @@ export class User {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @Column({ name: 'tenant_id' })
+  @Column({ name: 'tenant_id', nullable: true })
   tenantId: string;
 
   @ManyToOne(() => Tenant)

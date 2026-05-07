@@ -28,6 +28,7 @@ import { BreachModule } from './breach/breach.module';
 import { WebhooksModule } from './webhooks/webhooks.module';
 import { SeedModule } from './seed/seed.module';
 import { DataMinimisationModule } from './data-minimisation/data-minimisation.module';
+import { NotificationsModule } from './notifications/notifications.module';
 
 // Entities
 import { Tenant } from './tenants/tenant.entity';
@@ -142,6 +143,7 @@ import { AppController } from './app.controller';
     WebhooksModule,
     SeedModule,
     DataMinimisationModule,
+    NotificationsModule,
   ],
   controllers: [AppController],
   providers: [

@@ -2,6 +2,7 @@ import {
   Controller,
   Post,
   Get,
+  Delete,
   Body,
   Param,
   Query,
@@ -132,6 +133,65 @@ export class DashboardController {
       user.dashboardUserId,
     );
     return { linkedAccounts: accounts };
+  }
+
+  @Delete('linked-accounts/:tenantId')
+  @UseGuards(DashboardAnyGuard)
+  async unlinkAccount(
+    @CurrentUser() user: any,
+    @Param('tenantId') tenantId: string,
+    @Body() body: { tenantUserId: string },
+  ) {
+    if (user.type !== 'google_session') {
+      throw new UnauthorizedException('Only google_session users can unlink accounts');
+    }
+    await this.dashboardUsersService.unlinkAccount(
+      user.dashboardUserId,
+      tenantId,
+      body.tenantUserId,
+    );
+    return { unlinked: true };
+  }
+
+  // ─── GDPR Admin Overview ───────────────────────────────────────────────────
+
+  /**
+   * GET /api/dashboard/gdpr/requests
+   * Returns all export and deletion requests visible to the caller.
+   *   - super_admin  → all tenants
+   *   - tenant_admin → own tenant only
+   * Returns 403 for tenant users and google users.
+   */
+  @Get('gdpr/requests')
+  @UseGuards(DashboardAnyGuard)
+  async gdprAdminOverview(@CurrentUser() user: any) {
+    if (user.type !== 'dashboard_session') {
+      return { error: 'Forbidden' };
+    }
+    const role: string = user.role ?? '';
+    if (role !== 'super_admin' && role !== 'tenant_admin') {
+      return { error: 'Forbidden' };
+    }
+
+    let tenantIds: string[];
+    if (role === 'super_admin') {
+      // All tenants — fetch ids via the exports themselves by passing a wildcard trick
+      // (easier: pass a sentinel that the service handles as "all")
+      tenantIds = ['__all__'];
+    } else {
+      tenantIds = [user.tenantId];
+    }
+
+    const [exports, deletions] = await Promise.all([
+      tenantIds[0] === '__all__'
+        ? this.exportsService.listAll()
+        : this.exportsService.listForAdmin(tenantIds),
+      tenantIds[0] === '__all__'
+        ? this.deletionsService.listAll()
+        : this.deletionsService.listForAdmin(tenantIds),
+    ]);
+
+    return { exports, deletions };
   }
 
   // ─── Exports (GDPR Article 20) ─────────────────────────────────────────────

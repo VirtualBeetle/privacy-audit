@@ -9,6 +9,7 @@ import { AiOrchestrationModule } from '../ai-orchestration/ai-orchestration.modu
 import { AiChatModule } from '../ai-chat/ai-chat.module';
 import { EmailModule } from '../email/email.module';
 import { WebhooksModule } from '../webhooks/webhooks.module';
+import { NotificationsModule } from '../notifications/notifications.module';
 
 @Module({
   imports: [
@@ -17,6 +18,7 @@ import { WebhooksModule } from '../webhooks/webhooks.module';
     AiChatModule,
     EmailModule,
     WebhooksModule,
+    NotificationsModule,
   ],
   providers: [RiskService],
   exports: [RiskService],

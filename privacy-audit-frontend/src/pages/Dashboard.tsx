@@ -41,15 +41,8 @@ const SEVERITY_COLOR: Record<string, string> = {
   LOW:      '#22c55e',
 };
 
-const SEVERITY_DIM: Record<string, string> = {
-  CRITICAL: 'rgba(239,68,68,0.08)',
-  HIGH:     'rgba(249,115,22,0.08)',
-  MEDIUM:   'rgba(234,179,8,0.08)',
-  LOW:      'rgba(34,197,94,0.08)',
-};
 
 /* ── Interfaces ─────────────────────────────────────────────────── */
-interface RiskAlert { id: string; severity: string; title: string; description: string; suggestedAction: string; affectedEventCount: number; analysedAt: string; }
 interface AnalysisFinding { severity: string; title: string; description: string; suggestedAction: string; affectedEventCount: number; }
 interface AnalysisRecord { _id: string; provider: string; aiModel: string; eventCount: number; findings: AnalysisFinding[]; createdAt: string; periodStart: string; periodEnd: string; }
 interface BreachReport { id: string; description: string; severity: string; reportedAt: string; notifyDeadline: string; regulatorNotified: boolean; hoursRemaining: number; deadlineExceeded: boolean; }
@@ -158,13 +151,32 @@ function StatCard({ label, value, icon: Icon, accent, delay, trend }: {
 
 /* ── Skeleton loaders ───────────────────────────────────────────── */
 function SkeletonCard({ height = 120 }: { height?: number }) {
-  return <div className="skeleton dg-card" style={{ height, borderRadius: 16 }} />;
+  return <div className="skeleton dg-card" style={{ height, borderRadius: 16, flex: 1 }} />;
+}
+
+function SkeletonStatCard() {
+  return (
+    <div className="dg-card" style={{
+      flex: 1, padding: '18px 20px', borderRadius: 16,
+      display: 'flex', flexDirection: 'column', gap: 12,
+      position: 'relative', overflow: 'hidden',
+    }}>
+      <div className="skeleton" style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 3, borderRadius: 0 }} />
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+        <div className="skeleton" style={{ width: 34, height: 34, borderRadius: 9 }} />
+      </div>
+      <div>
+        <div className="skeleton" style={{ width: 60, height: 28, borderRadius: 6, marginBottom: 8 }} />
+        <div className="skeleton skeleton-text" style={{ width: '65%', height: 12 }} />
+      </div>
+    </div>
+  );
 }
 
 function SkeletonStatRow() {
   return (
     <div style={{ display: 'flex', gap: 14 }}>
-      {[0, 1, 2, 3].map(i => <SkeletonCard key={i} height={110} />)}
+      {[0, 1, 2, 3].map(i => <SkeletonStatCard key={i} />)}
     </div>
   );
 }
@@ -268,37 +280,6 @@ function SectionHeading({ icon: Icon, title, subtitle, badge, action }: {
 }
 
 /* ── Risk card ──────────────────────────────────────────────────── */
-function RiskCard({ alert, delay }: { alert: RiskAlert; delay: number }) {
-  const [expanded, setExpanded] = useState(false);
-  const col = SEVERITY_COLOR[alert.severity] ?? '#94a3b8';
-  const dim = SEVERITY_DIM[alert.severity] ?? 'rgba(148,163,184,0.08)';
-  return (
-    <div
-      className={`anim-fade-up d${delay}`}
-      style={{ background: dim, border: `1px solid ${col}30`, borderRadius: 12, padding: '14px 16px', cursor: 'pointer', transition: 'box-shadow 0.18s ease' }}
-      onClick={() => setExpanded(v => !v)}
-      onMouseEnter={e => { (e.currentTarget as HTMLDivElement).style.boxShadow = 'var(--shadow-md)'; }}
-      onMouseLeave={e => { (e.currentTarget as HTMLDivElement).style.boxShadow = 'none'; }}
-    >
-      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
-        <div style={{ width: 8, height: 8, borderRadius: '50%', background: col, marginTop: 5, flexShrink: 0, boxShadow: `0 0 0 3px ${col}30` }} />
-        <div style={{ flex: 1 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-            <span style={{ padding: '3px 10px', borderRadius: 6, fontSize: 11, fontWeight: 700, background: `${col}20`, color: col, fontFamily: "'JetBrains Mono', monospace" }}>{alert.severity}</span>
-            <span style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--text)' }}>{alert.title}</span>
-          </div>
-          <div style={{ fontSize: 13, color: 'var(--text-2)', lineHeight: 1.55 }}>{alert.description}</div>
-          {expanded && (
-            <div className="anim-fade-in" style={{ marginTop: 10, padding: '10px 12px', background: 'var(--surface)', borderRadius: 8, fontSize: 12, color: 'var(--text-2)', lineHeight: 1.6 }}>
-              <strong style={{ color: col }}>Suggested: </strong>{alert.suggestedAction}
-            </div>
-          )}
-        </div>
-        <span style={{ fontSize: 11, color: 'var(--text-3)', whiteSpace: 'nowrap', flexShrink: 0 }}>{timeAgo(alert.analysedAt)}</span>
-      </div>
-    </div>
-  );
-}
 
 /* ── Chain integrity card ───────────────────────────────────────── */
 function ChainCard({ onVerify, result, verifying, events }: { onVerify: () => void; result: ChainIntegrityResult | null; verifying: boolean; events: AuditEvent[] }) {
@@ -435,7 +416,6 @@ export default function Dashboard({ initialSection }: Props) {
   const navigate = useNavigate();
 
   const [events, setEvents] = useState<AuditEvent[]>([]);
-  const [riskAlerts, setRiskAlerts] = useState<RiskAlert[]>([]);
   const [analysisHistory, setAnalysisHistory] = useState<AnalysisRecord[]>([]);
   const [privacyScore, setPrivacyScore] = useState<PrivacyScore | null>(null);
   const [breachReports, setBreachReports] = useState<BreachReport[]>([]);
@@ -464,16 +444,14 @@ export default function Dashboard({ initialSection }: Props) {
   const [tourStep, setTourStep] = useState(0);
 
   /* Section refs for initialSection scrolling */
-  const riskRef = useRef<HTMLDivElement>(null);
   const gdprRef = useRef<HTMLDivElement>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
     setError('');
     try {
-      const [eventsData, alertsData, analysisData, scoreData, breachData, consentsData, linkedData, violationsData] = await Promise.all([
+      const [eventsData, analysisData, scoreData, breachData, consentsData, linkedData, violationsData] = await Promise.all([
         dashboardApi.getEvents(),
-        dashboardApi.getRiskAlerts(),
         dashboardApi.getAnalysisHistory().catch(() => []),
         dashboardApi.getPrivacyScore().catch(() => null),
         dashboardApi.getBreachReports().catch(() => []),
@@ -482,7 +460,6 @@ export default function Dashboard({ initialSection }: Props) {
         dashboardApi.getViolations().catch(() => []),
       ]);
       setEvents(Array.isArray(eventsData) ? eventsData : []);
-      setRiskAlerts(Array.isArray(alertsData) ? alertsData : []);
       setAnalysisHistory(Array.isArray(analysisData) ? analysisData : []);
       setPrivacyScore(scoreData);
       setBreachReports(Array.isArray(breachData) ? breachData : []);
@@ -502,7 +479,6 @@ export default function Dashboard({ initialSection }: Props) {
   useEffect(() => {
     if (!loading && initialSection) {
       setTimeout(() => {
-        if (initialSection === 'risk') riskRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
         if (initialSection === 'gdpr') gdprRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
       }, 300);
     }
@@ -577,7 +553,7 @@ export default function Dashboard({ initialSection }: Props) {
         setDeleteStatus({ id: res.requestId, status: s.status });
         if (s.status === 'completed' || s.status === 'failed') {
           clearInterval(poll);
-          if (s.status === 'completed') { setEvents([]); setRiskAlerts([]); }
+          if (s.status === 'completed') { setEvents([]); }
         }
       }, 2000);
     } catch { setDeleteStatus(null); } finally { setDeleteLoading(false); }
@@ -666,6 +642,7 @@ export default function Dashboard({ initialSection }: Props) {
     );
   }
 
+  const isAdmin = user?.type === 'dashboard_session';
   const isGoogleNoApps = user?.type === 'google_session' && linkedAccounts.length === 0;
 
   return (
@@ -710,11 +687,13 @@ export default function Dashboard({ initialSection }: Props) {
 
       {!isGoogleNoApps && <>
 
-        {/* Connected Apps */}
-        <div className="anim-fade-up d0" style={{ marginBottom: 18 }}>
-          <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-3)', textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: 8 }}>Connected Apps</div>
-          <ConnectedApps events={events} />
-        </div>
+        {/* Connected Apps — only for Google/tenant sessions, not admin */}
+        {!isAdmin && (
+          <div className="anim-fade-up d0" style={{ marginBottom: 18 }}>
+            <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-3)', textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: 8 }}>Connected Apps</div>
+            <ConnectedApps events={events} />
+          </div>
+        )}
 
         {/* Privacy Health Score */}
         {privacyScore && (
@@ -835,15 +814,29 @@ export default function Dashboard({ initialSection }: Props) {
           <ChainCard onVerify={handleVerifyChain} result={chainResult} verifying={chainVerifying} events={filtered.slice(0, 10)} />
         </div>
 
-        {/* AI Risk Alerts */}
-        {riskAlerts.length > 0 && (
-          <div ref={riskRef} className="dg-card anim-fade-up d4" style={{ padding: '20px 22px', marginBottom: 14 }}>
-            <SectionHeading icon={BrainIcon} title="AI Privacy Risk Alerts" subtitle="Generated every 6 hours" badge={{ label: riskAlerts.length, color: 'var(--red)' }} />
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-              {riskAlerts.map((alert, i) => <RiskCard key={alert.id} alert={alert} delay={i} />)}
-            </div>
+        {/* Risk Alerts — dedicated page nav card */}
+        <div className="dg-card anim-fade-up d4" style={{ padding: '16px 20px', marginBottom: 14, display: 'flex', alignItems: 'center', gap: 14 }}>
+          <div style={{ width: 36, height: 36, borderRadius: 10, background: 'var(--red-dim)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+            <BrainIcon style={{ width: 17, height: 17, color: 'var(--red)' }} />
           </div>
-        )}
+          <div style={{ flex: 1 }}>
+            <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text)', fontFamily: "'Space Grotesk', sans-serif" }}>AI Privacy Risk Alerts</div>
+            <div style={{ fontSize: 12, color: 'var(--text-3)' }}>AI-generated findings — updated every 6 hours</div>
+          </div>
+          <button
+            onClick={() => navigate('/risk')}
+            style={{
+              padding: '7px 16px', borderRadius: 9, border: '1px solid var(--border)',
+              background: 'var(--surface-2)', color: 'var(--text-2)', fontSize: 12,
+              fontWeight: 600, cursor: 'pointer', fontFamily: "'DM Sans', sans-serif",
+              transition: 'all 0.15s', whiteSpace: 'nowrap',
+            }}
+            onMouseEnter={e => { e.currentTarget.style.background = 'var(--accent)'; e.currentTarget.style.color = '#fff'; e.currentTarget.style.borderColor = 'var(--accent)'; }}
+            onMouseLeave={e => { e.currentTarget.style.background = 'var(--surface-2)'; e.currentTarget.style.color = 'var(--text-2)'; e.currentTarget.style.borderColor = 'var(--border)'; }}
+          >
+            View All Alerts →
+          </button>
+        </div>
 
         {/* Breach Notification (GDPR Art.33) */}
         <div className="dg-card anim-fade-up d4" style={{ padding: '20px 22px', marginBottom: 14, border: '1px solid rgba(245,158,11,0.3)' }}>
@@ -1121,6 +1114,7 @@ export default function Dashboard({ initialSection }: Props) {
           display: 'flex', alignItems: 'center', justifyContent: 'center',
           cursor: 'pointer', boxShadow: '0 4px 14px var(--accent-glow)',
           transition: 'all 0.15s', zIndex: 1200, fontSize: 20,
+          color: 'var(--accent)', fontWeight: 800,
         }}
         onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = 'var(--accent-dim)'; }}
         onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'var(--surface)'; }}

@@ -1,10 +1,9 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { useAuth } from '../../contexts/AuthContext';
-import {
-  BellIcon, ChevDownIcon, LogoutIcon, WebhookIcon,
-  LinkIcon, PersonAddIcon, AiIcon,
-} from '../icons/Icons';
+import { useAuth, isSuperAdmin, isTenantAdmin, isGoogleUser } from '../../contexts/AuthContext';
+import { ChevDownIcon, LogoutIcon, SettingsIcon } from '../icons/Icons';
+import { notificationsApi } from '../../api/client';
+import NotificationsDrawer from '../NotificationsDrawer/NotificationsDrawer';
 
 interface LiveBadgeProps { flash: boolean; }
 
@@ -46,13 +45,17 @@ function LiveBadge({ flash }: LiveBadgeProps) {
 }
 
 const PAGE_META: Record<string, { title: string; sub: string }> = {
-  '/dashboard':   { title: 'Privacy Overview',       sub: 'Your personal data access timeline' },
-  '/events':      { title: 'Audit Events',            sub: 'Full tamper-evident event log' },
-  '/risk':        { title: 'Risk Alerts',             sub: 'AI-generated privacy risk findings' },
-  '/gdpr':        { title: 'GDPR Rights',             sub: 'Exercise your data rights' },
-  '/webhooks':    { title: 'Webhooks',                sub: 'Notification endpoints' },
-  '/ai-settings': { title: 'AI Settings',             sub: 'AI provider & model configuration' },
-  '/onboard':     { title: 'Onboard Tenant',          sub: 'Connect a new tenant application' },
+  '/dashboard':       { title: 'Privacy Overview',     sub: 'Your personal data access timeline' },
+  '/events':          { title: 'Audit Events',          sub: 'Full tamper-evident event log with SHA-256 hash chain' },
+  '/risk':            { title: 'Risk Alerts',           sub: 'AI-generated privacy risk findings' },
+  '/gdpr':            { title: 'GDPR Rights',           sub: 'Exercise your data rights' },
+  '/webhooks':        { title: 'Webhooks',              sub: 'HMAC-signed notification endpoints' },
+  '/ai-settings':     { title: 'Settings',              sub: 'Account, AI provider & preferences' },
+  '/settings':        { title: 'Settings',              sub: 'Account, AI provider & preferences' },
+  '/onboard':         { title: 'Onboard Tenant',        sub: 'Connect a new tenant application' },
+  '/dev':             { title: 'Dev / Demo Controls',   sub: 'Seed data, trigger analysis, manage tenants' },
+  '/queue':           { title: 'Queue Monitor',         sub: 'BullMQ audit event processing status' },
+  '/connected-apps':  { title: 'Connected Apps',        sub: 'Manage tenant connections' },
 };
 
 interface TopbarProps {
@@ -64,7 +67,23 @@ export default function Topbar({ liveFlash = false }: TopbarProps) {
   const location = useLocation();
   const { user, logout } = useAuth();
   const [menuOpen, setMenuOpen] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
   const menuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    let active = true;
+    const fetchCount = async () => {
+      try {
+        const data = await notificationsApi.getUnreadCount();
+        if (active) setUnreadCount(data.count ?? 0);
+      } catch {
+        // silently ignore — bell badge just stays at 0
+      }
+    };
+    fetchCount();
+    const interval = setInterval(fetchCount, 60_000);
+    return () => { active = false; clearInterval(interval); };
+  }, []);
 
   const meta = PAGE_META[location.pathname] ?? { title: 'DataGuard', sub: 'Privacy Dashboard' };
 
@@ -128,42 +147,7 @@ export default function Topbar({ liveFlash = false }: TopbarProps) {
         <LiveBadge flash={liveFlash} />
 
         {/* Notification bell */}
-        <button
-          style={{
-            width: 36,
-            height: 36,
-            borderRadius: 10,
-            border: '1px solid var(--border)',
-            background: 'transparent',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            color: 'var(--text-3)',
-            cursor: 'pointer',
-            position: 'relative',
-            transition: 'all 0.15s',
-          }}
-          onMouseEnter={e => {
-            (e.currentTarget as HTMLButtonElement).style.background = 'var(--surface-2)';
-            (e.currentTarget as HTMLButtonElement).style.color = 'var(--text)';
-          }}
-          onMouseLeave={e => {
-            (e.currentTarget as HTMLButtonElement).style.background = 'transparent';
-            (e.currentTarget as HTMLButtonElement).style.color = 'var(--text-3)';
-          }}
-        >
-          <BellIcon style={{ width: 16, height: 16 }} />
-          <span style={{
-            position: 'absolute',
-            top: 7,
-            right: 7,
-            width: 7,
-            height: 7,
-            background: '#ef4444',
-            borderRadius: '50%',
-            border: '2px solid var(--surface)',
-          }} />
-        </button>
+        <NotificationsDrawer unreadCount={unreadCount} onCountChange={setUnreadCount} />
 
         {/* Divider */}
         <div style={{ width: 1, height: 22, background: 'var(--border)' }} />
@@ -224,7 +208,7 @@ export default function Topbar({ liveFlash = false }: TopbarProps) {
                 {displayName}
               </div>
               <div style={{ fontSize: 10, color: 'var(--text-3)' }}>
-                {user?.type === 'google_session' ? 'Google' : (!user?.tenantUserId && user?.email) ? 'Admin' : 'Tenant session'}
+                {isGoogleUser(user) ? 'Google account' : isSuperAdmin(user) ? 'Super admin' : isTenantAdmin(user) ? 'Tenant admin' : 'Tenant user'}
               </div>
             </div>
             <ChevDownIcon style={{ width: 14, height: 14, color: 'var(--text-3)', marginLeft: 2 }} />
@@ -247,10 +231,7 @@ export default function Topbar({ liveFlash = false }: TopbarProps) {
               }}
             >
               {[
-                { label: 'Connected Apps',  icon: LinkIcon,      action: () => { setMenuOpen(false); navigate('/dashboard'); } },
-                { label: 'Webhooks',        icon: WebhookIcon,   action: () => { setMenuOpen(false); navigate('/webhooks'); } },
-                { label: 'AI Settings',     icon: AiIcon,        action: () => { setMenuOpen(false); navigate('/ai-settings'); } },
-                { label: 'Onboard Tenant',  icon: PersonAddIcon, action: () => { setMenuOpen(false); navigate('/onboard'); } },
+                { label: 'Settings', icon: SettingsIcon, action: () => { setMenuOpen(false); navigate('/settings'); } },
               ].map((item, i) => (
                 <button
                   key={i}

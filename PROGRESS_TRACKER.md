@@ -489,6 +489,74 @@ Last updated: 2026-05-06 (Phase 16 — AI-Q6, SCHED-4, SCHED-5 done; INFRA-1/2 p
 
 ---
 
+---
+
+## Phase 17 — Multi-User Roles + New Features
+
+_Last updated: 2026-05-06_
+
+### 17A — Architecture: 4 User Types
+| # | Task | Status | Notes |
+|---|---|---|---|
+| P17-1 | `SUPER_ADMIN` role added to `UserRole` enum | ✅ Done | `user.entity.ts` |
+| P17-2 | Super admin seed via env vars `SUPER_ADMIN_EMAIL` / `SUPER_ADMIN_PASSWORD` | ✅ Done | `seed.service.ts` |
+| P17-3 | Frontend: `role` added to `SessionUser` + 5 helper functions exported | ✅ Done | `AuthContext.tsx` |
+| P17-4 | `MANUAL` — Add `SUPER_ADMIN_EMAIL` + `SUPER_ADMIN_PASSWORD` to Render | ⏳ Manual | See `MANUAL_ACTIONS.md` |
+
+### 17B — Navigation & UX Cleanup
+| # | Task | Status | Notes |
+|---|---|---|---|
+| P17-5 | Topbar dropdown: stripped to profile + Settings + Sign out only | ✅ Done | `Topbar.tsx` |
+| P17-6 | Sidebar: dynamic nav per user type (admin/tenant-admin/user/google) | ✅ Done | `Sidebar.tsx` |
+| P17-7 | New icons: `QueueIcon`, `DevIcon`, `AppsIcon` | ✅ Done | `Icons.tsx` |
+
+### 17C — New Pages
+| # | Task | Status | Notes |
+|---|---|---|---|
+| P17-8 | Settings page (`/settings`) — Profile, Notifications, Security, AI Settings | ✅ Done | `SettingsPage.tsx` |
+| P17-9 | Dev/Demo page (`/dev`) — all dev controls, admin only, tenant selector | ✅ Done | `DevPage.tsx` |
+| P17-10 | Queue Monitor page (`/queue`) — BullMQ stats + pipeline explainer | ✅ Done | `QueuePage.tsx` |
+| P17-11 | `/ai-settings` redirects to `/settings` | ✅ Done | `App.tsx` |
+
+### 17D — Notifications (MongoDB)
+| # | Task | Status | Notes |
+|---|---|---|---|
+| P17-12 | Backend: Notification schema (`notifications` collection) | ✅ | `notifications/notification.schema.ts` |
+| P17-13 | Backend: Notifications service (create, get, mark read, unread count) | ✅ | `notifications/notifications.service.ts` |
+| P17-14 | Backend: Notifications controller (`GET/PUT /notifications`) | ✅ | `notifications/notifications.controller.ts` |
+| P17-15 | Backend: Trigger notification on HIGH/CRITICAL risk alert | ✅ | `risk.service.ts` |
+| P17-16 | Backend: Trigger notification on breach report | ⏳ | `breach/breach.service.ts` |
+| P17-17 | Frontend: Bell icon with unread count badge | ✅ | `Topbar.tsx` — 60s polling, graceful 0 on failure |
+| P17-18 | Frontend: Notifications drawer (list, mark read, empty state) | ✅ | `NotificationsDrawer.tsx` — MongoDB unavailable handled |
+
+### 17E — Connected Apps Page
+| # | Task | Status | Notes |
+|---|---|---|---|
+| P17-19 | Backend: `GET /tenants/available` + `GET /tenants/all` + `DELETE /dashboard/linked-accounts/:id` | ✅ | `tenants.controller.ts`, `dashboard.controller.ts` |
+| P17-20 | Frontend: Connected Apps page — Google user view (link apps, unlink) | ✅ | `ConnectedAppsPage.tsx` |
+| P17-21 | Frontend: Connected Apps page — Admin view (manage tenants, stats) | ✅ | `ConnectedAppsPage.tsx` |
+
+### 17F — GDPR Management View
+| # | Task | Status | Notes |
+|---|---|---|---|
+| P17-22 | Dedicated GDPR page for all user types | ✅ | `GDPRPage.tsx` — admin and user views |
+| P17-23 | Backend: Admin endpoint for all GDPR requests | ✅ | `GET /dashboard/gdpr/requests` + listAll/listForAdmin |
+| P17-24 | GDPR personal rights (tenant user / google user) — extracted from Dashboard | ✅ | `GDPRPage.tsx` — UserRightsView with export + delete |
+
+### 17G — Hash Chain in Events Row
+| # | Task | Status | Notes |
+|---|---|---|---|
+| P17-25 | Show `hash` + `prevHash` inline in each event card in EventsPage | ✅ | `EventsPage.tsx` — green block in expanded view |
+| P17-26 | Replace static "BullMQ / SHA-256 chained" chips with nav button to `/queue` | ✅ | `EventsPage.tsx` — clickable → `/queue` |
+
+### 17H — AI Context Enrichment
+| # | Task | Status | Notes |
+|---|---|---|---|
+| P17-27 | Richer system prompt with DataGuard product description + GDPR articles | ✅ | `ai-chat.service.ts` — full Art.5–35 references, product feature map |
+| P17-28 | User-type-aware prompt (admin / tenant user / google user different context) | ✅ | `ai-chat.service.ts` — `buildRoleContext()` with 4 user type variants |
+
+---
+
 ## Summary
 
 | Area | Done | Total |
@@ -519,19 +587,12 @@ Last updated: 2026-05-06 (Phase 16 — AI-Q6, SCHED-4, SCHED-5 done; INFRA-1/2 p
 | Phase 16C — AI Scheduler & Analysis Visibility | 5 | 5 |
 | Phase 16D — Infrastructure / Reliability | 1 | 2 |
 | Phase 16E — Nice-to-Haves | 2 | 4 |
-| **Grand Total** | **201** | **216** |
-
----
-
-## Next Session — Pick Up Here
-
-> Priority order for the next coding session:
-
-| # | Task | File / Location |
-|---|---|---|
-| 1 | 🔴 **MANUAL** — Fix Redis eviction policy → `noeviction` | Render dashboard → Redis service → Advanced → Eviction Policy |
-| 2 | 🔴 **MANUAL** — Verify queue health after Redis fix | `GET /dev/queue-status` with `x-dev-token` header |
-| 3 | 🟡 **MANUAL (optional)** — Google OAuth on Render | Render env vars: `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` |
-| — | ~~Run Analysis Now button~~ | ✅ Done — `Dashboard.tsx` |
-| — | ~~Last analysis banner~~ | ✅ Done — `Dashboard.tsx` |
-| — | ~~Improve risk analysis prompt~~ | ✅ Done — `risk.service.ts` |
+| Phase 17A — 4 User Types | 3 | 4 |
+| Phase 17B — Nav & UX | 3 | 3 |
+| Phase 17C — New Pages | 4 | 4 |
+| Phase 17D — Notifications | 0 | 7 |
+| Phase 17E — Connected Apps | 0 | 3 |
+| Phase 17F — GDPR Management | 0 | 3 |
+| Phase 17G — Hash in Events | 0 | 2 |
+| Phase 17H — AI Context | 0 | 2 |
+| **Grand Total** | **212** | **243** |

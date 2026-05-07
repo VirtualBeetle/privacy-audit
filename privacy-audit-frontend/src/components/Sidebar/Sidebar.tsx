@@ -1,11 +1,11 @@
 import { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { useAuth } from '../../contexts/AuthContext';
+import { useAuth, isSuperAdmin, isTenantAdmin, isGoogleUser } from '../../contexts/AuthContext';
 import { useTheme } from '../../contexts/ThemeContext';
 import {
-  ShieldIcon, DashboardIcon, EventsIcon, RiskIcon,
-  GdprIcon, WebhookIcon, SettingsIcon, LogoutIcon,
-  SunIcon, MoonIcon,
+  ShieldIcon, DashboardIcon, EventsIcon, RiskIcon, GdprIcon,
+  WebhookIcon, SettingsIcon, LogoutIcon, SunIcon, MoonIcon,
+  PersonAddIcon, QueueIcon, DevIcon, AppsIcon,
 } from '../icons/Icons';
 
 interface NavItemProps {
@@ -121,27 +121,24 @@ function NavItem({ icon: Icon, label, active, badge, onClick }: NavItemProps) {
   );
 }
 
-const NAV_ITEMS = [
-  { path: '/dashboard', label: 'Overview',     icon: DashboardIcon },
-  { path: '/events',    label: 'Audit Events', icon: EventsIcon },
-  { path: '/risk',      label: 'Risk Alerts',  icon: RiskIcon },
-  { path: '/gdpr',      label: 'GDPR Rights',  icon: GdprIcon },
-  { path: '/webhooks',  label: 'Webhooks',     icon: WebhookIcon },
-];
-
 export default function Sidebar() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { logout } = useAuth();
+  const { user, logout } = useAuth();
   const { isDark, toggle: toggleTheme } = useTheme();
   const [themeHov, setThemeHov] = useState(false);
+
+  const superAdmin = isSuperAdmin(user);
+  const tenantAdmin = isTenantAdmin(user);
+  const anyAdmin = superAdmin || tenantAdmin;
+  const googleUser = isGoogleUser(user);
 
   const handleLogout = () => {
     logout();
     navigate('/login');
   };
 
-  const currentPath = location.pathname;
+  const p = location.pathname;
 
   return (
     <nav style={{
@@ -189,15 +186,44 @@ export default function Sidebar() {
         width: '100%',
         alignItems: 'center',
       }}>
-        {NAV_ITEMS.map(item => (
-          <NavItem
-            key={item.path}
-            icon={item.icon}
-            label={item.label}
-            active={currentPath === item.path || currentPath.startsWith(item.path + '/')}
-            onClick={() => navigate(item.path)}
-          />
-        ))}
+        {/* Overview — all users */}
+        <NavItem icon={DashboardIcon} label="Overview" active={p === '/dashboard'} onClick={() => navigate('/dashboard')} />
+
+        {/* Audit Events — all users */}
+        <NavItem icon={EventsIcon} label="Audit Events" active={p === '/events'} onClick={() => navigate('/events')} />
+
+        {/* Risk Alerts — admin + tenant admin only */}
+        {anyAdmin && (
+          <NavItem icon={RiskIcon} label="Risk Alerts" active={p === '/risk'} onClick={() => navigate('/risk')} />
+        )}
+
+        {/* GDPR Rights — all users (different views per role) */}
+        <NavItem icon={GdprIcon} label="GDPR Rights" active={p === '/gdpr'} onClick={() => navigate('/gdpr')} />
+
+        {/* Webhooks — admin + tenant admin only */}
+        {anyAdmin && (
+          <NavItem icon={WebhookIcon} label="Webhooks" active={p === '/webhooks'} onClick={() => navigate('/webhooks')} />
+        )}
+
+        {/* Connected Apps — super admin (all tenants) + google user (add apps) */}
+        {(superAdmin || googleUser) && (
+          <NavItem icon={AppsIcon} label="Connected Apps" active={p === '/connected-apps'} onClick={() => navigate('/connected-apps')} />
+        )}
+
+        {/* Onboard Tenant — super admin only */}
+        {superAdmin && (
+          <NavItem icon={PersonAddIcon} label="Onboard Tenant" active={p === '/onboard'} onClick={() => navigate('/onboard')} />
+        )}
+
+        {/* Queue Monitor — super admin + tenant admin */}
+        {anyAdmin && (
+          <NavItem icon={QueueIcon} label="Queue Monitor" active={p === '/queue'} onClick={() => navigate('/queue')} />
+        )}
+
+        {/* Dev / Demo — super admin only */}
+        {superAdmin && (
+          <NavItem icon={DevIcon} label="Dev / Demo" active={p === '/dev'} onClick={() => navigate('/dev')} />
+        )}
       </div>
 
       {/* Bottom section */}
@@ -240,9 +266,9 @@ export default function Sidebar() {
 
         <NavItem
           icon={SettingsIcon}
-          label="AI Settings"
-          active={currentPath === '/ai-settings'}
-          onClick={() => navigate('/ai-settings')}
+          label="Settings"
+          active={p === '/settings'}
+          onClick={() => navigate('/settings')}
         />
         <NavItem
           icon={LogoutIcon}

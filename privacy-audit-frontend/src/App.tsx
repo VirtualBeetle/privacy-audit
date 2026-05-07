@@ -13,6 +13,12 @@ import Onboard from './pages/Onboard';
 import Webhooks from './pages/Webhooks';
 import AISettings from './pages/AISettings';
 import EventsPage from './pages/EventsPage';
+import RiskPage from './pages/RiskPage';
+import SettingsPage from './pages/SettingsPage';
+import DevPage from './pages/DevPage';
+import QueuePage from './pages/QueuePage';
+import ConnectedAppsPage from './pages/ConnectedAppsPage';
+import GDPRPage from './pages/GDPRPage';
 
 /* ── MUI theme — minimal, inherits from CSS vars ─────────── */
 const muiTheme = createTheme({
@@ -78,16 +84,20 @@ function AppShell() {
           style={{ flex: 1, overflow: 'hidden', background: 'var(--bg)' }}
         >
           <Routes>
-            <Route path="/dashboard"   element={<PrivateRoute element={<Dashboard />} />} />
-            <Route path="/events"      element={<PrivateRoute element={<EventsPage />} />} />
-            <Route path="/risk"        element={<PrivateRoute element={<Dashboard initialSection="risk" />} />} />
-            <Route path="/gdpr"        element={<PrivateRoute element={<Dashboard initialSection="gdpr" />} />} />
-            <Route path="/webhooks"    element={<PrivateRoute element={<Webhooks />} />} />
-            <Route path="/ai-settings" element={<AISettings />} />
-            <Route path="/onboard"     element={<PrivateRoute element={<Onboard />} />} />
-            <Route path="/auth/redirect"          element={<AuthRedirect />} />
-            <Route path="/auth/google/callback"   element={<AuthRedirect />} />
-            <Route path="*"            element={<Navigate to="/dashboard" replace />} />
+            <Route path="/dashboard"        element={<PrivateRoute element={<Dashboard />} />} />
+            <Route path="/events"           element={<PrivateRoute element={<EventsPage />} />} />
+            <Route path="/risk"             element={<PrivateRoute element={<RiskPage />} />} />
+            <Route path="/gdpr"             element={<PrivateRoute element={<GDPRPage />} />} />
+            <Route path="/webhooks"         element={<PrivateRoute element={<Webhooks />} />} />
+            <Route path="/settings"         element={<PrivateRoute element={<SettingsPage />} />} />
+            <Route path="/ai-settings"      element={<PrivateRoute element={<SettingsPage />} />} />
+            <Route path="/dev"              element={<PrivateRoute element={<DevPage />} />} />
+            <Route path="/queue"             element={<PrivateRoute element={<QueuePage />} />} />
+            <Route path="/connected-apps"   element={<PrivateRoute element={<ConnectedAppsPage />} />} />
+            <Route path="/onboard"          element={<PrivateRoute element={<Onboard />} />} />
+            <Route path="/auth/redirect"    element={<AuthRedirect />} />
+            <Route path="/auth/google/callback" element={<AuthRedirect />} />
+            <Route path="*"                 element={<Navigate to="/dashboard" replace />} />
           </Routes>
         </main>
       </div>
