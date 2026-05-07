@@ -127,4 +127,34 @@ ${dashboardUrl}`,
       where: { apiKeyHash: hash, isActive: true },
     });
   }
+
+  /** Returns id + name for all active tenants — for the Google user link picker. */
+  async listAvailable(): Promise<{ id: string; name: string }[]> {
+    const tenants = await this.tenantsRepository.find({
+      where: { isActive: true },
+      order: { name: 'ASC' },
+      select: ['id', 'name'],
+    });
+    return tenants.map((t) => ({ id: t.id, name: t.name }));
+  }
+
+  /** Returns full tenant rows with event counts — for super admin management view. */
+  async listAll(): Promise<{ id: string; name: string; email: string; isActive: boolean; retentionDays: number; createdAt: Date; eventCount: number }[]> {
+    const tenants = await this.tenantsRepository.find({ order: { createdAt: 'DESC' } });
+    const result = await Promise.all(
+      tenants.map(async (t) => {
+        const eventCount = await this.eventsRepository.count({ where: { tenantId: t.id } });
+        return {
+          id: t.id,
+          name: t.name,
+          email: t.email,
+          isActive: t.isActive,
+          retentionDays: t.retentionDays,
+          createdAt: t.createdAt,
+          eventCount,
+        };
+      }),
+    );
+    return result;
+  }
 }

@@ -7,11 +7,13 @@ import { RiskModule } from '../risk/risk.module';
 import { RetentionModule } from '../retention/retention.module';
 import { EmailModule } from '../email/email.module';
 import { AuditEvent } from '../events/audit-event.entity';
+import { Tenant } from '../tenants/tenant.entity';
+import { BreachReport } from '../breach/breach-report.entity';
 import { AUDIT_EVENTS_QUEUE } from '../queue/queue.constants';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([AuditEvent]),
+    TypeOrmModule.forFeature([AuditEvent, Tenant, BreachReport]),
     BullModule.registerQueue({ name: AUDIT_EVENTS_QUEUE }),
     AiOrchestrationModule,
     RiskModule,

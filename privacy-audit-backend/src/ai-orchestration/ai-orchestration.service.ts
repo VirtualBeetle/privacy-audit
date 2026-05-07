@@ -1,4 +1,4 @@
-import { Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException, Optional } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import Anthropic from '@anthropic-ai/sdk';
@@ -33,15 +33,17 @@ export class AiOrchestrationService {
   private readonly logger = new Logger(AiOrchestrationService.name);
 
   constructor(
+    @Optional()
     @InjectModel(AiProviderSetting.name)
-    private readonly settingModel: Model<AiProviderSettingDocument>,
+    private readonly settingModel: Model<AiProviderSettingDocument> | null,
   ) {}
 
   // ── Provider Management ──────────────────────────────────────────────────
 
   async listProviders(): Promise<AiProviderSettingDocument[]> {
+    if (!this.settingModel) return [];
     return this.settingModel
-      .find({}, { encryptedApiKey: 0 }) // never expose key
+      .find({}, { encryptedApiKey: 0 })
       .sort({ isActive: -1, createdAt: 1 })
       .lean()
       .exec() as Promise<AiProviderSettingDocument[]>;
@@ -54,6 +56,7 @@ export class AiOrchestrationService {
     apiKey: string;
     updatedBy?: string;
   }): Promise<AiProviderSettingDocument> {
+    if (!this.settingModel) throw new NotFoundException('MongoDB not configured');
     const doc = await this.settingModel.create({
       provider: dto.provider,
       label: dto.label,
@@ -67,6 +70,7 @@ export class AiOrchestrationService {
   }
 
   async activateProvider(id: string, updatedBy = 'dev'): Promise<void> {
+    if (!this.settingModel) throw new NotFoundException('MongoDB not configured');
     const target = await this.settingModel.findById(id);
     if (!target) throw new NotFoundException(`Provider ${id} not found`);
     // Deactivate all, then activate the chosen one
@@ -78,11 +82,13 @@ export class AiOrchestrationService {
   }
 
   async deleteProvider(id: string): Promise<void> {
+    if (!this.settingModel) throw new NotFoundException('MongoDB not configured');
     await this.settingModel.findByIdAndDelete(id);
     this.logger.log(`Deleted AI provider setting: ${id}`);
   }
 
   async getActiveProvider(): Promise<AiProviderSettingDocument | null> {
+    if (!this.settingModel) return null;
     return this.settingModel.findOne({ isActive: true }).exec();
   }
 
@@ -120,23 +126,34 @@ export class AiOrchestrationService {
     const setting = await this.getActiveProvider();
     if (setting) return setting;
 
-    // Fallback: if no DB provider is configured, use ANTHROPIC_API_KEY from env
-    const envKey = process.env.ANTHROPIC_API_KEY;
-    if (envKey) {
-      this.logger.warn(
-        'No active AI provider in DB — falling back to ANTHROPIC_API_KEY env var',
-      );
+    // Fallback 1: GEMINI_API_KEY (free tier — preferred for demo)
+    const geminiKey = process.env.GEMINI_API_KEY;
+    if (geminiKey) {
+      this.logger.warn('No active AI provider in DB — falling back to GEMINI_API_KEY env var');
+      return {
+        provider: 'gemini',
+        model: 'gemini-flash-latest',
+        encryptedApiKey: encrypt(geminiKey),
+        isActive: true,
+        label: 'env-fallback-gemini',
+      } as unknown as AiProviderSettingDocument;
+    }
+
+    // Fallback 2: ANTHROPIC_API_KEY
+    const anthropicKey = process.env.ANTHROPIC_API_KEY;
+    if (anthropicKey) {
+      this.logger.warn('No active AI provider in DB — falling back to ANTHROPIC_API_KEY env var');
       return {
         provider: 'claude',
         model: 'claude-opus-4-6',
-        encryptedApiKey: encrypt(envKey),
+        encryptedApiKey: encrypt(anthropicKey),
         isActive: true,
-        label: 'env-fallback',
+        label: 'env-fallback-claude',
       } as unknown as AiProviderSettingDocument;
     }
 
     throw new NotFoundException(
-      'No active AI provider configured. Add one via POST /api/dev/ai-providers and activate it.',
+      'No active AI provider configured. Set GEMINI_API_KEY in Render env, or add one via POST /api/dev/ai-providers.',
     );
   }
 

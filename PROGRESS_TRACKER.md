@@ -5,7 +5,7 @@
 > 🔄 In Progress — partially built or in active development
 > ⏳ Not Started — planned, not yet begun
 
-Last updated: 2026-04-14 (All 14 phases complete — 174/174 tasks — both builds clean)
+Last updated: 2026-05-06 (Phase 16 — AI-Q6, SCHED-4, SCHED-5 done; INFRA-1/2 pending manual Render step)
 
 ---
 
@@ -370,6 +370,193 @@ Last updated: 2026-04-14 (All 14 phases complete — 174/174 tasks — both buil
 
 ---
 
+---
+
+## Phase 15 — Render Full Feature Unlock (Demo-Ready Production)
+
+> Goal: Get all features working on the live Render deployment for dissertation demo.
+> All 174 original tasks are done locally. This phase wires up the missing env vars and external services.
+
+### Step 1 — URL Fixes (Blocker for everything else)
+| # | Task | Status | Notes |
+|---|---|---|---|
+| DEPLOY-1 | Collect all actual Render service URLs | ✅ Done | Backend: `audit-backend-ddew.onrender.com` |
+| DEPLOY-2 | Update `render.yaml` + Render dashboard env vars with correct service URLs | ✅ Done | VITE_API_URL, GOOGLE_CALLBACK_URL all set |
+| DEPLOY-3 | Redeploy all 3 frontends after VITE_API_URL is corrected | ✅ Done | All frontends live |
+
+### Step 2 — Core Auth (Unblocks login)
+| # | Task | Status | Notes |
+|---|---|---|---|
+| DEPLOY-4 | Set `JWT_SECRET` in Render dashboard for audit-backend | ✅ Done | Login working |
+| DEPLOY-5 | Set `ENCRYPTION_KEY` in Render dashboard for audit-backend | ✅ Done | AI provider keys encrypted |
+| DEPLOY-6 | Add `ENCRYPTION_KEY` to render.yaml | ✅ Done | `sync: false` — set manually |
+
+### Step 3 — Dev Tools (Unblocks demo seeding)
+| # | Task | Status | Notes |
+|---|---|---|---|
+| DEPLOY-7 | Set `DEV_TOKEN` in Render dashboard for audit-backend | ✅ Done | `/ai-settings` page working |
+
+### Step 4 — Register Tenants + Fix API Keys (Unblocks event flow)
+| # | Task | Status | Notes |
+|---|---|---|---|
+| DEPLOY-8 | Register health-tenant on live audit-backend | ✅ Done | HealthTrack tenant seeded |
+| DEPLOY-9 | Register social-tenant on live audit-backend | ✅ Done | ConnectSocial tenant seeded |
+| DEPLOY-10 | Update `AUDIT_API_KEY` for health-backend and social-backend | ✅ Done | Events flowing |
+
+### Step 5 — Google OAuth (Unlocks Google login)
+| # | Task | Status | Notes |
+|---|---|---|---|
+| DEPLOY-11 | Create Google Cloud project + OAuth 2.0 credentials | ⏳ Not Started | Optional for demo — admin login works without it |
+| DEPLOY-12 | Set `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` in Render | ⏳ Not Started | Skip if using admin login only for demo |
+
+### Step 6 — AI Features (Unlocks AI risk analysis + AI Chat)
+| # | Task | Status | Notes |
+|---|---|---|---|
+| DEPLOY-13 | Get Gemini API key (Google AI Studio — free tier) | ✅ Done | Using `gemini-flash-latest` via DB provider |
+| DEPLOY-14 | Set active AI provider via `/ai-settings` UI | ✅ Done | `gemini / gemini-flash-latest` active in MongoDB |
+| DEPLOY-15 | Create MongoDB Atlas free cluster (M0) | ✅ Done | Connected, AI chat sessions and analysis records saving |
+| DEPLOY-16 | Set `MONGODB_URI` in Render dashboard | ✅ Done | Chat history + analysis history working |
+
+### Step 7 — Email Notifications
+| # | Task | Status | Notes |
+|---|---|---|---|
+| DEPLOY-17 | Create Mailtrap account (free) | ⏳ Skipped | Skipped for demo — SMTP env vars not set |
+| DEPLOY-18 | Set SMTP env vars in Render dashboard | ⏳ Skipped | Email notifications gracefully no-op without SMTP |
+
+### Step 8 — DB Dump & Restore Script
+| # | Task | Status | Notes |
+|---|---|---|---|
+| DEPLOY-19 | Write `scripts/db-dump.sh` | ⏳ Not Started | Nice-to-have for disaster recovery |
+| DEPLOY-20 | Write `scripts/db-restore.sh` | ⏳ Not Started | |
+| DEPLOY-21 | Test dump + restore cycle | ⏳ Not Started | |
+
+### Step 9 — Seed Demo Data + Smoke Test
+| # | Task | Status | Notes |
+|---|---|---|---|
+| DEPLOY-22 | Seed 20 demo events via `POST /dev/seed-events` | ✅ Done | Both tenants have events |
+| DEPLOY-23 | Trigger manual AI risk analysis via `POST /dev/trigger-risk-analysis` | ✅ Done | Analysis records in MongoDB |
+| DEPLOY-24 | Smoke test full demo flow | ✅ Done | Login → events → AI chat → breach report all working |
+
+---
+
+---
+
+## Phase 16 — AI Quality + Admin UX + Production Polish
+
+> Started: 2026-05-06. Goal: sharpen the AI experience, fix admin-specific UX gaps, and stabilise the live deployment.
+
+### 16A — AI Persona & Prompt Quality (Session 2026-05-06)
+| # | Task | Status | Notes |
+|---|---|---|---|
+| AI-Q1 | Restrict DataGuard AI to privacy/GDPR topics only — refuse off-topic questions | ✅ Done | `ai-chat.service.ts` — strong system prompt with STRICT RULES block |
+| AI-Q2 | AI never reveals it is Gemini/Claude/OpenAI — always identifies as "DataGuard AI" | ✅ Done | Rule added to system prompt |
+| AI-Q3 | Defined response format: 1-sentence answer → bullet points → 150-word cap | ✅ Done | FORMAT rules in system prompt |
+| AI-Q4 | Hide provider/model label from chat UI header — was leaking "gemini / gemini-flash-latest" | ✅ Done | `AIChatButton.tsx` — always shows "Online" |
+| AI-Q5 | Fix Gemini model name: `gemini-flash-latest` (resolves to `gemini-3-flash-preview`) | ✅ Done | AISettings.tsx + ai-orchestration.service.ts fallback updated |
+| AI-Q6 | **Improve Risk Analysis prompt** — add structured output enforcement, severity definitions | ✅ Done | `risk.service.ts` — GDPR article citations, severity thresholds, strict JSON-only output |
+
+### 16B — Admin UX Fixes (Session 2026-05-06)
+| # | Task | Status | Notes |
+|---|---|---|---|
+| ADMIN-1 | Header badge shows "Admin" instead of "Tenant session" for admin logins | ✅ Done | `Header.tsx` — detects `!tenantUserId && email` |
+| ADMIN-2 | Hide Consent Management (Art.7) section for admin — it's end-user only | ✅ Done | `Dashboard.tsx` — wrapped with `{user?.tenantUserId && ...}` |
+| ADMIN-3 | Hide GDPR Rights section (export/erasure) for admin | ✅ Done | Same wrapper as ADMIN-2 |
+| ADMIN-4 | Skip `getConsents()` API call for admin (no tenantUserId) | ✅ Done | `Dashboard.tsx` — only calls when `user?.tenantUserId` exists |
+| ADMIN-5 | Breach report NOT NULL crash when admin submits (tenantUserId = null) | ✅ Done | `breach-report.entity.ts` nullable, `breach.service.ts` where-clause fixed |
+
+### 16C — AI Scheduler & Analysis Visibility
+| # | Task | Status | Notes |
+|---|---|---|---|
+| SCHED-1 | Risk analysis cron runs every 6h — already implemented | ✅ Done | `risk.service.ts` `@Cron('0 */6 * * *')` |
+| SCHED-2 | Analysis results saved to MongoDB (`ai_analysis_records`) — already implemented | ✅ Done | `AiChatService.saveAnalysisRecord()` |
+| SCHED-3 | AI Analysis History accordion shown in Dashboard — already implemented | ✅ Done | `Dashboard.tsx` expandable cards with provider/model/findings |
+| SCHED-4 | **"Last AI Analysis" summary banner** — show time of last run + finding count at top of Analysis section | ✅ Done | `Dashboard.tsx` — "Last analysis: X ago · N findings" caption below section heading |
+| SCHED-5 | **"Run Analysis Now" button** in Dashboard for admin — calls `POST /dev/trigger-risk-analysis` | ✅ Done | `Dashboard.tsx` — reads `VITE_DEV_TOKEN` env or localStorage `dev_token`; admin-only |
+
+### 16D — Infrastructure / Reliability
+| # | Task | Status | Notes |
+|---|---|---|---|
+| INFRA-1 | **Redis eviction policy must be `noeviction`** (currently `allkeys-lru`) | ✅ Done | Changed to `noeviction` in Render dashboard — 2026-05-06 |
+| INFRA-2 | Verify BullMQ queue health after Redis eviction policy fix | 🔄 In Progress | **MANUAL:** After INFRA-1, call `GET /dev/queue-status` with `x-dev-token` header to confirm 0 failed jobs |
+
+### 16E — Remaining Nice-to-Haves (Pre-Dissertation)
+| # | Task | Status | Notes |
+|---|---|---|---|
+| NICE-1 | Google OAuth on Render (DEPLOY-11/12) | ⏳ Not Started | Enables "Sign in with Google" for end-user demo flow |
+| NICE-2 | DB backup scripts (`db-dump.sh` / `db-restore.sh`) | ⏳ Not Started | Safety net before dissertation demo day |
+| NICE-3 | Demo run-sheet for dissertation presentation | ✅ Done | `DEMO_GUIDE.md` at project root — 30-min flow, prepared Q&A answers, pre-demo checklist, break-glass recovery table |
+| NICE-4 | Update Phase 9 tracker: mark MONGO-11 note — chat no longer shows provider label | ✅ Done | Provider label now always "Online" — `AIChatButton.tsx` line 47 |
+
+---
+
+---
+
+## Phase 17 — Multi-User Roles + New Features
+
+_Last updated: 2026-05-06_
+
+### 17A — Architecture: 4 User Types
+| # | Task | Status | Notes |
+|---|---|---|---|
+| P17-1 | `SUPER_ADMIN` role added to `UserRole` enum | ✅ Done | `user.entity.ts` |
+| P17-2 | Super admin seed via env vars `SUPER_ADMIN_EMAIL` / `SUPER_ADMIN_PASSWORD` | ✅ Done | `seed.service.ts` |
+| P17-3 | Frontend: `role` added to `SessionUser` + 5 helper functions exported | ✅ Done | `AuthContext.tsx` |
+| P17-4 | `MANUAL` — Add `SUPER_ADMIN_EMAIL` + `SUPER_ADMIN_PASSWORD` to Render | ⏳ Manual | See `MANUAL_ACTIONS.md` |
+
+### 17B — Navigation & UX Cleanup
+| # | Task | Status | Notes |
+|---|---|---|---|
+| P17-5 | Topbar dropdown: stripped to profile + Settings + Sign out only | ✅ Done | `Topbar.tsx` |
+| P17-6 | Sidebar: dynamic nav per user type (admin/tenant-admin/user/google) | ✅ Done | `Sidebar.tsx` |
+| P17-7 | New icons: `QueueIcon`, `DevIcon`, `AppsIcon` | ✅ Done | `Icons.tsx` |
+
+### 17C — New Pages
+| # | Task | Status | Notes |
+|---|---|---|---|
+| P17-8 | Settings page (`/settings`) — Profile, Notifications, Security, AI Settings | ✅ Done | `SettingsPage.tsx` |
+| P17-9 | Dev/Demo page (`/dev`) — all dev controls, admin only, tenant selector | ✅ Done | `DevPage.tsx` |
+| P17-10 | Queue Monitor page (`/queue`) — BullMQ stats + pipeline explainer | ✅ Done | `QueuePage.tsx` |
+| P17-11 | `/ai-settings` redirects to `/settings` | ✅ Done | `App.tsx` |
+
+### 17D — Notifications (MongoDB)
+| # | Task | Status | Notes |
+|---|---|---|---|
+| P17-12 | Backend: Notification schema (`notifications` collection) | ✅ | `notifications/notification.schema.ts` |
+| P17-13 | Backend: Notifications service (create, get, mark read, unread count) | ✅ | `notifications/notifications.service.ts` |
+| P17-14 | Backend: Notifications controller (`GET/PUT /notifications`) | ✅ | `notifications/notifications.controller.ts` |
+| P17-15 | Backend: Trigger notification on HIGH/CRITICAL risk alert | ✅ | `risk.service.ts` |
+| P17-16 | Backend: Trigger notification on breach report | ⏳ | `breach/breach.service.ts` |
+| P17-17 | Frontend: Bell icon with unread count badge | ✅ | `Topbar.tsx` — 60s polling, graceful 0 on failure |
+| P17-18 | Frontend: Notifications drawer (list, mark read, empty state) | ✅ | `NotificationsDrawer.tsx` — MongoDB unavailable handled |
+
+### 17E — Connected Apps Page
+| # | Task | Status | Notes |
+|---|---|---|---|
+| P17-19 | Backend: `GET /tenants/available` + `GET /tenants/all` + `DELETE /dashboard/linked-accounts/:id` | ✅ | `tenants.controller.ts`, `dashboard.controller.ts` |
+| P17-20 | Frontend: Connected Apps page — Google user view (link apps, unlink) | ✅ | `ConnectedAppsPage.tsx` |
+| P17-21 | Frontend: Connected Apps page — Admin view (manage tenants, stats) | ✅ | `ConnectedAppsPage.tsx` |
+
+### 17F — GDPR Management View
+| # | Task | Status | Notes |
+|---|---|---|---|
+| P17-22 | Dedicated GDPR page for all user types | ✅ | `GDPRPage.tsx` — admin and user views |
+| P17-23 | Backend: Admin endpoint for all GDPR requests | ✅ | `GET /dashboard/gdpr/requests` + listAll/listForAdmin |
+| P17-24 | GDPR personal rights (tenant user / google user) — extracted from Dashboard | ✅ | `GDPRPage.tsx` — UserRightsView with export + delete |
+
+### 17G — Hash Chain in Events Row
+| # | Task | Status | Notes |
+|---|---|---|---|
+| P17-25 | Show `hash` + `prevHash` inline in each event card in EventsPage | ✅ | `EventsPage.tsx` — green block in expanded view |
+| P17-26 | Replace static "BullMQ / SHA-256 chained" chips with nav button to `/queue` | ✅ | `EventsPage.tsx` — clickable → `/queue` |
+
+### 17H — AI Context Enrichment
+| # | Task | Status | Notes |
+|---|---|---|---|
+| P17-27 | Richer system prompt with DataGuard product description + GDPR articles | ✅ | `ai-chat.service.ts` — full Art.5–35 references, product feature map |
+| P17-28 | User-type-aware prompt (admin / tenant user / google user different context) | ✅ | `ai-chat.service.ts` — `buildRoleContext()` with 4 user type variants |
+
+---
+
 ## Summary
 
 | Area | Done | Total |
@@ -394,7 +581,18 @@ Last updated: 2026-04-14 (All 14 phases complete — 174/174 tasks — both buil
 | Phase 12 — Architecture Diagram | 1 | 1 |
 | Phase 13 — Tenant Onboarding | 6 | 6 |
 | Phase 14 — Complexity Boosters | 6 | 6 |
-| **Phase 1–6 Total** | **115** | **115** |
-| **Phases 7–8 Total** | **15** | **15** |
-| **Phases 9–14 Total** | **44** | **44** |
-| **Grand Total** | **174** | **174** |
+| Phase 15 — Render Full Feature Unlock | 18 | 24 |
+| Phase 16A — AI Persona & Prompt Quality | 6 | 6 |
+| Phase 16B — Admin UX Fixes | 5 | 5 |
+| Phase 16C — AI Scheduler & Analysis Visibility | 5 | 5 |
+| Phase 16D — Infrastructure / Reliability | 1 | 2 |
+| Phase 16E — Nice-to-Haves | 2 | 4 |
+| Phase 17A — 4 User Types | 3 | 4 |
+| Phase 17B — Nav & UX | 3 | 3 |
+| Phase 17C — New Pages | 4 | 4 |
+| Phase 17D — Notifications | 0 | 7 |
+| Phase 17E — Connected Apps | 0 | 3 |
+| Phase 17F — GDPR Management | 0 | 3 |
+| Phase 17G — Hash in Events | 0 | 2 |
+| Phase 17H — AI Context | 0 | 2 |
+| **Grand Total** | **212** | **243** |

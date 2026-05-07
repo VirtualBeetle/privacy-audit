@@ -1,14 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
-import Box from '@mui/material/Box';
-import Typography from '@mui/material/Typography';
-import IconButton from '@mui/material/IconButton';
-import Collapse from '@mui/material/Collapse';
-import TextField from '@mui/material/TextField';
-import Chip from '@mui/material/Chip';
-import Tooltip from '@mui/material/Tooltip';
 import CircularProgress from '@mui/material/CircularProgress';
-import { AutoAwesome as AutoAwesomeIcon, Close as CloseIcon, Send as SendIcon, Shield as ShieldIcon } from '@mui/icons-material';
 import { dashboardApi } from '../../api/client';
+import { ShieldIcon, XIcon } from '../icons/Icons';
 
 interface Message {
   role: 'user' | 'ai';
@@ -20,6 +13,27 @@ const WELCOME: Message = {
   text: "Hi! I'm DataGuard AI. I can help you understand your recent privacy data activity. What would you like to know?",
 };
 
+/* Sparkle icon for the FAB */
+function SparkleIcon({ style }: { style?: React.CSSProperties }) {
+  return (
+    <svg style={style} viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+      <path d="M9.5 3l1.5 4.5L15.5 9l-4.5 1.5L9.5 15l-1.5-4.5L3.5 9l4.5-1.5L9.5 3z"/>
+      <path d="M18.5 12l1 3 3 1-3 1-1 3-1-3-3-1 3-1 1-3z" opacity="0.7"/>
+      <path d="M16 3l.8 2.2 2.2.8-2.2.8L16 9l-.8-2.2L13 6l2.2-.8L16 3z" opacity="0.5"/>
+    </svg>
+  );
+}
+
+/* Send arrow icon */
+function ArrowUpIcon({ style }: { style?: React.CSSProperties }) {
+  return (
+    <svg style={style} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round">
+      <line x1="12" y1="19" x2="12" y2="5"/>
+      <polyline points="5,12 12,5 19,12"/>
+    </svg>
+  );
+}
+
 export default function AIChatButton() {
   const [open, setOpen] = useState(false);
   const [messages, setMessages] = useState<Message[]>([WELCOME]);
@@ -28,26 +42,36 @@ export default function AIChatButton() {
   const [sessionId, setSessionId] = useState<string | undefined>(undefined);
   const [providerLabel, setProviderLabel] = useState<string>('');
   const bottomRef = useRef<HTMLDivElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, sending]);
 
+  useEffect(() => {
+    if (open && textareaRef.current) {
+      setTimeout(() => textareaRef.current?.focus(), 150);
+    }
+  }, [open]);
+
   const handleSend = async () => {
     const text = input.trim();
     if (!text || sending) return;
 
-    setMessages((prev) => [...prev, { role: 'user', text }]);
+    setMessages(prev => [...prev, { role: 'user', text }]);
     setInput('');
+    if (textareaRef.current) {
+      textareaRef.current.style.height = 'auto';
+    }
     setSending(true);
 
     try {
       const res = await dashboardApi.aiChat(text, sessionId);
       setSessionId(res.sessionId);
-      setProviderLabel(`${res.provider} / ${res.model}`);
-      setMessages((prev) => [...prev, { role: 'ai', text: res.reply }]);
+      setProviderLabel('Online');
+      setMessages(prev => [...prev, { role: 'ai', text: res.reply }]);
     } catch {
-      setMessages((prev) => [
+      setMessages(prev => [
         ...prev,
         { role: 'ai', text: 'Sorry, I could not reach the AI service. Please try again.' },
       ]);
@@ -63,229 +87,264 @@ export default function AIChatButton() {
     }
   };
 
+  const canSend = input.trim().length > 0 && !sending;
+
   return (
-    <Box
-      sx={{
-        position: 'fixed',
-        bottom: 28,
-        right: 28,
-        zIndex: 9999,
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'flex-end',
-        gap: 2,
-      }}
-    >
-      {/* Chat panel */}
-      <Collapse in={open} timeout={300} unmountOnExit>
-        <Box
-          className="anim-slide-right"
-          sx={{
-            width: 360,
-            borderRadius: '20px',
+    <div style={{
+      position: 'fixed', bottom: 28, right: 28,
+      zIndex: 9999, display: 'flex', flexDirection: 'column',
+      alignItems: 'flex-end', gap: 14,
+    }}>
+
+      {/* ── Chat panel ─────────────────────────────────── */}
+      {open && (
+        <div
+          className="anim-scale-in"
+          style={{
+            width: 360, borderRadius: 20,
             overflow: 'hidden',
-            boxShadow: '0 24px 60px rgba(0,0,0,0.18)',
-            border: '1px solid rgba(99,102,241,0.2)',
-            background: '#fff',
+            boxShadow: '0 32px 80px rgba(0,0,0,0.35), 0 0 0 1px rgba(99,102,241,0.15)',
+            background: 'var(--surface)',
+            transformOrigin: 'bottom right',
           }}
         >
-          {/* Header */}
-          <Box
-            sx={{
-              background: 'linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%)',
-              px: 2.5,
-              py: 2,
-              display: 'flex',
-              alignItems: 'center',
-              gap: 1.5,
-            }}
-          >
-            <Box
-              sx={{
-                width: 36, height: 36, borderRadius: '10px',
-                background: 'linear-gradient(135deg, #38bdf8, #818cf8)',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                boxShadow: '0 4px 12px rgba(56,189,248,0.4)', flexShrink: 0,
-              }}
-            >
-              <ShieldIcon sx={{ color: '#fff', fontSize: 18 }} />
-            </Box>
+          {/* Header — always dark for brand consistency */}
+          <div style={{
+            background: 'linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%)',
+            padding: '14px 16px',
+            display: 'flex', alignItems: 'center', gap: 12,
+          }}>
+            <div style={{
+              width: 38, height: 38, borderRadius: 11, flexShrink: 0,
+              background: 'linear-gradient(135deg, #38bdf8 0%, #818cf8 100%)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              boxShadow: '0 4px 14px rgba(56,189,248,0.45)',
+            }}>
+              <ShieldIcon style={{ width: 18, height: 18, color: '#fff' }} />
+            </div>
 
-            <Box sx={{ flex: 1 }}>
-              <Typography sx={{ color: '#f8fafc', fontWeight: 700, fontSize: '0.9rem', lineHeight: 1.2 }}>
+            <div style={{ flex: 1 }}>
+              <div style={{
+                color: '#f8fafc', fontWeight: 700, fontSize: 14, lineHeight: 1.2,
+                fontFamily: "'Space Grotesk', sans-serif",
+              }}>
                 DataGuard AI
-              </Typography>
-              <Box className="flex items-center gap-1">
-                <Box sx={{ width: 6, height: 6, borderRadius: '50%', backgroundColor: '#22c55e', boxShadow: '0 0 5px #22c55e' }} />
-                <Typography sx={{ color: '#94a3b8', fontSize: '0.7rem' }}>
-                  {providerLabel ? providerLabel : 'Online'}
-                </Typography>
-              </Box>
-            </Box>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginTop: 3 }}>
+                <span style={{
+                  width: 6, height: 6, borderRadius: '50%', background: '#22c55e',
+                  display: 'block', boxShadow: '0 0 6px #22c55e',
+                  animation: 'pulse 2s infinite',
+                }} />
+                <span style={{ color: '#94a3b8', fontSize: 11, fontFamily: "'DM Sans', sans-serif" }}>
+                  {providerLabel || 'Online'}
+                </span>
+              </div>
+            </div>
 
-            <Chip
-              label="AI"
-              size="small"
-              sx={{ backgroundColor: 'rgba(99,102,241,0.25)', color: '#a5b4fc', fontSize: '0.65rem', fontWeight: 700, height: 20 }}
-            />
-            <IconButton size="small" onClick={() => setOpen(false)} sx={{ color: '#94a3b8', '&:hover': { color: '#fff' } }}>
-              <CloseIcon fontSize="small" />
-            </IconButton>
-          </Box>
+            <span style={{
+              padding: '2px 9px', borderRadius: 6,
+              background: 'rgba(99,102,241,0.3)', color: '#a5b4fc',
+              fontSize: 10, fontWeight: 800, letterSpacing: '0.5px',
+            }}>
+              AI
+            </span>
 
-          {/* Messages */}
-          <Box sx={{ height: 300, overflowY: 'auto', p: 2, display: 'flex', flexDirection: 'column', gap: 1.5, backgroundColor: '#f8fafc' }}>
+            <button
+              onClick={() => setOpen(false)}
+              style={{
+                width: 28, height: 28, borderRadius: 8, border: 'none', flexShrink: 0,
+                background: 'rgba(255,255,255,0.08)', color: '#94a3b8',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                cursor: 'pointer', transition: 'all 0.15s',
+              }}
+              onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.18)'; e.currentTarget.style.color = '#fff'; }}
+              onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.08)'; e.currentTarget.style.color = '#94a3b8'; }}
+            >
+              <XIcon style={{ width: 13, height: 13 }} />
+            </button>
+          </div>
+
+          {/* Messages area */}
+          <div style={{
+            height: 310, overflowY: 'auto', padding: '16px',
+            display: 'flex', flexDirection: 'column', gap: 12,
+            background: 'var(--surface-2)',
+            scrollbarWidth: 'thin',
+          }}>
             {messages.map((msg, i) => (
-              <Box
+              <div
                 key={i}
-                sx={{
+                style={{
                   display: 'flex',
                   justifyContent: msg.role === 'user' ? 'flex-end' : 'flex-start',
+                  alignItems: 'flex-start', gap: 8,
+                  animation: 'fadeUp 0.25s cubic-bezier(0.22,1,0.36,1) both',
                 }}
               >
                 {msg.role === 'ai' && (
-                  <Box
-                    sx={{
-                      width: 26, height: 26, borderRadius: '8px',
-                      background: 'linear-gradient(135deg, #38bdf8, #818cf8)',
-                      display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      mr: 1, flexShrink: 0, mt: 0.3,
-                    }}
-                  >
-                    <AutoAwesomeIcon sx={{ color: '#fff', fontSize: 14 }} />
-                  </Box>
+                  <div style={{
+                    width: 26, height: 26, borderRadius: 8, flexShrink: 0, marginTop: 2,
+                    background: 'linear-gradient(135deg, #38bdf8, #818cf8)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    boxShadow: '0 2px 8px rgba(56,189,248,0.3)',
+                  }}>
+                    <SparkleIcon style={{ width: 13, height: 13, color: '#fff' }} />
+                  </div>
                 )}
-                <Box
-                  sx={{
-                    maxWidth: '80%',
-                    px: 1.8, py: 1.2,
-                    borderRadius: msg.role === 'user' ? '16px 16px 4px 16px' : '16px 16px 16px 4px',
-                    background: msg.role === 'user'
-                      ? 'linear-gradient(135deg, #6366f1, #8b5cf6)'
-                      : '#fff',
-                    boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
-                    border: msg.role === 'ai' ? '1px solid #e2e8f0' : 'none',
-                  }}
-                >
-                  <Typography
-                    variant="body2"
-                    sx={{ color: msg.role === 'user' ? '#fff' : '#1e293b', fontSize: '0.8rem', lineHeight: 1.5, whiteSpace: 'pre-line' }}
-                  >
+
+                <div style={{
+                  maxWidth: '80%',
+                  padding: msg.role === 'user' ? '9px 14px' : '10px 14px',
+                  borderRadius: msg.role === 'user'
+                    ? '18px 18px 4px 18px'
+                    : '18px 18px 18px 4px',
+                  background: msg.role === 'user'
+                    ? 'linear-gradient(135deg, #6366f1, #8b5cf6)'
+                    : 'var(--surface)',
+                  border: msg.role === 'ai' ? '1px solid var(--border)' : 'none',
+                  boxShadow: msg.role === 'user'
+                    ? '0 4px 12px rgba(99,102,241,0.35)'
+                    : '0 1px 4px rgba(0,0,0,0.06)',
+                }}>
+                  <p style={{
+                    margin: 0, fontSize: 13, lineHeight: 1.6,
+                    color: msg.role === 'user' ? '#fff' : 'var(--text)',
+                    fontFamily: "'DM Sans', sans-serif",
+                    whiteSpace: 'pre-line',
+                  }}>
                     {msg.text}
-                  </Typography>
-                </Box>
-              </Box>
+                  </p>
+                </div>
+              </div>
             ))}
 
             {/* Typing indicator */}
             {sending && (
-              <Box className="flex items-center gap-2">
-                <Box
-                  sx={{
-                    width: 26, height: 26, borderRadius: '8px',
-                    background: 'linear-gradient(135deg, #38bdf8, #818cf8)',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
-                  }}
-                >
-                  <AutoAwesomeIcon sx={{ color: '#fff', fontSize: 14 }} />
-                </Box>
-                <Box sx={{ px: 1.8, py: 1.2, borderRadius: '16px 16px 16px 4px', background: '#fff', border: '1px solid #e2e8f0' }}>
-                  <Box className="flex gap-1 items-center" sx={{ py: 0.3 }}>
-                    {[0, 1, 2].map((i) => (
-                      <Box
-                        key={i}
-                        sx={{
-                          width: 6, height: 6, borderRadius: '50%', backgroundColor: '#94a3b8',
-                          animation: `floatY 1.2s ease-in-out ${i * 200}ms infinite`,
-                        }}
-                      />
-                    ))}
-                  </Box>
-                </Box>
-              </Box>
+              <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
+                <div style={{
+                  width: 26, height: 26, borderRadius: 8, flexShrink: 0,
+                  background: 'linear-gradient(135deg, #38bdf8, #818cf8)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                }}>
+                  <SparkleIcon style={{ width: 13, height: 13, color: '#fff' }} />
+                </div>
+                <div style={{
+                  padding: '12px 14px',
+                  borderRadius: '18px 18px 18px 4px',
+                  background: 'var(--surface)', border: '1px solid var(--border)',
+                  display: 'flex', gap: 5, alignItems: 'center',
+                }}>
+                  {[0, 1, 2].map(i => (
+                    <span key={i} style={{
+                      width: 6, height: 6, borderRadius: '50%',
+                      background: 'var(--accent)', display: 'block',
+                      animation: `floatY 1.1s ease-in-out ${i * 160}ms infinite`,
+                      opacity: 0.7,
+                    }} />
+                  ))}
+                </div>
+              </div>
             )}
 
             <div ref={bottomRef} />
-          </Box>
+          </div>
 
-          {/* Input */}
-          <Box sx={{ p: 1.5, borderTop: '1px solid #e2e8f0', backgroundColor: '#fff' }}>
-            <Box className="flex items-center gap-1.5">
-              <TextField
-                fullWidth
-                size="small"
-                multiline
-                maxRows={3}
+          {/* Input area */}
+          <div style={{
+            padding: '12px 14px',
+            borderTop: '1px solid var(--border)',
+            background: 'var(--surface)',
+          }}>
+            <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end' }}>
+              <textarea
+                ref={textareaRef}
+                rows={1}
                 placeholder="Ask about your data privacy…"
                 value={input}
-                onChange={(e) => setInput(e.target.value)}
+                onChange={e => {
+                  setInput(e.target.value);
+                  e.target.style.height = 'auto';
+                  e.target.style.height = Math.min(e.target.scrollHeight, 88) + 'px';
+                }}
                 onKeyDown={handleKeyDown}
                 disabled={sending}
-                sx={{
-                  '& .MuiOutlinedInput-root': {
-                    borderRadius: '12px',
-                    fontSize: '0.82rem',
-                    backgroundColor: '#f8fafc',
-                  },
+                style={{
+                  flex: 1, padding: '9px 13px', borderRadius: 12,
+                  border: '1px solid var(--border)', background: 'var(--surface-2)',
+                  color: 'var(--text)', fontSize: 13,
+                  fontFamily: "'DM Sans', sans-serif",
+                  outline: 'none', resize: 'none', lineHeight: 1.5,
+                  transition: 'border-color 0.15s', overflow: 'hidden',
+                  minHeight: 38,
                 }}
+                onFocus={e => (e.currentTarget.style.borderColor = 'var(--accent)')}
+                onBlur={e => (e.currentTarget.style.borderColor = 'var(--border)')}
               />
-              <IconButton
+              <button
                 onClick={handleSend}
-                disabled={!input.trim() || sending}
-                sx={{
-                  background: 'linear-gradient(135deg, #6366f1, #8b5cf6)',
-                  color: '#fff',
-                  width: 36, height: 36, borderRadius: '10px', flexShrink: 0,
-                  '&.Mui-disabled': { background: 'linear-gradient(135deg, #c7d2fe, #ddd6fe)', color: '#fff' },
-                  '&:hover': { background: 'linear-gradient(135deg, #4f46e5, #7c3aed)' },
+                disabled={!canSend}
+                style={{
+                  width: 38, height: 38, borderRadius: 12, border: 'none', flexShrink: 0,
+                  background: canSend
+                    ? 'linear-gradient(135deg, #6366f1, #8b5cf6)'
+                    : 'var(--surface-2)',
+                  color: canSend ? '#fff' : 'var(--text-3)',
+                  cursor: canSend ? 'pointer' : 'not-allowed',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  transition: 'all 0.2s cubic-bezier(0.22,1,0.36,1)',
+                  boxShadow: canSend ? '0 4px 12px rgba(99,102,241,0.4)' : 'none',
                 }}
+                onMouseEnter={e => { if (canSend) e.currentTarget.style.transform = 'scale(1.08)'; }}
+                onMouseLeave={e => { e.currentTarget.style.transform = 'scale(1)'; }}
               >
                 {sending
-                  ? <CircularProgress size={14} sx={{ color: '#fff' }} />
-                  : <SendIcon sx={{ fontSize: 16 }} />
-                }
-              </IconButton>
-            </Box>
-            <Typography variant="caption" sx={{ color: '#94a3b8', fontSize: '0.65rem', display: 'block', textAlign: 'center', mt: 0.8 }}>
-              Powered by DataGuard AI — your data stays private
-            </Typography>
-          </Box>
-        </Box>
-      </Collapse>
+                  ? <CircularProgress size={14} sx={{ color: 'var(--text-3)' }} />
+                  : <ArrowUpIcon style={{ width: 16, height: 16 }} />}
+              </button>
+            </div>
+            <p style={{
+              margin: '8px 0 0', fontSize: 10.5, color: 'var(--text-3)',
+              textAlign: 'center', fontFamily: "'DM Sans', sans-serif",
+            }}>
+              Powered by DataGuard AI · your data stays private
+            </p>
+          </div>
+        </div>
+      )}
 
-      {/* FAB */}
-      <Tooltip title={open ? '' : 'Ask DataGuard AI'} placement="left">
-        <Box sx={{ position: 'relative' }}>
-          {!open && (
-            <Box
-              sx={{
-                position: 'absolute', inset: 0, borderRadius: '50%',
-                backgroundColor: '#6366f1', animation: 'pulseRing 2s ease-out infinite',
-              }}
-            />
-          )}
-          <Box
-            onClick={() => setOpen((v) => !v)}
-            className="cursor-pointer"
-            sx={{
-              width: 56, height: 56, borderRadius: '50%',
-              background: open
-                ? 'linear-gradient(135deg, #ef4444, #f97316)'
-                : 'linear-gradient(135deg, #6366f1, #8b5cf6)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              boxShadow: '0 8px 24px rgba(99,102,241,0.45)',
-              transition: 'all 0.3s cubic-bezier(0.22,1,0.36,1)',
-              '&:hover': { transform: 'scale(1.1)', boxShadow: '0 12px 32px rgba(99,102,241,0.55)' },
-              position: 'relative', zIndex: 1,
-            }}
-          >
-            {open
-              ? <CloseIcon sx={{ color: '#fff', fontSize: 22 }} />
-              : <AutoAwesomeIcon sx={{ color: '#fff', fontSize: 22 }} />
-            }
-          </Box>
-        </Box>
-      </Tooltip>
-    </Box>
+      {/* ── FAB ────────────────────────────────────────── */}
+      <div style={{ position: 'relative' }}>
+        {!open && (
+          <div style={{
+            position: 'absolute', inset: 0, borderRadius: '50%',
+            background: '#6366f1',
+            animation: 'pulseRing 2.2s ease-out infinite',
+          }} />
+        )}
+        <button
+          onClick={() => setOpen(v => !v)}
+          title={open ? 'Close AI chat' : 'Ask DataGuard AI'}
+          style={{
+            width: 56, height: 56, borderRadius: '50%', border: 'none',
+            cursor: 'pointer', position: 'relative', zIndex: 1,
+            background: open
+              ? 'linear-gradient(135deg, #ef4444, #f97316)'
+              : 'linear-gradient(135deg, #6366f1, #8b5cf6)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            boxShadow: open
+              ? '0 8px 24px rgba(239,68,68,0.4)'
+              : '0 8px 28px rgba(99,102,241,0.5)',
+            transition: 'all 0.3s cubic-bezier(0.22,1,0.36,1)',
+          }}
+          onMouseEnter={e => (e.currentTarget.style.transform = 'scale(1.1)')}
+          onMouseLeave={e => (e.currentTarget.style.transform = 'scale(1)')}
+        >
+          {open
+            ? <XIcon style={{ width: 20, height: 20, color: '#fff' }} />
+            : <SparkleIcon style={{ width: 26, height: 26, color: '#fff' }} />}
+        </button>
+      </div>
+    </div>
   );
 }

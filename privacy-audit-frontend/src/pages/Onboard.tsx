@@ -1,21 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
-import Box from '@mui/material/Box';
-import Paper from '@mui/material/Paper';
-import Typography from '@mui/material/Typography';
-import TextField from '@mui/material/TextField';
-import Button from '@mui/material/Button';
-import Stepper from '@mui/material/Stepper';
-import Step from '@mui/material/Step';
-import StepLabel from '@mui/material/StepLabel';
 import Alert from '@mui/material/Alert';
 import CircularProgress from '@mui/material/CircularProgress';
-import Chip from '@mui/material/Chip';
-import IconButton from '@mui/material/IconButton';
-import Tooltip from '@mui/material/Tooltip';
-import ContentCopyIcon from '@mui/icons-material/ContentCopy';
-import CheckCircleIcon from '@mui/icons-material/CheckCircle';
-import OpenInNewIcon from '@mui/icons-material/OpenInNew';
 import { onboardApi } from '../api/client';
+import { CheckIcon, PersonAddIcon } from '../components/icons/Icons';
 
 const STEPS = ['Register Tenant', 'Copy API Key & Test', 'Open Dashboard'];
 
@@ -33,36 +20,98 @@ function CopyBlock({ label, value }: { label: string; value: string }) {
     setTimeout(() => setCopied(false), 2000);
   };
   return (
-    <Box sx={{ mb: 2 }}>
-      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 0.5 }}>
-        <Typography variant="caption" sx={{ color: '#64748b', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+    <div style={{ marginBottom: 16 }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+        <span style={{
+          fontSize: 10, fontWeight: 700, color: 'var(--text-3)',
+          textTransform: 'uppercase', letterSpacing: '0.5px',
+        }}>
           {label}
-        </Typography>
-        <Tooltip title={copied ? 'Copied!' : 'Copy'}>
-          <IconButton size="small" onClick={handleCopy} sx={{ color: copied ? '#22c55e' : '#6366f1' }}>
-            {copied ? <CheckCircleIcon fontSize="small" /> : <ContentCopyIcon fontSize="small" />}
-          </IconButton>
-        </Tooltip>
-      </Box>
-      <Box
-        sx={{
-          background: '#0f172a',
-          borderRadius: 2,
-          p: 1.5,
-          fontFamily: 'monospace',
-          fontSize: '0.78rem',
-          color: '#e2e8f0',
-          whiteSpace: 'pre-wrap',
-          wordBreak: 'break-all',
-          maxHeight: 140,
-          overflowY: 'auto',
-        }}
-      >
+        </span>
+        <button
+          onClick={handleCopy}
+          style={{
+            display: 'flex', alignItems: 'center', gap: 4,
+            padding: '3px 10px', borderRadius: 6, border: '1px solid var(--border)',
+            background: copied ? 'rgba(5,150,105,0.1)' : 'var(--surface-2)',
+            color: copied ? '#059669' : 'var(--text-2)',
+            fontSize: 11, fontWeight: 600, cursor: 'pointer',
+            fontFamily: "'DM Sans', sans-serif", transition: 'all 0.2s',
+          }}
+        >
+          {copied && <CheckIcon style={{ width: 11, height: 11 }} />}
+          {copied ? 'Copied!' : 'Copy'}
+        </button>
+      </div>
+      <div style={{
+        background: '#0d1117',
+        borderRadius: 10, padding: '12px 14px',
+        fontFamily: "'JetBrains Mono', monospace",
+        fontSize: 12, color: '#c9d1d9',
+        whiteSpace: 'pre-wrap', wordBreak: 'break-all',
+        maxHeight: 140, overflowY: 'auto',
+        border: '1px solid rgba(255,255,255,0.06)',
+        lineHeight: 1.6,
+      }}>
         {value}
-      </Box>
-    </Box>
+      </div>
+    </div>
   );
 }
+
+function CustomStepper({ steps, activeStep }: { steps: string[]; activeStep: number }) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'flex-start', marginBottom: 32 }}>
+      {steps.map((label, i) => (
+        <div key={i} style={{ display: 'flex', alignItems: 'flex-start', flex: i < steps.length - 1 ? 1 : 'none' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
+            <div style={{
+              width: 32, height: 32, borderRadius: '50%', flexShrink: 0,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              background: i < activeStep
+                ? 'rgba(5,150,105,0.15)'
+                : i === activeStep
+                ? 'var(--accent)'
+                : 'var(--surface-2)',
+              border: `2px solid ${i < activeStep ? '#059669' : i === activeStep ? 'var(--accent)' : 'var(--border)'}`,
+              color: i < activeStep ? '#059669' : i === activeStep ? '#fff' : 'var(--text-3)',
+              fontSize: 12, fontWeight: 800,
+              transition: 'all 0.3s ease',
+            }}>
+              {i < activeStep
+                ? <CheckIcon style={{ width: 14, height: 14 }} />
+                : i + 1}
+            </div>
+            <span style={{
+              fontSize: 11, fontWeight: i === activeStep ? 700 : 500,
+              color: i === activeStep ? 'var(--text)' : 'var(--text-3)',
+              textAlign: 'center', whiteSpace: 'nowrap',
+              transition: 'color 0.3s',
+            }}>
+              {label}
+            </span>
+          </div>
+          {i < steps.length - 1 && (
+            <div style={{
+              flex: 1, height: 2, marginTop: 15, marginLeft: 8, marginRight: 8,
+              background: i < activeStep ? '#059669' : 'var(--border)',
+              transition: 'background 0.4s ease',
+              borderRadius: 2,
+            }} />
+          )}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+const inputStyle: React.CSSProperties = {
+  padding: '10px 14px', borderRadius: 10, border: '1px solid var(--border)',
+  background: 'var(--surface-2)', color: 'var(--text)', fontSize: 13,
+  fontFamily: "'DM Sans', sans-serif", outline: 'none',
+  width: '100%', boxSizing: 'border-box', transition: 'border-color 0.15s',
+  marginBottom: 12,
+};
 
 export default function Onboard() {
   const [step, setStep] = useState(0);
@@ -73,13 +122,11 @@ export default function Onboard() {
   const [error, setError] = useState('');
   const [payload, setPayload] = useState<RegisterPayload | null>(null);
 
-  // Step 2 polling state
   const [eventCount, setEventCount] = useState(0);
   const [dashboardReady, setDashboardReady] = useState(false);
   const [polling, setPolling] = useState(false);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  // Start polling once we have a tenantId
   useEffect(() => {
     if (step !== 1 || !payload) return;
     setPolling(true);
@@ -92,13 +139,9 @@ export default function Onboard() {
           clearInterval(pollRef.current!);
           setPolling(false);
         }
-      } catch {
-        // ignore polling errors silently
-      }
+      } catch { /* ignore polling errors */ }
     }, 3000);
-    return () => {
-      if (pollRef.current) clearInterval(pollRef.current);
-    };
+    return () => { if (pollRef.current) clearInterval(pollRef.current); };
   }, [step, payload]);
 
   const handleRegister = async () => {
@@ -120,195 +163,254 @@ export default function Onboard() {
   };
 
   return (
-    <Box
-      sx={{
-        minHeight: '100vh',
-        background: 'linear-gradient(160deg, #f1f5f9 0%, #e8edf5 50%, #f1f5f9 100%)',
-        display: 'flex',
-        alignItems: 'flex-start',
-        justifyContent: 'center',
-        pt: { xs: 4, md: 8 },
-        px: 2,
-      }}
-    >
-      <Box sx={{ width: '100%', maxWidth: 640 }}>
+    <div style={{
+      minHeight: '100%',
+      overflowY: 'auto',
+      background: 'var(--bg)',
+      display: 'flex',
+      alignItems: 'flex-start',
+      justifyContent: 'center',
+      padding: '40px 16px 60px',
+    }}>
+      <div style={{ width: '100%', maxWidth: 620 }}>
+
         {/* Header */}
-        <Box sx={{ textAlign: 'center', mb: 5 }}>
-          <Typography
-            variant="h4"
-            sx={{ fontWeight: 800, color: '#0f172a', letterSpacing: '-0.5px', lineHeight: 1.2 }}
-          >
+        <div style={{ textAlign: 'center', marginBottom: 40 }} className="anim-fade-up">
+          <div style={{
+            width: 52, height: 52, borderRadius: 14, margin: '0 auto 16px',
+            background: 'linear-gradient(135deg, #5b5ef6, #7c3aed)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            boxShadow: '0 8px 24px rgba(91,94,246,0.35)',
+          }}>
+            <PersonAddIcon style={{ width: 24, height: 24, color: '#fff' }} />
+          </div>
+          <h1 style={{
+            margin: '0 0 8px', fontSize: 28, fontWeight: 800, color: 'var(--text)',
+            letterSpacing: '-0.5px', fontFamily: "'Space Grotesk', sans-serif",
+          }}>
             Get Started with{' '}
-            <span style={{ background: 'linear-gradient(90deg,#6366f1,#a855f7)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
+            <span style={{
+              background: 'linear-gradient(90deg, #5b5ef6, #a855f7)',
+              WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
+            }}>
               Privacy Audit
             </span>
-          </Typography>
-          <Typography variant="body2" sx={{ color: '#64748b', mt: 1 }}>
+          </h1>
+          <p style={{ margin: 0, fontSize: 14, color: 'var(--text-3)' }}>
             Set up your tenant in under 2 minutes.
-          </Typography>
-        </Box>
+          </p>
+        </div>
 
-        <Stepper activeStep={step} alternativeLabel sx={{ mb: 4 }}>
-          {STEPS.map((label) => (
-            <Step key={label}>
-              <StepLabel>{label}</StepLabel>
-            </Step>
-          ))}
-        </Stepper>
+        {/* Stepper */}
+        <div className="anim-fade-up d1">
+          <CustomStepper steps={STEPS} activeStep={step} />
+        </div>
 
-        <Paper elevation={0} sx={{ borderRadius: 3, border: '1px solid #e2e8f0', p: { xs: 3, md: 4 } }}>
+        {/* Card */}
+        <div className="dg-card anim-fade-up d2" style={{ padding: '32px' }}>
 
           {/* ── Step 0: Register ── */}
           {step === 0 && (
-            <Box>
-              <Typography variant="h6" sx={{ fontWeight: 700, mb: 0.5 }}>Create your tenant</Typography>
-              <Typography variant="body2" sx={{ color: '#64748b', mb: 3 }}>
+            <div>
+              <h2 style={{
+                margin: '0 0 6px', fontSize: 18, fontWeight: 700, color: 'var(--text)',
+                fontFamily: "'Space Grotesk', sans-serif",
+              }}>
+                Create your tenant
+              </h2>
+              <p style={{ margin: '0 0 22px', fontSize: 13, color: 'var(--text-3)', lineHeight: 1.6 }}>
                 Your tenant is an isolated workspace that holds your audit events and privacy data.
-              </Typography>
-              {error && <Alert severity="error" sx={{ mb: 2, borderRadius: 1.5 }}>{error}</Alert>}
-              <TextField
-                label="Company / App name"
+              </p>
+              {error && (
+                <Alert severity="error" sx={{ mb: 2, borderRadius: '10px', fontSize: 13 }}>
+                  {error}
+                </Alert>
+              )}
+              <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--text-3)', textTransform: 'uppercase', letterSpacing: '0.4px', marginBottom: 6 }}>
+                Company / App name
+              </label>
+              <input
+                type="text"
                 value={name}
-                onChange={(e) => setName(e.target.value)}
-                fullWidth
-                sx={{ mb: 2 }}
-                size="small"
+                onChange={e => setName(e.target.value)}
+                placeholder="Acme Corp"
+                onFocus={e => (e.currentTarget.style.borderColor = 'var(--accent)')}
+                onBlur={e => (e.currentTarget.style.borderColor = 'var(--border)')}
+                style={inputStyle}
               />
-              <TextField
-                label="Admin email"
+              <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--text-3)', textTransform: 'uppercase', letterSpacing: '0.4px', marginBottom: 6 }}>
+                Admin email
+              </label>
+              <input
                 type="email"
                 value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                fullWidth
-                sx={{ mb: 2 }}
-                size="small"
+                onChange={e => setEmail(e.target.value)}
+                placeholder="admin@acme.com"
+                onFocus={e => (e.currentTarget.style.borderColor = 'var(--accent)')}
+                onBlur={e => (e.currentTarget.style.borderColor = 'var(--border)')}
+                style={inputStyle}
               />
-              <TextField
-                label="Password"
+              <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--text-3)', textTransform: 'uppercase', letterSpacing: '0.4px', marginBottom: 6 }}>
+                Password
+              </label>
+              <input
                 type="password"
                 value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                fullWidth
-                sx={{ mb: 3 }}
-                size="small"
+                onChange={e => setPassword(e.target.value)}
+                placeholder="••••••••"
+                onFocus={e => (e.currentTarget.style.borderColor = 'var(--accent)')}
+                onBlur={e => (e.currentTarget.style.borderColor = 'var(--border)')}
+                style={{ ...inputStyle, marginBottom: 24 }}
               />
-              <Button
-                variant="contained"
-                fullWidth
+              <button
                 onClick={handleRegister}
                 disabled={loading}
-                startIcon={loading ? <CircularProgress size={16} color="inherit" /> : undefined}
-                sx={{
-                  py: 1.2,
-                  fontWeight: 700,
-                  textTransform: 'none',
-                  background: 'linear-gradient(90deg,#6366f1,#a855f7)',
-                  '&:hover': { background: 'linear-gradient(90deg,#4f46e5,#9333ea)' },
+                style={{
+                  width: '100%', padding: '11px 0', borderRadius: 10, border: 'none',
+                  background: 'linear-gradient(90deg, #5b5ef6, #a855f7)',
+                  color: '#fff', fontSize: 14, fontWeight: 700, cursor: loading ? 'wait' : 'pointer',
+                  fontFamily: "'DM Sans', sans-serif", transition: 'opacity 0.15s',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
                 }}
+                onMouseEnter={e => !loading && (e.currentTarget.style.opacity = '0.88')}
+                onMouseLeave={e => (e.currentTarget.style.opacity = '1')}
               >
-                {loading ? 'Creating tenant…' : 'Create tenant'}
-              </Button>
-            </Box>
+                {loading && <CircularProgress size={16} sx={{ color: '#fff' }} />}
+                {loading ? 'Creating tenant…' : 'Create tenant →'}
+              </button>
+            </div>
           )}
 
           {/* ── Step 1: API Key + Test ── */}
           {step === 1 && payload && (
-            <Box>
-              <Typography variant="h6" sx={{ fontWeight: 700, mb: 0.5 }}>Your API Key</Typography>
-              <Alert severity="warning" sx={{ mb: 2.5, borderRadius: 1.5 }}>
-                Save this key now — it will not be shown again.
-              </Alert>
+            <div>
+              <h2 style={{
+                margin: '0 0 6px', fontSize: 18, fontWeight: 700, color: 'var(--text)',
+                fontFamily: "'Space Grotesk', sans-serif",
+              }}>
+                Your API Key
+              </h2>
+              <div style={{
+                display: 'flex', alignItems: 'center', gap: 8,
+                padding: '10px 14px', borderRadius: 10, marginBottom: 20,
+                background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.25)',
+              }}>
+                <span style={{ fontSize: 14 }}>⚠️</span>
+                <span style={{ fontSize: 12, color: '#d97706', fontWeight: 600 }}>
+                  Save this key now — it will not be shown again.
+                </span>
+              </div>
 
               <CopyBlock label="API Key" value={payload.tenant.apiKey} />
 
-              <Typography variant="body2" sx={{ fontWeight: 600, color: '#0f172a', mb: 1 }}>
+              <p style={{ margin: '0 0 8px', fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>
                 Send a test event
-              </Typography>
-              <Typography variant="body2" sx={{ color: '#64748b', mb: 1.5 }}>
-                Run this curl command in your terminal to confirm the connection is working:
-              </Typography>
+              </p>
+              <p style={{ margin: '0 0 12px', fontSize: 12, color: 'var(--text-3)', lineHeight: 1.6 }}>
+                Run this curl command in your terminal to confirm the connection:
+              </p>
               <CopyBlock label="Sample curl" value={payload.quickstart.sendEvent} />
 
               {/* Live event counter */}
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mt: 2 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 16 }}>
                 {polling && !dashboardReady && (
-                  <CircularProgress size={16} thickness={4} sx={{ color: '#6366f1' }} />
+                  <CircularProgress size={14} thickness={4} sx={{ color: 'var(--accent)' }} />
                 )}
                 {dashboardReady ? (
-                  <Chip
-                    icon={<CheckCircleIcon />}
-                    label={`${eventCount} event${eventCount !== 1 ? 's' : ''} received — ready!`}
-                    color="success"
-                    variant="outlined"
-                    size="small"
-                  />
+                  <div style={{
+                    display: 'flex', alignItems: 'center', gap: 8,
+                    padding: '6px 12px', borderRadius: 8,
+                    background: 'rgba(5,150,105,0.1)', border: '1px solid rgba(5,150,105,0.25)',
+                  }}>
+                    <CheckIcon style={{ width: 14, height: 14, color: '#059669' }} />
+                    <span style={{ fontSize: 12, color: '#059669', fontWeight: 600 }}>
+                      {eventCount} event{eventCount !== 1 ? 's' : ''} received — ready!
+                    </span>
+                  </div>
                 ) : (
-                  <Typography variant="caption" sx={{ color: '#64748b' }}>
+                  <span style={{ fontSize: 12, color: 'var(--text-3)' }}>
                     {eventCount > 0
                       ? `${eventCount} event${eventCount !== 1 ? 's' : ''} received — waiting for more…`
                       : 'Waiting for first event…'}
-                  </Typography>
+                  </span>
                 )}
-              </Box>
+              </div>
 
-              <Box sx={{ display: 'flex', gap: 2, mt: 3 }}>
-                <Button
-                  variant="contained"
+              <div style={{ display: 'flex', gap: 12, marginTop: 24 }}>
+                <button
                   onClick={() => setStep(2)}
-                  sx={{
-                    fontWeight: 700,
-                    textTransform: 'none',
-                    background: 'linear-gradient(90deg,#6366f1,#a855f7)',
-                    '&:hover': { background: 'linear-gradient(90deg,#4f46e5,#9333ea)' },
+                  style={{
+                    padding: '10px 22px', borderRadius: 10, border: 'none',
+                    background: 'linear-gradient(90deg, #5b5ef6, #a855f7)',
+                    color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer',
+                    fontFamily: "'DM Sans', sans-serif", transition: 'opacity 0.15s',
                   }}
+                  onMouseEnter={e => (e.currentTarget.style.opacity = '0.88')}
+                  onMouseLeave={e => (e.currentTarget.style.opacity = '1')}
                 >
                   Continue to Dashboard
-                </Button>
-                <Button
-                  variant="outlined"
+                </button>
+                <button
                   onClick={() => setStep(2)}
-                  sx={{ fontWeight: 600, textTransform: 'none', color: '#64748b', borderColor: '#e2e8f0' }}
+                  style={{
+                    padding: '10px 18px', borderRadius: 10,
+                    border: '1px solid var(--border)', background: 'transparent',
+                    color: 'var(--text-2)', fontSize: 13, fontWeight: 500,
+                    cursor: 'pointer', fontFamily: "'DM Sans', sans-serif", transition: 'background 0.12s',
+                  }}
+                  onMouseEnter={e => (e.currentTarget.style.background = 'var(--surface-2)')}
+                  onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
                 >
                   Skip for now
-                </Button>
-              </Box>
-            </Box>
+                </button>
+              </div>
+            </div>
           )}
 
           {/* ── Step 2: Open Dashboard ── */}
           {step === 2 && payload && (
-            <Box sx={{ textAlign: 'center', py: 2 }}>
-              <CheckCircleIcon sx={{ fontSize: 56, color: '#22c55e', mb: 2 }} />
-              <Typography variant="h6" sx={{ fontWeight: 700, mb: 1 }}>
+            <div style={{ textAlign: 'center', padding: '20px 0' }}>
+              <div style={{
+                width: 64, height: 64, borderRadius: '50%', margin: '0 auto 20px',
+                background: 'rgba(5,150,105,0.12)', border: '2px solid rgba(5,150,105,0.3)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+              }}>
+                <CheckIcon style={{ width: 28, height: 28, color: '#059669' }} />
+              </div>
+              <h2 style={{
+                margin: '0 0 10px', fontSize: 20, fontWeight: 700, color: 'var(--text)',
+                fontFamily: "'Space Grotesk', sans-serif",
+              }}>
                 You're all set, {payload.tenant.name}!
-              </Typography>
-              <Typography variant="body2" sx={{ color: '#64748b', mb: 3 }}>
+              </h2>
+              <p style={{ margin: '0 0 28px', fontSize: 13, color: 'var(--text-3)', lineHeight: 1.6, maxWidth: 380, marginLeft: 'auto', marginRight: 'auto' }}>
                 Your tenant is registered and your first events are being processed. Open the dashboard to explore your privacy data.
-              </Typography>
-              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, alignItems: 'center' }}>
-                <Button
-                  variant="contained"
-                  href="/login"
-                  size="large"
-                  endIcon={<OpenInNewIcon />}
-                  sx={{
-                    fontWeight: 700,
-                    textTransform: 'none',
-                    px: 4,
-                    background: 'linear-gradient(90deg,#6366f1,#a855f7)',
-                    '&:hover': { background: 'linear-gradient(90deg,#4f46e5,#9333ea)' },
-                  }}
-                >
-                  Open Dashboard
-                </Button>
-                <Typography variant="caption" sx={{ color: '#94a3b8' }}>
-                  Tenant ID: <strong style={{ fontFamily: 'monospace' }}>{payload.tenant.id}</strong>
-                </Typography>
-              </Box>
-            </Box>
+              </p>
+              <a
+                href="/login"
+                style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 8,
+                  padding: '12px 32px', borderRadius: 10,
+                  background: 'linear-gradient(90deg, #5b5ef6, #a855f7)',
+                  color: '#fff', fontSize: 14, fontWeight: 700,
+                  textDecoration: 'none', transition: 'opacity 0.15s',
+                }}
+                onMouseEnter={e => ((e.currentTarget as HTMLAnchorElement).style.opacity = '0.88')}
+                onMouseLeave={e => ((e.currentTarget as HTMLAnchorElement).style.opacity = '1')}
+              >
+                Open Dashboard →
+              </a>
+              <p style={{ margin: '18px 0 0', fontSize: 11, color: 'var(--text-3)' }}>
+                Tenant ID:{' '}
+                <code style={{ fontFamily: "'JetBrains Mono', monospace", color: 'var(--text-2)' }}>
+                  {payload.tenant.id}
+                </code>
+              </p>
+            </div>
           )}
-        </Paper>
-      </Box>
-    </Box>
+
+        </div>
+      </div>
+    </div>
   );
 }

@@ -3,6 +3,8 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { MongooseModule } from '@nestjs/mongoose';
 import { BullModule } from '@nestjs/bullmq';
+
+const MONGODB_URI = process.env.MONGODB_URI;
 import { ScheduleModule } from '@nestjs/schedule';
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 import { APP_GUARD } from '@nestjs/core';
@@ -25,6 +27,8 @@ import { ConsentsModule } from './consents/consents.module';
 import { BreachModule } from './breach/breach.module';
 import { WebhooksModule } from './webhooks/webhooks.module';
 import { SeedModule } from './seed/seed.module';
+import { DataMinimisationModule } from './data-minimisation/data-minimisation.module';
+import { NotificationsModule } from './notifications/notifications.module';
 
 // Entities
 import { Tenant } from './tenants/tenant.entity';
@@ -38,6 +42,7 @@ import { RiskAlert } from './risk/risk-alert.entity';
 import { Consent } from './consents/consent.entity';
 import { BreachReport } from './breach/breach-report.entity';
 import { Webhook } from './webhooks/webhook.entity';
+import { DataMinimisationViolation } from './data-minimisation/data-minimisation-violation.entity';
 
 // Middleware
 import { TenantMiddleware } from './common/middleware/tenant.middleware';
@@ -71,32 +76,41 @@ import { AppController } from './app.controller';
           Consent,
           BreachReport,
           Webhook,
+          DataMinimisationViolation,
         ],
         synchronize: true,
       }),
     }),
 
-    // ── MongoDB (AI Chat + AI Analysis storage) ────────────────────────────
-    MongooseModule.forRootAsync({
-      imports: [ConfigModule],
-      inject: [ConfigService],
-      useFactory: (configService: ConfigService) => ({
-        uri:
-          configService.get<string>('MONGODB_URI') ??
-          'mongodb://localhost:27017/privacy_audit_ai',
-      }),
-    }),
+    // ── MongoDB (AI Chat + AI Analysis storage) — optional ─────────────────
+    // Only loaded when MONGODB_URI is set. Without it, AI features are
+    // disabled but the rest of the app boots normally.
+    ...(MONGODB_URI
+      ? [MongooseModule.forRoot(MONGODB_URI)]
+      : []),
 
     // ── Queue (BullMQ / Redis) ──────────────────────────────────────────────
     BullModule.forRootAsync({
       imports: [ConfigModule],
       inject: [ConfigService],
-      useFactory: (configService: ConfigService) => ({
-        connection: {
-          host: configService.get<string>('REDIS_HOST') ?? 'localhost',
-          port: configService.get<number>('REDIS_PORT') ?? 6379,
-        },
-      }),
+      useFactory: (configService: ConfigService) => {
+        const redisUrl = configService.get<string>('REDIS_URL');
+        const baseConnection = redisUrl
+          ? { url: redisUrl }
+          : {
+              host: configService.get<string>('REDIS_HOST') ?? 'localhost',
+              port: configService.get<number>('REDIS_PORT') ?? 6379,
+            };
+        return {
+          connection: {
+            ...baseConnection,
+            // Retry with increasing delay, cap at 30s — prevents log spam on Render free tier
+            retryStrategy: (times: number) => Math.min(times * 500, 30_000),
+            maxRetriesPerRequest: null,
+            enableReadyCheck: false,
+          },
+        };
+      },
     }),
 
     // ── Cron scheduling ────────────────────────────────────────────────────
@@ -128,6 +142,8 @@ import { AppController } from './app.controller';
     BreachModule,
     WebhooksModule,
     SeedModule,
+    DataMinimisationModule,
+    NotificationsModule,
   ],
   controllers: [AppController],
   providers: [

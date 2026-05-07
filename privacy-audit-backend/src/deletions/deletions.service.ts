@@ -136,6 +136,28 @@ export class DeletionsService {
     });
   }
 
+  /** Admin overview — returns recent deletion requests across given tenants. */
+  async listForAdmin(tenantIds: string[]): Promise<DeletionRequest[]> {
+    if (tenantIds.length === 0) return [];
+    return this.deletionsRepository
+      .createQueryBuilder('d')
+      .select(['d.id', 'd.tenantId', 'd.tenantUserId', 'd.status', 'd.requestedAt', 'd.completedAt'])
+      .where('d.tenant_id IN (:...tenantIds)', { tenantIds })
+      .orderBy('d.requestedAt', 'DESC')
+      .take(50)
+      .getMany();
+  }
+
+  /** Super admin — returns all deletion requests across all tenants. */
+  async listAll(): Promise<DeletionRequest[]> {
+    return this.deletionsRepository
+      .createQueryBuilder('d')
+      .select(['d.id', 'd.tenantId', 'd.tenantUserId', 'd.status', 'd.requestedAt', 'd.completedAt'])
+      .orderBy('d.requestedAt', 'DESC')
+      .take(100)
+      .getMany();
+  }
+
   /**
    * getStatus
    *

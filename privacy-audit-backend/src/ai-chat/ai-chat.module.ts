@@ -13,12 +13,16 @@ import { AiChatService } from './ai-chat.service';
 import { AiOrchestrationModule } from '../ai-orchestration/ai-orchestration.module';
 import { AuditEvent } from '../events/audit-event.entity';
 
-@Module({
-  imports: [
-    MongooseModule.forFeature([
+const mongooseFeature = process.env.MONGODB_URI
+  ? [MongooseModule.forFeature([
       { name: AiChatSession.name, schema: AiChatSessionSchema },
       { name: AiAnalysisRecord.name, schema: AiAnalysisRecordSchema },
-    ]),
+    ])]
+  : [];
+
+@Module({
+  imports: [
+    ...mongooseFeature,
     TypeOrmModule.forFeature([AuditEvent]),
     AiOrchestrationModule,
   ],

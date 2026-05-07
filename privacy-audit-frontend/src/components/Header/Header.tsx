@@ -13,6 +13,7 @@ import LogoutIcon from '@mui/icons-material/Logout';
 import LinkIcon from '@mui/icons-material/Link';
 import WebhookIcon from '@mui/icons-material/Webhook';
 import PersonAddIcon from '@mui/icons-material/PersonAdd';
+import PsychologyIcon from '@mui/icons-material/Psychology';
 import { Shield as ShieldIcon } from '@mui/icons-material';
 import { useAuth } from '../../contexts/AuthContext';
 
@@ -100,7 +101,11 @@ export default function Header() {
               }}
             >
               <Typography sx={{ color: '#94a3b8', fontSize: '0.68rem', fontWeight: 600 }}>
-                {user.type === 'google_session' ? 'Google' : 'Tenant session'}
+                {user.type === 'google_session'
+                  ? 'Google'
+                  : (!user.tenantUserId && user.email)
+                  ? 'Admin'
+                  : 'Tenant session'}
               </Typography>
             </Box>
           )}
@@ -177,6 +182,12 @@ export default function Header() {
                 >
                   <ListItemIcon><WebhookIcon fontSize="small" /></ListItemIcon>
                   Webhooks
+                </MenuItem>
+                <MenuItem
+                  onClick={() => { setAnchorEl(null); navigate('/ai-settings'); }}
+                >
+                  <ListItemIcon><PsychologyIcon fontSize="small" /></ListItemIcon>
+                  AI Settings
                 </MenuItem>
                 <MenuItem
                   onClick={() => { setAnchorEl(null); navigate('/onboard'); }}

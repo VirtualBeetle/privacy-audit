@@ -13,8 +13,8 @@ export class BreachReport {
   @Column({ name: 'tenant_id' })
   tenantId: string;
 
-  @Column({ name: 'tenant_user_id' })
-  tenantUserId: string;
+  @Column({ name: 'tenant_user_id', nullable: true })
+  tenantUserId: string | null;
 
   @Column()
   description: string;

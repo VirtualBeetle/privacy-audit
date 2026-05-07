@@ -1,16 +1,23 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import client from '../api/client';
 
 export default function PrivacySettings() {
-  const [dashboardLink, setDashboardLink] = useState('');
   const [exportMsg, setExportMsg] = useState('');
   const [deleteMsg, setDeleteMsg] = useState('');
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-  const [loading, setLoading] = useState({ export: false, delete: false });
+  const [loading, setLoading] = useState({ export: false, delete: false, dashboard: false });
 
-  useEffect(() => {
-    client.get('/api/privacy/dashboard-token').then(r => setDashboardLink(r.data.url));
-  }, []);
+  const handleViewDashboard = async () => {
+    setLoading(l => ({ ...l, dashboard: true }));
+    try {
+      const r = await client.get('/api/privacy/dashboard-token');
+      window.location.href = r.data.url;
+    } catch {
+      // ignore — stay on page
+    } finally {
+      setLoading(l => ({ ...l, dashboard: false }));
+    }
+  };
 
   const handleExport = async () => {
     setLoading(l => ({ ...l, export: true }));
@@ -48,16 +55,13 @@ export default function PrivacySettings() {
         <p style={{ color: '#64748b', fontSize: 14, marginBottom: 16 }}>
           See a full history of how your data has been accessed, by whom, and why — powered by the Privacy Audit Service.
         </p>
-        {dashboardLink ? (
-          <button
-            onClick={() => { window.location.href = dashboardLink; }}
-            style={{ ...btnStyle, fontSize: 14 }}
-          >
-            View My Privacy Dashboard →
-          </button>
-        ) : (
-          <span style={{ color: '#94a3b8', fontSize: 14 }}>Loading dashboard link...</span>
-        )}
+        <button
+          onClick={handleViewDashboard}
+          disabled={loading.dashboard}
+          style={{ ...btnStyle, fontSize: 14 }}
+        >
+          {loading.dashboard ? 'Opening...' : 'View My Privacy Dashboard →'}
+        </button>
       </div>
 
       {/* Data Export */}

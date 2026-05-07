@@ -10,7 +10,9 @@ import {
   ForbiddenException,
   HttpCode,
   HttpStatus,
+  NotFoundException,
 } from '@nestjs/common';
+import { randomUUID } from 'crypto';
 import { ConfigService } from '@nestjs/config';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
@@ -22,6 +24,9 @@ import { RiskService } from '../risk/risk.service';
 import { RetentionService } from '../retention/retention.service';
 import { EmailService } from '../email/email.service';
 import { AuditEvent } from '../events/audit-event.entity';
+import { Tenant } from '../tenants/tenant.entity';
+import { BreachReport } from '../breach/breach-report.entity';
+import { hashApiKey } from '../tenants/tenants.service';
 import { AUDIT_EVENTS_QUEUE } from '../queue/queue.constants';
 
 /**
@@ -50,6 +55,8 @@ export class DevController {
     private readonly emailService: EmailService,
     @InjectQueue(AUDIT_EVENTS_QUEUE) private readonly auditQueue: Queue,
     @InjectRepository(AuditEvent) private readonly eventsRepo: Repository<AuditEvent>,
+    @InjectRepository(Tenant) private readonly tenantsRepo: Repository<Tenant>,
+    @InjectRepository(BreachReport) private readonly breachRepo: Repository<BreachReport>,
   ) {}
 
   private guard(token: string | undefined): void {
@@ -216,9 +223,29 @@ export class DevController {
     const userId = body.tenantUserId ?? 'demo-user-001';
     const now = new Date();
 
-    const ACTIONS = ['READ', 'WRITE', 'DELETE', 'EXPORT', 'SHARE', 'LOGIN', 'PROFILE_UPDATE'];
+    const ACTIONS = [
+      { code: 'READ', label: 'Read data' },
+      { code: 'WRITE', label: 'Write data' },
+      { code: 'DELETE', label: 'Delete data' },
+      { code: 'EXPORT', label: 'Export data' },
+      { code: 'SHARE', label: 'Share data' },
+      { code: 'LOGIN', label: 'User login' },
+      { code: 'PROFILE_UPDATE', label: 'Profile update' },
+    ];
     const SENSITIVITIES = ['LOW', 'MEDIUM', 'HIGH', 'CRITICAL'];
-    const ACTOR_TYPES = ['user', 'service', 'third_party', 'admin'];
+    const ACTORS = [
+      { type: 'user', label: 'End user' },
+      { type: 'service', label: 'Internal service' },
+      { type: 'third_party', label: 'Third-party partner' },
+      { type: 'admin', label: 'Admin operator' },
+    ];
+    const REASONS = [
+      { code: 'SERVICE', label: 'Service operation' },
+      { code: 'AD_TARGETING', label: 'Ad targeting' },
+      { code: 'ANALYTICS', label: 'Analytics' },
+      { code: 'LEGAL', label: 'Legal obligation' },
+      { code: 'SUPPORT', label: 'Customer support' },
+    ];
     const DATA_FIELD_SETS = [
       ['email', 'name'],
       ['location', 'ip_address'],
@@ -231,23 +258,31 @@ export class DevController {
     ];
 
     const events = Array.from({ length: 20 }, (_, i) => {
-      const occurredAt = new Date(now.getTime() - i * 3 * 60 * 60 * 1000); // spread over 60 hours
+      const occurredAt = new Date(now.getTime() - i * 3 * 60 * 60 * 1000);
       const sensitivity = SENSITIVITIES[Math.floor(Math.random() * SENSITIVITIES.length)];
-      const actorType = ACTOR_TYPES[Math.floor(Math.random() * ACTOR_TYPES.length)];
+      const actor = ACTORS[Math.floor(Math.random() * ACTORS.length)];
+      const action = ACTIONS[Math.floor(Math.random() * ACTIONS.length)];
+      const reason = REASONS[Math.floor(Math.random() * REASONS.length)];
       const isSensitive = ['HIGH', 'CRITICAL'].includes(sensitivity);
 
       return this.eventsRepo.create({
+        eventId: randomUUID(),
         tenantId: body.tenantId,
         tenantUserId: userId,
-        actionCode: ACTIONS[Math.floor(Math.random() * ACTIONS.length)],
+        actionCode: action.code,
+        actionLabel: action.label,
+        reasonCode: reason.code,
+        reasonLabel: reason.label,
+        actorType: actor.type,
+        actorLabel: actor.label,
         sensitivityCode: sensitivity,
-        actorType,
         dataFields: DATA_FIELD_SETS[Math.floor(Math.random() * DATA_FIELD_SETS.length)],
-        thirdPartyInvolved: actorType === 'third_party' || Math.random() < 0.25,
+        thirdPartyInvolved: actor.type === 'third_party' || Math.random() < 0.25,
         consentObtained: isSensitive ? Math.random() < 0.5 : true,
         userOptedOut: isSensitive && Math.random() < 0.2,
         occurredAt,
         retentionDays: 90,
+        hash: randomUUID(), // placeholder — real hash chain computed by AuditEventProcessor
       });
     });
 
@@ -282,6 +317,110 @@ export class DevController {
       failed,
       delayed,
       health: failed > 10 ? 'degraded' : 'ok',
+    };
+  }
+
+  // ── Tenant Management ─────────────────────────────────────────────────────
+
+  /**
+   * GET /api/dev/tenants
+   * List all registered tenants (id, name, email). Use this to get tenant IDs
+   * before calling reset-key.
+   */
+  @Get('tenants')
+  async listTenants(@Headers('x-dev-token') token: string) {
+    this.guard(token);
+    const tenants = await this.tenantsRepo.find({
+      select: ['id', 'name', 'email', 'isActive', 'createdAt'],
+      order: { createdAt: 'ASC' },
+    });
+    return { tenants };
+  }
+
+  /**
+   * POST /api/dev/tenants/:id/reset-key
+   * Generate a brand-new API key for an existing tenant.
+   * The new plaintext key is returned once — save it immediately.
+   * Use this when the original key was lost (e.g. after duplicate registration).
+   */
+  @Post('tenants/:id/reset-key')
+  async resetTenantKey(
+    @Headers('x-dev-token') token: string,
+    @Param('id') id: string,
+  ) {
+    this.guard(token);
+    const tenant = await this.tenantsRepo.findOne({ where: { id } });
+    if (!tenant) throw new NotFoundException(`Tenant ${id} not found`);
+
+    const newKey = `pak_${randomUUID().replace(/-/g, '')}`;
+    tenant.apiKeyHash = hashApiKey(newKey);
+    await this.tenantsRepo.save(tenant);
+
+    return {
+      message: 'API key reset. Save this key — it will not be shown again.',
+      tenantId: tenant.id,
+      tenantName: tenant.name,
+      apiKey: newKey,
+    };
+  }
+
+  /**
+   * POST /api/dev/clear-events
+   * Delete all audit events for a tenant (fresh demo start).
+   * Body: { tenantId: string }
+   */
+  @Post('clear-events')
+  async clearEvents(
+    @Headers('x-dev-token') token: string,
+    @Body() body: { tenantId: string },
+  ) {
+    this.guard(token);
+    if (!body.tenantId) return { error: 'tenantId is required' };
+    const result = await this.eventsRepo.delete({ tenantId: body.tenantId });
+    return {
+      message: `Cleared all events for tenant ${body.tenantId}`,
+      deleted: result.affected ?? 0,
+    };
+  }
+
+  /**
+   * POST /api/dev/trigger-breach
+   * Create a simulated breach report for demo purposes.
+   * Body: { tenantId, tenantUserId?, description?, severity? }
+   * Returns the breach with hoursRemaining countdown.
+   */
+  @Post('trigger-breach')
+  async triggerBreach(
+    @Headers('x-dev-token') token: string,
+    @Body() body: { tenantId: string; tenantUserId?: string; description?: string; severity?: string },
+  ) {
+    this.guard(token);
+    if (!body.tenantId) return { error: 'tenantId is required' };
+
+    const reportedAt = new Date();
+    const notifyDeadline = new Date(reportedAt.getTime() + 72 * 60 * 60 * 1000);
+
+    const report = this.breachRepo.create({
+      tenantId: body.tenantId,
+      tenantUserId: body.tenantUserId ?? 'demo-user-001',
+      description: body.description ?? 'Simulated data breach: unauthorised access to patient records detected in access logs.',
+      severity: body.severity ?? 'high',
+      notifyDeadline,
+    });
+
+    const saved = await this.breachRepo.save(report);
+    const hoursRemaining = 72;
+
+    return {
+      message: 'Breach report created. 72h GDPR countdown started.',
+      breachId: saved.id,
+      tenantId: saved.tenantId,
+      tenantUserId: saved.tenantUserId,
+      description: saved.description,
+      severity: saved.severity,
+      notifyDeadline: saved.notifyDeadline,
+      hoursRemaining,
+      deadlineExceeded: false,
     };
   }
 }

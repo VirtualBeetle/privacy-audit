@@ -152,38 +152,74 @@
 
 ## Item 9 — "View My Privacy" Auto-Login Fix
 
-**Status:** `TODO`
-**Priority:** HIGH — currently the main privacy flow is broken
+**Status:** `IN PROGRESS`
+**Priority:** HIGH
 
-### Root Cause
-The `dashboard-link` endpoint returns a URL with `?tenant_id&user_id` query params. DataGuard's `PrivateRoute` intercepts unauthenticated users and redirects to `/login`, losing these params. There is no automatic token exchange.
+### What was wrong (found 2026-04-20)
+Both tenant backends were calling `POST /api/dashboard/token` on the audit service and reading the response field `"handshakeToken"` — but the audit service returns the field as `"token"`. This caused a 502 on every "View my privacy" click.
 
-### Tasks
-- [ ] 9a. Health backend: replace `DashboardLink` with `DashboardToken` endpoint (calls `POST /api/dashboard/token`)
-- [ ] 9b. Social backend: same
-- [ ] 9c. Health frontend: "View my privacy" fetches token from own backend, redirects to `DataGuard/login?token=<tok>`
-- [ ] 9d. Social frontend: same
-- [ ] 9e. DataGuard `Login.tsx`: on mount, if `?token=` present → auto-call `POST /api/dashboard/session` → store JWT → redirect to `/dashboard`
+**Fixed:** Both backends corrected to read `result["token"]` / `resp.json().get("token")`.
 
-**Depends on:** Item 1 (same feature)
+### Remaining tasks
+- [x] 9a. Health backend: `DashboardToken` endpoint exists and calls `POST /api/dashboard/token`
+- [x] 9b. Social backend: same — `_get_dashboard_url()` calls audit service correctly
+- [x] 9c. Health frontend: "View my privacy" calls `GET /api/privacy/dashboard-token` → redirects to `dataguard.local/login?token=<tok>`
+- [x] 9d. Social frontend: same
+- [x] 9e. DataGuard `Login.tsx`: auto-consumes `?token=` on mount, exchanges for session JWT, redirects to `/dashboard`
+- [ ] 9f. `AuthRedirect.tsx`: detect if user already has a `google_session` when a handshake token arrives → offer "Link this account?" instead of creating a new session (feeds into Item 10)
+
+**Depends on:** Item 10 (9f is the bridge between the two items)
 
 ---
 
-## Item 10 — Multi-Tenant User Linking
+## Item 10 — Multi-Tenant User Linking + Session-Aware Dashboard
 
-**Status:** `TODO`
-**Priority:** MEDIUM — dissertation differentiator feature
+**Status:** `IN PROGRESS` — architecture finalised 2026-04-20
+**Priority:** HIGH (upgraded from MEDIUM — needed for dissertation demo)
 
-### Tasks
-- [ ] 10a. DataGuard login: detect existing session + incoming `?token=` → show "Link this app?" modal
-- [ ] 10b. DataGuard dashboard: "Connected Apps" section (list of linked tenants)
-- [ ] 10c. DataGuard events: show app badge (colour-coded) per event row
-- [ ] 10d. Dashboard service: `getEvents()` queries all linked accounts
-- [ ] 10e. Dashboard service: `computePrivacyScore()` aggregates across linked accounts
-- [ ] 10f. Settings page: manage / unlink apps
-- [ ] 10g. End-to-end test: link HealthTrack + ConnectSocial → unified timeline
+### Architecture Decisions (2026-04-20)
 
-**Depends on:** Item 9 (token flow must work first)
+**Two session types exist — the dashboard must behave differently for each:**
+
+| Session | How user got here | Dashboard behaviour |
+|---|---|---|
+| `dashboard_session` | Clicked "View my privacy" in a tenant app | Show ONLY that app's data. No tabs, no connected apps, no "+ Connect" button. |
+| `google_session` | Logged in with Google OAuth | Show all linked apps with tab switcher. Show "+ Connect application" button. Show empty state if nothing linked yet. |
+
+**Connect-app flow (google_session):**
+1. User has `google_session` in DataGuard
+2. Clicks "+ Connect application" in the top bar → modal opens
+3. Modal shows HealthTrack / ConnectSocial cards
+4. User clicks one → sees instructions: "Go to health.local → log in → click View My Privacy"
+5. Tenant app redirects user to `dataguard.local/auth/redirect?token=<handshake>`
+6. `AuthRedirect.tsx` detects existing `google_session` → shows "Link to your Google account?" confirmation
+7. User confirms → exchange handshake for `dashboard_session` → call `POST /api/dashboard/link-account` → link stored in DB
+8. User stays on `google_session`, tabs update to show the newly linked app
+
+**Backend is already fully built for this:**
+- `POST /api/dashboard/link-account` (requires `dashboard_session` auth + `{ googleSessionToken }` body) ✅
+- `GET /api/dashboard/linked-accounts` (requires `google_session`) ✅
+- `getEvents()` already aggregates across linked accounts for `google_session` ✅
+- `computePrivacyScore()` already aggregates across linked accounts ✅
+- `LinkedAccount` entity with `(dashboardUserId, tenantId, tenantUserId)` ✅
+
+**Tenant ID → App name mapping (fixed constants in demo):**
+| tenantId | App | Colour |
+|---|---|---|
+| `11111111-1111-1111-1111-111111111111` | HealthTrack | `#ef4444` (red) |
+| `22222222-2222-2222-2222-222222222222` | ConnectSocial | `#0ea5e9` (blue) |
+
+### Frontend tasks remaining
+- [ ] 10a. `TenantTabs.tsx` — rewrite to be data-driven (linked accounts from API, not hardcoded). For `dashboard_session`: render nothing. For `google_session`: "All Apps" + one tab per linked app + "+ Connect" button on the right.
+- [ ] 10b. `Dashboard.tsx` — fetch `GET /api/dashboard/linked-accounts` for `google_session`. Pass to TenantTabs. Show empty state ("No apps connected") when list is empty.
+- [ ] 10c. `Dashboard.tsx` — tab filter uses actual `tenantId` (not hardcoded slug). Fix broken slug detection (`tenantId?.includes('health')` doesn't work with UUID tenant IDs).
+- [ ] 10d. `ConnectAppModal.tsx` (new) — step 1: choose app card. Step 2: instructions ("go to health.local → View my privacy") with open-in-new-tab button.
+- [ ] 10e. `AuthRedirect.tsx` — detect existing `google_session` when handshake token arrives → show "Link this to your Google account?" page instead of auto-login. On confirm: exchange token → `POST /api/dashboard/link-account` → stay on `google_session`.
+- [ ] 10f. `Dashboard.tsx` — for `dashboard_session`: remove TenantTabs, remove "+ Connect" button, show single-tenant title (e.g. "HealthTrack — Privacy View").
+- [ ] 10g. `api/client.ts` — add `linkAccountWith(dashboardToken, googleToken)` that overrides Authorization header for the link call.
+- [ ] 10h. End-to-end test: Google login → empty state → connect HealthTrack → tabs appear → connect ConnectSocial → "All Apps" shows unified timeline.
+
+**Depends on:** Item 9 complete (502 fix already done ✅)
 
 ---
 

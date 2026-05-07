@@ -1,5 +1,6 @@
-import { Controller, Post, Get, Param, Body } from '@nestjs/common';
+import { Controller, Post, Get, Param, Body, UseGuards, Req } from '@nestjs/common';
 import { TenantsService, RegisterTenantDto } from './tenants.service';
+import { DashboardAnyGuard } from '../common/guards/dashboard.guard';
 
 @Controller('tenants')
 export class TenantsController {
@@ -18,5 +19,30 @@ export class TenantsController {
   @Get(':id/onboarding-status')
   getOnboardingStatus(@Param('id') id: string) {
     return this.tenantsService.getOnboardingStatus(id);
+  }
+
+  /**
+   * GET /api/tenants/available
+   * Public list of active tenants (id + name only) for the Google user link picker.
+   * Requires any valid dashboard session (google_session or dashboard_session).
+   */
+  @Get('available')
+  @UseGuards(DashboardAnyGuard)
+  getAvailable() {
+    return this.tenantsService.listAvailable();
+  }
+
+  /**
+   * GET /api/tenants/all
+   * Full tenant list with event counts — super admin only.
+   * Returns 403 for non-super-admin callers.
+   */
+  @Get('all')
+  @UseGuards(DashboardAnyGuard)
+  getAll(@Req() req: any) {
+    if (req.user?.role !== 'super_admin') {
+      return { error: 'Forbidden', statusCode: 403 };
+    }
+    return this.tenantsService.listAll();
   }
 }

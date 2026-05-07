@@ -17,7 +17,9 @@
 #   - privacy-audit-db  (Render managed PostgreSQL)
 #   - privacy-health-db (Render managed PostgreSQL)
 #   - privacy-social-db (Render managed PostgreSQL)
-#   - privacy-redis     (Render managed Redis)
+#
+# Cache:
+#   - privacy-redis     (Render managed Redis — defined under services)
 #
 # MongoDB: Use MongoDB Atlas (https://www.mongodb.com/atlas) — free M0 tier.
 #          Set MONGODB_URI manually in the Render dashboard.
@@ -27,23 +29,25 @@ databases:
   - name: privacy-audit-db
     plan: free
     databaseName: privacy_audit
-    user: postgres
 
   - name: privacy-health-db
     plan: free
     databaseName: health_tenant
-    user: postgres
 
   - name: privacy-social-db
     plan: free
     databaseName: social_tenant
-    user: postgres
-
-  - name: privacy-redis
-    plan: free
-    ipAllowList: []
 
 services:
+
+  # ── Redis (must be a service, not a database) ────────────────────────────────
+  # NOTE: Render free Redis auto-suspends after 30 min inactivity.
+  # For a more reliable demo, use Upstash Redis (https://upstash.com — free tier).
+  # Just set REDIS_URL in the audit-backend env to the Upstash rediss:// URL.
+  - type: redis
+    name: privacy-redis
+    plan: free
+    ipAllowList: []
 
   # ── Core Audit Backend (NestJS) ─────────────────────────────────────────────
   - type: web
@@ -74,21 +78,11 @@ services:
         fromDatabase:
           name: privacy-audit-db
           property: database
-      - key: REDIS_HOST
+      - key: REDIS_URL
         fromService:
           type: redis
           name: privacy-redis
-          property: host
-      - key: REDIS_PORT
-        fromService:
-          type: redis
-          name: privacy-redis
-          property: port
-      - key: REDIS_PASSWORD
-        fromService:
-          type: redis
-          name: privacy-redis
-          property: password
+          property: connectionString
       - key: JWT_SECRET
         sync: false   # Set manually in Render dashboard
       - key: GOOGLE_CLIENT_ID
@@ -96,9 +90,9 @@ services:
       - key: GOOGLE_CLIENT_SECRET
         sync: false   # Set manually
       - key: GOOGLE_CALLBACK_URL
-        value: https://audit-backend.onrender.com/api/auth/google/callback
+        value: https://audit-backend-ddew.onrender.com/api/auth/google/callback
       - key: DASHBOARD_BASE_URL
-        value: https://audit-frontend.onrender.com
+        value: https://audit-frontend-2n0n.onrender.com
       - key: ANTHROPIC_API_KEY
         sync: false   # Set manually
       - key: MONGODB_URI
@@ -113,6 +107,8 @@ services:
         sync: false
       - key: FROM_EMAIL
         sync: false
+      - key: ENCRYPTION_KEY
+        sync: false   # 32+ char random string — encrypts AI provider API keys in MongoDB
       - key: DEV_TOKEN
         sync: false   # Set a random secret for /dev/* endpoints
       - key: PORT
@@ -138,7 +134,7 @@ services:
         destination: /index.html
     envVars:
       - key: VITE_API_URL
-        value: https://audit-backend.onrender.com
+        value: https://audit-backend-ddew.onrender.com
 
   # ── HealthTrack Tenant Backend (Go) ─────────────────────────────────────────
   - type: web
@@ -174,9 +170,11 @@ services:
       - key: JWT_SECRET
         value: health-demo-secret
       - key: AUDIT_SERVICE_URL
-        value: https://audit-backend.onrender.com
+        value: https://audit-backend-ddew.onrender.com
       - key: AUDIT_API_KEY
-        sync: false   # Set manually — must match key registered in audit service
+        value: health-tenant-api-key
+      - key: DASHBOARD_BASE_URL
+        value: https://audit-frontend-2n0n.onrender.com
 
   # ── HealthTrack Tenant Frontend (Vite/React static site) ────────────────────
   - type: web
@@ -191,7 +189,7 @@ services:
         destination: /index.html
     envVars:
       - key: VITE_API_URL
-        value: https://health-backend.onrender.com
+        value: https://health-backend-ni1n.onrender.com
 
   # ── ConnectSocial Tenant Backend (FastAPI/Python) ───────────────────────────
   - type: web
@@ -215,9 +213,11 @@ services:
       - key: ACCESS_TOKEN_EXPIRE_MINUTES
         value: "1440"
       - key: AUDIT_SERVICE_URL
-        value: https://audit-backend.onrender.com
+        value: https://audit-backend-ddew.onrender.com
       - key: AUDIT_API_KEY
-        sync: false   # Set manually — must match key registered in audit service
+        value: social-tenant-api-key
+      - key: DASHBOARD_BASE_URL
+        value: https://audit-frontend-2n0n.onrender.com
 
   # ── ConnectSocial Tenant Frontend (Vite/React static site) ──────────────────
   - type: web
@@ -232,4 +232,4 @@ services:
         destination: /index.html
     envVars:
       - key: VITE_API_URL
-        value: https://social-backend.onrender.com
+        value: https://social-backend-gl0c.onrender.com

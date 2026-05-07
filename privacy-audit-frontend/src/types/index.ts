@@ -22,6 +22,8 @@ export interface AuditEvent {
   meta: Record<string, string> | null;
   occurredAt: string;
   createdAt: string;
+  hash: string;
+  prevHash: string | null;
 }
 
 export interface Tenant {
@@ -30,7 +32,8 @@ export interface Tenant {
   slug: string;
 }
 
-export type TenantFilter = 'all' | 'health' | 'social';
+// 'all' = all events; any other string = tenantId UUID to filter by
+export type TenantFilter = string;
 
 export interface ExportRequest {
   requestId: string;

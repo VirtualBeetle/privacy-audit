@@ -14,7 +14,7 @@ export class BreachService {
 
   async reportBreach(
     tenantId: string,
-    tenantUserId: string,
+    tenantUserId: string | null,
     description: string,
     severity = 'high',
   ): Promise<BreachReport & { hoursRemaining: number; deadlineExceeded: boolean }> {
@@ -28,22 +28,21 @@ export class BreachService {
     return this.withCountdown(report);
   }
 
-  async listBreaches(tenantId: string, tenantUserId: string) {
-    const reports = await this.breachRepo.find({
-      where: { tenantId, tenantUserId },
-      order: { reportedAt: 'DESC' },
-    });
+  async listBreaches(tenantId: string, tenantUserId: string | null) {
+    const where: any = { tenantId };
+    if (tenantUserId) where.tenantUserId = tenantUserId;
+    const reports = await this.breachRepo.find({ where, order: { reportedAt: 'DESC' } });
     return reports.map((r) => this.withCountdown(r));
   }
 
   async notifyRegulator(
     tenantId: string,
-    tenantUserId: string,
+    tenantUserId: string | null,
     breachId: string,
   ) {
-    const report = await this.breachRepo.findOne({
-      where: { id: breachId, tenantId, tenantUserId },
-    });
+    const where: any = { id: breachId, tenantId };
+    if (tenantUserId) where.tenantUserId = tenantUserId;
+    const report = await this.breachRepo.findOne({ where });
     if (!report) throw new NotFoundException('Breach report not found');
 
     report.regulatorNotified = true;

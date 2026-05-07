@@ -3,7 +3,7 @@ import logging
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.routers import auth, users, posts, interactions, checkins, admin, privacy
+from app.routers import auth, users, posts, interactions, checkins, admin, privacy, dev as dev_router
 
 logging.basicConfig(level=logging.INFO)
 
@@ -24,6 +24,12 @@ app.include_router(interactions.router)
 app.include_router(checkins.router)
 app.include_router(admin.router)
 app.include_router(privacy.router)
+app.include_router(dev_router.router)
+
+
+@app.on_event("startup")
+async def startup():
+    dev_router.start_scheduler()
 
 
 @app.get("/health")

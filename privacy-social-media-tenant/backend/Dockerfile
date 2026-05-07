@@ -14,4 +14,4 @@ EXPOSE 8082
 
 CMD alembic upgrade head && \
     python -c "from app.database import SessionLocal; from app.seed.seed import run; db=SessionLocal(); run(db); db.close()" && \
-    uvicorn main:app --host 0.0.0.0 --port 8082
+    uvicorn main:app --host 0.0.0.0 --port ${PORT:-8082}

@@ -27,7 +27,7 @@ export class DashboardService {
 
   /**
    * issueToken — called by tenant apps (API key auth).
-   * Returns a 15-minute handshake JWT the user exchanges for a session.
+   * Returns a 24-hour handshake JWT the user exchanges for a session.
    */
   issueToken(
     tenantId: string,
@@ -35,7 +35,7 @@ export class DashboardService {
   ): { token: string; expiresIn: string; redirectUrl: string } {
     const token = this.jwtService.sign(
       { type: DASHBOARD_TOKEN_TYPE, tenantId, tenantUserId: dto.tenantUserId },
-      { expiresIn: '15m' },
+      { expiresIn: '24h' },
     );
 
     const baseUrl =
@@ -43,7 +43,7 @@ export class DashboardService {
 
     return {
       token,
-      expiresIn: '15 minutes',
+      expiresIn: '24 hours',
       redirectUrl: `${baseUrl}/auth/redirect?token=${token}`,
     };
   }
@@ -97,12 +97,14 @@ export class DashboardService {
     dashboardUserId?: string;
   }): Promise<AuditEvent[]> {
     if (user.type === 'dashboard_session') {
-      return this.eventsRepository
+      const qb = this.eventsRepository
         .createQueryBuilder('event')
-        .where('event.tenant_id = :tenantId', { tenantId: user.tenantId })
-        .andWhere('event.tenant_user_id = :tenantUserId', { tenantUserId: user.tenantUserId })
-        .orderBy('event.occurred_at', 'DESC')
-        .getMany();
+        .where('event.tenant_id = :tenantId', { tenantId: user.tenantId });
+      // Admin sessions have no tenantUserId — show all events for the tenant
+      if (user.tenantUserId) {
+        qb.andWhere('event.tenant_user_id = :tenantUserId', { tenantUserId: user.tenantUserId });
+      }
+      return qb.orderBy('event.occurred_at', 'DESC').getMany();
     }
 
     // google_session: aggregate across all linked tenant accounts
@@ -307,6 +309,69 @@ export class DashboardService {
 
       doc.end();
     });
+  }
+
+  // ─── Hash Chain Integrity (GDPR Article 30) ──────────────────────────────
+
+  /**
+   * verifyUserChain — walks the audit log for the requesting user's tenant and
+   * recomputes every SHA-256 hash. Any mismatch proves tampering.
+   * Exposed to end-users via GET /api/dashboard/chain-integrity.
+   */
+  async verifyUserChain(user: {
+    type: string;
+    tenantId?: string;
+    tenantUserId?: string;
+  }): Promise<{
+    valid: boolean;
+    eventCount: number;
+    latestHash: string | null;
+    brokenAtEventId?: string;
+    gdprArticle: string;
+  }> {
+    const tenantId = user.tenantId;
+    if (!tenantId) {
+      return { valid: true, eventCount: 0, latestHash: null, gdprArticle: 'GDPR Article 30 — Tamper-Evident Audit Log' };
+    }
+
+    const events = await this.eventsRepository.find({
+      where: { tenantId },
+      order: { createdAt: 'ASC' },
+    });
+
+    const { createHash } = await import('crypto');
+
+    let prevHash: string | null = null;
+    for (const event of events) {
+      const input = [
+        event.eventId,
+        event.tenantId,
+        event.tenantUserId,
+        event.actionCode,
+        JSON.stringify([...(event.dataFields ?? [])].sort()),
+        event.occurredAt instanceof Date ? event.occurredAt.toISOString() : event.occurredAt,
+        prevHash ?? '',
+      ].join('|');
+      const expected = createHash('sha256').update(input).digest('hex');
+
+      if (event.hash !== expected) {
+        return {
+          valid: false,
+          eventCount: events.length,
+          latestHash: null,
+          brokenAtEventId: event.id,
+          gdprArticle: 'GDPR Article 30 — Tamper-Evident Audit Log',
+        };
+      }
+      prevHash = event.hash;
+    }
+
+    return {
+      valid: true,
+      eventCount: events.length,
+      latestHash: events.length > 0 ? events[events.length - 1].hash.slice(0, 16) + '…' : null,
+      gdprArticle: 'GDPR Article 30 — Tamper-Evident Audit Log',
+    };
   }
 
   // ─── Account Linking ──────────────────────────────────────────────────────

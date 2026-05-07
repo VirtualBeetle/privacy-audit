@@ -37,15 +37,19 @@ export class AuthService {
       throw new UnauthorizedException('Account is inactive');
     }
 
+    // Issue a dashboard_session JWT so the frontend can use it directly.
+    // Admins have no tenantUserId (they see all events for their tenant).
     const payload = {
-      sub: user.id,
-      email: user.email,
+      type: 'dashboard_session',
       tenantId: user.tenantId,
+      tenantUserId: null,
       role: user.role,
+      email: user.email,
+      displayName: user.email.split('@')[0],
     };
 
     return {
-      access_token: this.jwtService.sign(payload),
+      access_token: this.jwtService.sign(payload, { expiresIn: '8h' }),
       user: {
         id: user.id,
         email: user.email,

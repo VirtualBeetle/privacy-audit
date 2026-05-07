@@ -8,9 +8,11 @@ export const api = axios.create({
 });
 
 // Attach session token to every request if present.
+// Does NOT overwrite an Authorization header already set in the request config
+// (e.g. linkAccountWith passes a specific dashboard_session token).
 api.interceptors.request.use((config) => {
   const token = localStorage.getItem('session_token');
-  if (token) {
+  if (token && !config.headers.Authorization) {
     config.headers.Authorization = `Bearer ${token}`;
   }
   return config;
@@ -60,13 +62,26 @@ export const dashboardApi = {
   getDeletionStatus: (id: string) =>
     api.get(`/dashboard/deletions/${id}`).then((r) => r.data),
 
-  /** Link a Google account to the current dashboard_session. */
-  linkAccount: (googleSessionToken: string) =>
-    api.post('/dashboard/link-account', { googleSessionToken }).then((r) => r.data),
+  /**
+   * Link a tenant account to a Google account.
+   * Call with dashboardSessionToken as the auth token (overrides localStorage) and
+   * the googleSessionToken in the body. This is used when the user already has a
+   * google_session and arrives via a tenant app handshake redirect.
+   */
+  linkAccountWith: (dashboardSessionToken: string, googleSessionToken: string) =>
+    api.post(
+      '/dashboard/link-account',
+      { googleSessionToken },
+      { headers: { Authorization: `Bearer ${dashboardSessionToken}` } },
+    ).then((r) => r.data),
 
   /** Get all linked tenant accounts (google_session only). */
   getLinkedAccounts: () =>
     api.get('/dashboard/linked-accounts').then((r) => r.data),
+
+  /** Unlink a tenant account (google_session only). */
+  unlinkAccount: (tenantId: string, tenantUserId: string) =>
+    api.delete(`/dashboard/linked-accounts/${tenantId}`, { data: { tenantUserId } }).then((r) => r.data),
 
   /** Send a message in the AI chat. Creates a new session if sessionId is omitted. */
   aiChat: (message: string, sessionId?: string) =>
@@ -115,6 +130,122 @@ export const dashboardApi = {
   /** Delete a webhook. */
   deleteWebhook: (id: string) =>
     api.delete(`/webhooks/${id}`),
+
+  /**
+   * GDPR Article 5(1)(c) — Data Minimisation Violations.
+   * Returns events where the tenant accessed a data field not in their declared allowed list.
+   */
+  getViolations: () =>
+    api.get('/dashboard/violations').then((r) => r.data),
+
+  /** Download GDPR Art.30 PDF compliance report via blob URL (works cross-origin). */
+  downloadPdfReport: async () => {
+    const res = await api.get('/dashboard/compliance-report/download', { responseType: 'blob' });
+    const url = URL.createObjectURL(res.data);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'compliance-report.pdf';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(url), 10000);
+  },
+
+  /** Download a completed export as a JSON file via blob URL (works cross-origin). */
+  downloadExport: async (requestId: string) => {
+    const res = await api.get(`/dashboard/exports/${requestId}/download`, {
+      responseType: 'blob',
+    });
+    const url = URL.createObjectURL(res.data);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `privacy-export-${requestId}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(url), 10000);
+  },
+
+  /** Admin: get all exports + deletions across visible tenants. */
+  getGdprRequests: () =>
+    api.get('/dashboard/gdpr/requests').then((r) => r.data as {
+      exports: { id: string; tenantId: string; tenantUserId: string; status: string; eventCount: number | null; requestedAt: string; completedAt: string | null }[];
+      deletions: { id: string; tenantId: string; tenantUserId: string; status: string; requestedAt: string; completedAt: string | null }[];
+    }),
+
+  /**
+   * GDPR Article 30 — Tamper-Evident Hash Chain Verification.
+   * Walks the entire audit log and recomputes every SHA-256 hash.
+   * Returns { valid, eventCount, latestHash, brokenAtEventId? }.
+   */
+  verifyChainIntegrity: () =>
+    api.get('/dashboard/chain-integrity').then((r) => r.data),
+
+  /**
+   * Returns the SSE stream URL for real-time event push.
+   * EventSource cannot send Authorization headers so we pass the token as a query param.
+   */
+  getStreamUrl: () => {
+    const token = localStorage.getItem('session_token') ?? '';
+    return `${BASE_URL}/api/dashboard/events/stream?token=${encodeURIComponent(token)}`;
+  },
+};
+
+// ─── Onboarding API helpers ─────────────────────────────────────────────────
+
+// ─── Dev / Admin API helpers ────────────────────────────────────────────────
+
+const devHeaders = (token: string) => ({ 'x-dev-token': token });
+
+export const devApi = {
+  listAiProviders: (token: string) =>
+    api.get('/dev/ai-providers', { headers: devHeaders(token) }).then((r) => r.data),
+
+  getActiveAiProvider: (token: string) =>
+    api.get('/dev/ai-providers/active', { headers: devHeaders(token) }).then((r) => r.data),
+
+  addAiProvider: (token: string, body: { provider: string; label: string; model: string; apiKey: string }) =>
+    api.post('/dev/ai-providers', body, { headers: devHeaders(token) }).then((r) => r.data),
+
+  activateAiProvider: (token: string, id: string) =>
+    api.put(`/dev/ai-providers/${id}/activate`, {}, { headers: devHeaders(token) }).then((r) => r.data),
+
+  deleteAiProvider: (token: string, id: string) =>
+    api.delete(`/dev/ai-providers/${id}`, { headers: devHeaders(token) }),
+
+  triggerRiskAnalysis: (token: string) =>
+    api.post('/dev/trigger-risk-analysis', {}, { headers: devHeaders(token) }).then((r) => r.data),
+};
+
+// ─── Notifications API helpers ──────────────────────────────────────────────
+
+export const notificationsApi = {
+  getAll: () =>
+    api.get('/notifications').then((r) => r.data),
+
+  getUnreadCount: () =>
+    api.get('/notifications/unread-count').then((r) => r.data as { count: number }),
+
+  markRead: (id: string) =>
+    api.put(`/notifications/${id}/read`).then((r) => r.data),
+
+  markAllRead: () =>
+    api.put('/notifications/read-all').then((r) => r.data),
+};
+
+// ─── Tenants API helpers ────────────────────────────────────────────────────
+
+export const tenantsApi = {
+  /** Active tenants (id + name) for Google user link picker. */
+  listAvailable: () =>
+    api.get('/tenants/available').then((r) => r.data as { id: string; name: string }[]),
+
+  /** All tenants with event counts — super admin only. */
+  listAll: () =>
+    api.get('/tenants/all').then((r) => r.data as {
+      id: string; name: string; email: string; isActive: boolean;
+      retentionDays: number; createdAt: string; eventCount: number;
+    }[]),
 };
 
 // ─── Onboarding API helpers ─────────────────────────────────────────────────

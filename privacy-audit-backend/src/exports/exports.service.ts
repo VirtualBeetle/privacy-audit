@@ -170,6 +170,28 @@ export class ExportsService {
     };
   }
 
+  /** Admin overview — returns recent export requests across given tenants (no data blobs). */
+  async listForAdmin(tenantIds: string[]): Promise<ExportRequest[]> {
+    if (tenantIds.length === 0) return [];
+    return this.exportsRepository
+      .createQueryBuilder('e')
+      .select(['e.id', 'e.tenantId', 'e.tenantUserId', 'e.status', 'e.eventCount', 'e.requestedAt', 'e.completedAt'])
+      .where('e.tenant_id IN (:...tenantIds)', { tenantIds })
+      .orderBy('e.requestedAt', 'DESC')
+      .take(50)
+      .getMany();
+  }
+
+  /** Super admin — returns all export requests across all tenants (no data blobs). */
+  async listAll(): Promise<ExportRequest[]> {
+    return this.exportsRepository
+      .createQueryBuilder('e')
+      .select(['e.id', 'e.tenantId', 'e.tenantUserId', 'e.status', 'e.eventCount', 'e.requestedAt', 'e.completedAt'])
+      .orderBy('e.requestedAt', 'DESC')
+      .take(100)
+      .getMany();
+  }
+
   /**
    * downloadExport
    *
