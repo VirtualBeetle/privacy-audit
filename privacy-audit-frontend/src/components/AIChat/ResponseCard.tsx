@@ -196,10 +196,10 @@ function ComparisonCard({ data }: { data: Record<string, unknown> }) {
           {row('Critical events', a.critical, b.critical, false)}
           <div style={{ padding: '8px 12px', fontSize: 12, fontWeight: 500, color: C.textDim }}>Trust score</div>
           <div style={{ padding: '8px 12px', textAlign: 'right', fontFamily: C.mono, fontSize: 12, fontWeight: 600, color: (a.trustScore as number ?? 0) >= (b.trustScore as number ?? 0) ? C.green : C.red }}>
-            {a.grade} · {a.trustScore}
+            {String(a.grade ?? '')} · {String(a.trustScore ?? '')}
           </div>
           <div style={{ padding: '8px 12px', textAlign: 'right', fontFamily: C.mono, fontSize: 12, fontWeight: 600, color: (b.trustScore as number ?? 0) >= (a.trustScore as number ?? 0) ? C.green : C.red }}>
-            {b.grade} · {b.trustScore}
+            {String(b.grade ?? '')} · {String(b.trustScore ?? '')}
           </div>
         </div>
       </RBody>

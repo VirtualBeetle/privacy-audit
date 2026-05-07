@@ -250,8 +250,6 @@ function MessageBubble({ msg, onFollowUp }: { msg: ChatMessage; onFollowUp: (t: 
 }
 
 function EmptyState({ firstName, onPrompt }: { firstName: string; onPrompt: (t: string) => void }) {
-  const role = 'any'; // could be role-aware
-
   const prompts = [
     { icon: QuestionIcon, text: 'Why is my privacy score below 80?' },
     { icon: AlertIcon,    text: 'Show critical events from last 7 days' },
@@ -417,7 +415,7 @@ interface AIChatPanelProps {
   onExpandToPage?: () => void;
 }
 
-export default function AIChatPanel({ mode = 'panel', onExpandToPage }: AIChatPanelProps) {
+export default function AIChatPanel({ mode = 'panel', onExpandToPage: _onExpandToPage }: AIChatPanelProps) {
   const navigate = useNavigate();
   const location = useLocation();
   const { user } = useAuth();
