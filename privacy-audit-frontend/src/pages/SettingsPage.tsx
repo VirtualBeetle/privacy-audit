@@ -53,10 +53,9 @@ const labelStyle: React.CSSProperties = {
 };
 
 function SectionCard({
-  icon, iconColor, iconBg, title, sub, children, delay = 0,
+  icon, iconBg, title, sub, children, delay = 0,
 }: {
   icon: React.ReactNode;
-  iconColor?: string;
   iconBg?: string;
   title: string;
   sub: string;

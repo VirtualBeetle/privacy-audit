@@ -150,10 +150,6 @@ function StatCard({ label, value, icon: Icon, accent, delay, trend }: {
 }
 
 /* ── Skeleton loaders ───────────────────────────────────────────── */
-function SkeletonCard({ height = 120 }: { height?: number }) {
-  return <div className="skeleton dg-card" style={{ height, borderRadius: 16, flex: 1 }} />;
-}
-
 function SkeletonStatCard() {
   return (
     <div className="dg-card" style={{

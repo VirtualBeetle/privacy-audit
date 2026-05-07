@@ -22,8 +22,8 @@ export interface AuditEvent {
   meta: Record<string, string> | null;
   occurredAt: string;
   createdAt: string;
-  hash: string;
-  prevHash: string | null;
+  hash?: string;
+  prevHash?: string | null;
 }
 
 export interface Tenant {
