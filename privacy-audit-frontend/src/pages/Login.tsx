@@ -28,6 +28,7 @@ export default function Login() {
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showDemo, setShowDemo] = useState(false);
 
   const isJwt = (t: string) => t.trim().split('.').length === 3;
   const isUuid = (t: string) =>
@@ -373,6 +374,130 @@ export default function Login() {
               >
                 Came from an app with a handshake token? Click here
               </button>
+
+              {/* Demo accounts */}
+              <div style={{ marginTop: 24 }}>
+                <button
+                  onClick={() => setShowDemo(v => !v)}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    width: '100%',
+                    padding: '9px 14px',
+                    background: 'var(--surface)',
+                    border: '1px solid var(--border)',
+                    borderRadius: showDemo ? '10px 10px 0 0' : 10,
+                    cursor: 'pointer',
+                    fontSize: 12.5,
+                    fontWeight: 600,
+                    color: 'var(--text-2)',
+                    fontFamily: "'DM Sans', sans-serif",
+                    transition: 'all 0.15s',
+                  }}
+                >
+                  <span>Demo accounts (click to fill)</span>
+                  <span style={{
+                    transform: showDemo ? 'rotate(180deg)' : 'none',
+                    transition: 'transform 0.2s',
+                    fontSize: 10,
+                  }}>▼</span>
+                </button>
+
+                {showDemo && (
+                  <div style={{
+                    border: '1px solid var(--border)',
+                    borderTop: 'none',
+                    borderRadius: '0 0 10px 10px',
+                    overflow: 'hidden',
+                  }}>
+                    {[
+                      {
+                        label: 'Super Admin',
+                        badge: 'super_admin',
+                        badgeColor: '#7c3aed',
+                        email: 'see Render env SUPER_ADMIN_EMAIL',
+                        password: 'see Render env SUPER_ADMIN_PASSWORD',
+                        note: 'Set in Render environment variables',
+                        clickable: false,
+                      },
+                      {
+                        label: 'HealthTrack Admin',
+                        badge: 'tenant_admin',
+                        badgeColor: '#0284c7',
+                        email: 'admin@healthdemo.internal',
+                        password: 'HealthDemo123!',
+                        note: null,
+                        clickable: true,
+                      },
+                      {
+                        label: 'ConnectSocial Admin',
+                        badge: 'tenant_admin',
+                        badgeColor: '#0284c7',
+                        email: 'admin@socialdemo.internal',
+                        password: 'SocialDemo123!',
+                        note: null,
+                        clickable: true,
+                      },
+                      {
+                        label: 'Google User',
+                        badge: 'google_session',
+                        badgeColor: '#059669',
+                        email: null,
+                        password: null,
+                        note: 'Use "Continue with Google" above',
+                        clickable: false,
+                      },
+                    ].map((acct, i, arr) => (
+                      <div
+                        key={i}
+                        onClick={() => {
+                          if (acct.clickable && acct.email && acct.password) {
+                            setEmail(acct.email);
+                            setPassword(acct.password);
+                            setShowDemo(false);
+                          }
+                        }}
+                        style={{
+                          padding: '10px 14px',
+                          borderBottom: i < arr.length - 1 ? '1px solid var(--border)' : 'none',
+                          background: 'var(--surface)',
+                          cursor: acct.clickable ? 'pointer' : 'default',
+                          transition: 'background 0.12s',
+                        }}
+                        onMouseEnter={e => { if (acct.clickable) (e.currentTarget as HTMLDivElement).style.background = 'var(--surface-2)'; }}
+                        onMouseLeave={e => { (e.currentTarget as HTMLDivElement).style.background = 'var(--surface)'; }}
+                      >
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                          <span style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--text)' }}>{acct.label}</span>
+                          <span style={{
+                            fontSize: 9,
+                            fontWeight: 700,
+                            letterSpacing: '0.4px',
+                            padding: '2px 6px',
+                            borderRadius: 4,
+                            background: `${acct.badgeColor}22`,
+                            color: acct.badgeColor,
+                          }}>{acct.badge}</span>
+                          {acct.clickable && (
+                            <span style={{ fontSize: 10, color: 'var(--accent)', marginLeft: 'auto' }}>click to fill →</span>
+                          )}
+                        </div>
+                        {acct.email ? (
+                          <div style={{ fontSize: 11, color: 'var(--text-3)', fontFamily: "'JetBrains Mono', monospace" }}>
+                            {acct.email}
+                          </div>
+                        ) : null}
+                        {acct.note ? (
+                          <div style={{ fontSize: 11, color: 'var(--text-3)', fontStyle: 'italic' }}>
+                            {acct.note}
+                          </div>
+                        ) : null}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
           )}
 

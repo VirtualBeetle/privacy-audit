@@ -5,7 +5,7 @@ import { useTheme } from '../../contexts/ThemeContext';
 import {
   ShieldIcon, DashboardIcon, EventsIcon, RiskIcon, GdprIcon,
   WebhookIcon, SettingsIcon, LogoutIcon, SunIcon, MoonIcon,
-  PersonAddIcon, QueueIcon, DevIcon, AppsIcon,
+  PersonAddIcon, QueueIcon, DevIcon, AppsIcon, HelpIcon,
 } from '../icons/Icons';
 
 interface NavItemProps {
@@ -224,6 +224,9 @@ export default function Sidebar() {
         {superAdmin && (
           <NavItem icon={DevIcon} label="Dev / Demo" active={p === '/dev'} onClick={() => navigate('/dev')} />
         )}
+
+        {/* User Guide — all users */}
+        <NavItem icon={HelpIcon} label="User Guide" active={p === '/guide'} onClick={() => navigate('/guide')} />
       </div>
 
       {/* Bottom section */}

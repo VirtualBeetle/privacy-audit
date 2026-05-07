@@ -56,6 +56,7 @@ const PAGE_META: Record<string, { title: string; sub: string }> = {
   '/dev':             { title: 'Dev / Demo Controls',   sub: 'Seed data, trigger analysis, manage tenants' },
   '/queue':           { title: 'Queue Monitor',         sub: 'BullMQ audit event processing status' },
   '/connected-apps':  { title: 'Connected Apps',        sub: 'Manage tenant connections' },
+  '/guide':           { title: 'User Guide',             sub: 'Credentials, features & demo walkthrough' },
 };
 
 interface TopbarProps {

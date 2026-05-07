@@ -19,6 +19,7 @@ import DevPage from './pages/DevPage';
 import QueuePage from './pages/QueuePage';
 import ConnectedAppsPage from './pages/ConnectedAppsPage';
 import GDPRPage from './pages/GDPRPage';
+import GuidePage from './pages/GuidePage';
 
 /* ── MUI theme — minimal, inherits from CSS vars ─────────── */
 const muiTheme = createTheme({
@@ -94,6 +95,7 @@ function AppShell() {
             <Route path="/dev"              element={<PrivateRoute element={<DevPage />} />} />
             <Route path="/queue"             element={<PrivateRoute element={<QueuePage />} />} />
             <Route path="/connected-apps"   element={<PrivateRoute element={<ConnectedAppsPage />} />} />
+            <Route path="/guide"            element={<PrivateRoute element={<GuidePage />} />} />
             <Route path="/onboard"          element={<PrivateRoute element={<Onboard />} />} />
             <Route path="/auth/redirect"    element={<AuthRedirect />} />
             <Route path="/auth/google/callback" element={<AuthRedirect />} />
