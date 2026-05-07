@@ -57,6 +57,7 @@ const PAGE_META: Record<string, { title: string; sub: string }> = {
   '/queue':           { title: 'Queue Monitor',         sub: 'BullMQ audit event processing status' },
   '/connected-apps':  { title: 'Connected Apps',        sub: 'Manage tenant connections' },
   '/guide':           { title: 'User Guide',             sub: 'Credentials, features & demo walkthrough' },
+  '/ai-chat':         { title: 'DataGuard AI',           sub: 'Your privacy intelligence assistant' },
 };
 
 interface TopbarProps {

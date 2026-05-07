@@ -2,7 +2,7 @@
 
 > This document is the single source of truth for what this project is, how it is architected,
 > what has been built, and everything that remains to be built.
-> Last updated: 2026-04-13
+> Last updated: 2026-05-08
 
 ---
 
@@ -561,6 +561,165 @@ All services on a shared Docker network. Health checks on postgres and redis. Vo
 - Frontend: new "Risk Alerts" section on dashboard showing flagged events with AI explanation
 
 **Complexity this adds:** AI integration, automated compliance monitoring, LLM-driven anomaly detection, GDPR Article 30 supervisory accountability
+
+---
+
+---
+
+## Phase 18 AI Chat Redesign — Completed 2026-05-08
+
+> A complete ground-up redesign of the AI Chat experience from a basic text FAB to a production-grade privacy intelligence assistant with real SSE streaming, structured response cards, slash commands, chat history, and role-aware suggested prompts.
+
+### Architecture Decisions Made
+
+| Decision | Choice | Rationale |
+|---|---|---|
+| Access | Sidebar nav item + expand button in FAB | All users can reach it; FAB stays on all pages |
+| Response format | Hybrid — slash commands emit structured cards, free-form streams markdown | Matches design spec exactly |
+| Streaming | Real SSE via `fetch` ReadableStream (POST + Bearer auth) | Native `EventSource` can't do POST or auth headers |
+| Chat history | History button → sidebar with past sessions list, click to load | Least disruptive UX |
+| Visible to | All authenticated users, role-aware suggested prompts | Inclusve + contextualised |
+
+### SSE Protocol
+
+```
+POST /api/dashboard/ai-chat/stream   (Bearer token in header)
+Content-Type: application/json
+Body: { message: string, sessionId?: string }
+
+Response: text/event-stream
+  event: step\ndata: { label: "...", status: "active"|"done" }\n\n
+  event: token\ndata: { text: "..." }\n\n
+  event: card\ndata: { type: "chain-verify"|"comparison"|"draft", ...payload }\n\n
+  event: followups\ndata: { suggestions: string[] }\n\n
+  event: done\ndata: { sessionId: "..." }\n\n
+  event: error\ndata: { message: "..." }\n\n
+```
+
+### Slash Commands
+
+| Command | What it does | Card emitted |
+|---|---|---|
+| `/verify` | Recomputes SHA-256 hash chain inline; reports valid/invalid with details | `chain-verify` |
+| `/compare` | Last 7 days vs previous 7 days: consent rate, third-party shares, critical events, trust grade | `comparison` |
+| `/explain` | AI streaming answer about a topic with step animations | streaming markdown |
+| `/draft` | AI generates GDPR letter (JSON format) wrapped in interactive card | `draft` |
+| `/report` | Alias for explain — generates privacy analysis | streaming markdown |
+
+### Frontend Component Hierarchy
+
+```
+App.tsx
+├── Sidebar.tsx          (BrainIcon → /ai-chat)
+├── Topbar.tsx           (page meta for /ai-chat)
+├── main → AIChatPage    (/ai-chat route)
+│   └── AIChatPanel (mode="page")
+│       └── [same internals]
+└── AIChatPanel (mode="panel") — fixed overlay, all pages, hides on /ai-chat
+    ├── FAB button (violet gradient, message-square icon)
+    ├── Panel slide-over (440×720, dark scheme)
+    │   ├── Header (DataGuard AI branding, history btn, new chat btn, expand btn, close btn)
+    │   ├── Message list
+    │   │   ├── EmptyState — greeting + 4 role-aware prompt cards + slash tip
+    │   │   └── MessageBubble (user | ai)
+    │   │       ├── ThinkingSteps — active spinner → done checkmarks
+    │   │       ├── AI text (react-markdown + remark-gfm)
+    │   │       ├── ResponseCard (ChainVerifyCard | ComparisonCard | DraftCard)
+    │   │       ├── Follow-up chips
+    │   │       └── Sources strip
+    │   ├── Input row
+    │   │   ├── SlashLauncher (keyboard-navigable, appears on '/')
+    │   │   └── Textarea + Send button
+    │   └── HistorySidebar (slides over, lists sessions, click to load)
+    └── useAIChat hook
+        ├── messages[], streaming state, sessionId (localStorage)
+        ├── send() — consumes SSE stream, updates AI message incrementally
+        ├── loadSession() — restores past session from backend
+        └── fetchHistory() / openHistory()
+```
+
+### Design Token Scheme (Panel-Local)
+
+The AI Chat panel uses its own dark scheme, independent of the app's light/dark CSS vars:
+
+| Token | Value | Usage |
+|---|---|---|
+| Background | `#0a0a0c` | Panel body, message area |
+| Surface | `#111114` | User bubble, input bg |
+| Border | `#1f1f23` | All borders |
+| Accent | `#a78bfa` | Violet — active states, send button, loader |
+| Text primary | `#f1f5f9` | Main text |
+| Text muted | `#64748b` | Captions, timestamps |
+| Success | `#10b981` | Hash chain verified |
+| Danger | `#ef4444` | Hash chain invalid, errors |
+
+### Files Changed / Created
+
+**Backend:**
+- `src/ai-orchestration/ai-orchestration.service.ts` — `streamChat()` async generator + 3 provider adapters
+- `src/ai-chat/ai-chat.service.ts` — `streamMessage()`, `getSession()`, `parseCommand()`, `inferFollowUps()`
+- `src/dashboard/dashboard.controller.ts` — `POST /dashboard/ai-chat/stream`, `GET /dashboard/ai-chat/sessions/:id`
+
+**Frontend (new files):**
+- `src/components/AIChat/useAIChat.ts`
+- `src/components/AIChat/AIChatPanel.tsx`
+- `src/components/AIChat/AIChatPage.tsx`
+- `src/components/AIChat/ResponseCard.tsx`
+- `src/components/AIChat/SlashLauncher.tsx`
+- `src/components/AIChat/index.ts`
+
+**Frontend (modified):**
+- `src/api/client.ts` — `streamChat()` fetch SSE consumer, `getChatSession()`
+- `src/App.tsx` — `/ai-chat` route, `<AIChatPanel />` at AppShell level
+- `src/components/Sidebar/Sidebar.tsx` — BrainIcon nav item
+- `src/components/Topbar/Topbar.tsx` — `/ai-chat` page meta
+- `src/pages/Dashboard.tsx` — removed old `AIChatButton`
+
+---
+
+## Phase 18 — UX Polish & Production Credibility
+
+> Design philosophy: Every screen should look like a product a privacy-conscious company would actually ship — not a template. This phase eliminates all "AI-generated" tells and adds the features that differentiate DataGuard as a serious privacy tool.
+
+### Recommended implementation order
+
+1. **AI Chat redesign** (P18-1 through P18-7) — biggest single "AI slop" tell in the product. Markdown fix alone removes the #1 red flag.
+2. **Toast system** (P18-8 through P18-10) — infrastructure used by everything else; install `sonner`, replace all silent failures.
+3. **Empty states** (P18-11 through P18-13) — completes the "first impression" story for new users.
+4. **Risk Alert investigation view** (P18-19) — turns alerts from read-only into actionable. Core to dissertation narrative.
+5. **GDPR Rights portal upgrades** (P18-20 through P18-22) — timeline view + receipts = GDPR Art.7/17/20 fully demonstrated.
+6. **Data visualisation** (P18-16 through P18-18) — privacy timeline heatmap + Sankey = dissertation hero screenshots.
+7. **Command palette + density + micro-copy** (P18-15, P18-24, P18-26) — production polish.
+8. **Onboarding wizard** (P18-14) — demo killer feature; mentor sees first event flow live.
+9. **Stretch features** (P18-31 through P18-34) — if time allows before dissertation submission.
+
+### Items requiring design mockup before implementation
+
+Get these designed in Claude before starting implementation:
+
+- AI Chat: structured response cards, slash-command launcher, suggested prompts empty state, follow-up chips
+- Empty states: Events page (hash-chain illustration), Risk Alerts waiting state
+- Onboarding wizard: 3-step flow with live event animation
+- Data viz: privacy timeline heatmap, Sankey diagram, field-level trust score cards
+- Risk Alert investigation view: evidence panel + action stack + status pipeline
+- Stretch: full Privacy Timeline page, tenant comparison page, AI agent mode UI
+
+### Items implementable immediately (no design needed)
+
+- Markdown rendering in AI Chat (`react-markdown` + `remark-gfm`)
+- Sources strip + inline citations in AI Chat
+- Toast system (`sonner`)
+- Filtered empty state copy
+- Command palette (`cmdk`)
+- GDPR active requests timeline view
+- Consent receipts (hash-sign on toggle change)
+- DPC complaint letter templates (download)
+- Live event slide-in CSS animation
+- Density toggle (CSS custom property)
+- Trust-building micro-copy (string replacements)
+- Export preview modal
+- Settings: sessions list + notification preferences
+- Verifiable receipt public URL
 
 ---
 

@@ -91,6 +91,55 @@ export const dashboardApi = {
   getChatHistory: (page = 1, limit = 20) =>
     api.get('/dashboard/ai-chat/history', { params: { page, limit } }).then((r) => r.data),
 
+  /** Load a specific chat session (with full messages). */
+  getChatSession: (sessionId: string) =>
+    api.get(`/dashboard/ai-chat/sessions/${sessionId}`).then((r) => r.data),
+
+  /**
+   * Stream a chat message via SSE.
+   * Returns a ReadableStream yielding parsed SSE events: { type, data }.
+   * Caller is responsible for cancellation via AbortSignal.
+   */
+  streamChat: async function* (
+    message: string,
+    sessionId: string | undefined,
+    signal: AbortSignal,
+  ): AsyncGenerator<{ type: string; data: Record<string, unknown> }> {
+    const BASE = (import.meta as any).env?.VITE_API_URL ?? 'http://localhost:8080';
+    const token = localStorage.getItem('session_token');
+    const res = await fetch(`${BASE}/api/dashboard/ai-chat/stream`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      body: JSON.stringify({ message, sessionId }),
+      signal,
+    });
+    if (!res.ok || !res.body) throw new Error(`HTTP ${res.status}`);
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
+    let buf = '';
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buf += decoder.decode(value, { stream: true });
+      const parts = buf.split('\n\n');
+      buf = parts.pop() ?? '';
+      for (const block of parts) {
+        let evtType = 'message';
+        let dataStr = '';
+        for (const line of block.split('\n')) {
+          if (line.startsWith('event: ')) evtType = line.slice(7).trim();
+          else if (line.startsWith('data: ')) dataStr = line.slice(6);
+        }
+        if (dataStr) {
+          try { yield { type: evtType, data: JSON.parse(dataStr) }; } catch { /* skip */ }
+        }
+      }
+    }
+  },
+
   /** Get AI risk analysis history (tenant analysis records from MongoDB). */
   getAnalysisHistory: () =>
     api.get('/dashboard/ai-analysis').then((r) => r.data),

@@ -5,7 +5,7 @@
 > 🔄 In Progress — partially built or in active development
 > ⏳ Not Started — planned, not yet begun
 
-Last updated: 2026-05-06 (Phase 16 — AI-Q6, SCHED-4, SCHED-5 done; INFRA-1/2 pending manual Render step)
+Last updated: 2026-05-08 (Phase 17 complete; Phase 18 — UX Polish & Production Credibility — planned)
 
 ---
 
@@ -557,6 +557,155 @@ _Last updated: 2026-05-06_
 
 ---
 
+---
+
+## Phase 18 — UX Polish & Production Credibility
+
+> Goal: eliminate every "AI-generated template" tell and make DataGuard look like a real production privacy product.
+> Priority order: P0 (must fix) → P1 (big wins) → P2 (polish) → P3 (stretch / dissertation hero shots)
+> Items marked 🎨 require a design mockup from Claude before implementation begins.
+
+### 18-AI Chat Redesign (Phase 18 sub-phase — completed 2026-05-08)
+
+#### Backend — Streaming Infrastructure
+| # | Task | Status | Notes |
+|---|---|---|---|
+| P18-BE-1 | `streamChat()` async generator in `AiOrchestrationService` — Claude/Gemini/OpenAI adapters | ✅ Done | `ai-orchestration.service.ts` — yields raw tokens |
+| P18-BE-2 | `streamMessage()` async generator in `AiChatService` — slash command routing + SSE event emission | ✅ Done | `ai-chat.service.ts` — yields `{type, data}` events |
+| P18-BE-3 | `/verify` slash command — recomputes SHA-256 hash chain inline, emits `chain-verify` card | ✅ Done | |
+| P18-BE-4 | `/compare` slash command — week-over-week event comparison, emits `comparison` card | ✅ Done | `Between(d14, d7)` TypeORM |
+| P18-BE-5 | `/explain` slash command — AI streaming with thinking step animations | ✅ Done | |
+| P18-BE-6 | `/draft` slash command — AI-generated GDPR letter as structured `draft` card | ✅ Done | |
+| P18-BE-7 | `POST /dashboard/ai-chat/stream` SSE endpoint — `Content-Type: text/event-stream`, Bearer auth via fetch | ✅ Done | `dashboard.controller.ts` |
+| P18-BE-8 | `GET /dashboard/ai-chat/sessions/:id` — load full past session messages | ✅ Done | `dashboard.controller.ts` |
+| P18-BE-9 | `getSession(userId, sessionId)` in `AiChatService` | ✅ Done | |
+| P18-BE-10 | `buildRoleContext()` + `buildSystemPrompt()` — role-aware AI context (4 user types) | ✅ Done | |
+| P18-BE-11 | Session persistence — user + assistant messages saved to MongoDB `AiChatSession` after stream completes | ✅ Done | |
+
+#### Frontend — AI Chat Components
+| # | Task | Status | Notes |
+|---|---|---|---|
+| P18-FE-1 | `useAIChat.ts` — custom hook: messages, streaming, sessionId (localStorage), history sidebar, AbortController | ✅ Done | `src/components/AIChat/useAIChat.ts` |
+| P18-FE-2 | `AIChatPanel.tsx` — floating FAB + 440×720 slide-over panel with full chat UI | ✅ Done | Hides itself on `/ai-chat` route |
+| P18-FE-3 | `AIChatPage.tsx` — full-page `/ai-chat` route wrapper | ✅ Done | |
+| P18-FE-4 | `ResponseCard.tsx` — `ChainVerifyCard`, `ComparisonCard`, `DraftCard` structured cards | ✅ Done | Design-matched: `#0a0a0c` bg, `#a78bfa` accent |
+| P18-FE-5 | `SlashLauncher.tsx` — keyboard-navigable `/` command picker (no cmdk dep) | ✅ Done | /explain /draft /compare /verify /report |
+| P18-FE-6 | `ThinkingSteps` sub-component — active spinning loader → done checkmark animation | ✅ Done | CSS keyframe injected via `document.createElement('style')` |
+| P18-FE-7 | `EmptyState` sub-component — personalised greeting + 4 contextual prompt cards per user role | ✅ Done | |
+| P18-FE-8 | `HistorySidebar` sub-component — slides over panel, lists past sessions, loads on click | ✅ Done | |
+| P18-FE-9 | `MessageBubble` — user (right) + AI (left) bubbles with steps, markdown, card, chips, sources | ✅ Done | react-markdown + remark-gfm |
+| P18-FE-10 | `streamChat()` in `api/client.ts` — fetch ReadableStream SSE consumer (POST + Bearer auth) | ✅ Done | Parses `event:` + `data:` SSE lines from chunked buffer |
+| P18-FE-11 | `getChatSession()` in `api/client.ts` — GET past session detail | ✅ Done | |
+| P18-FE-12 | Sidebar nav item "AI Chat" with BrainIcon → `/ai-chat` | ✅ Done | `Sidebar.tsx` |
+| P18-FE-13 | Topbar page meta for `/ai-chat` | ✅ Done | `Topbar.tsx` |
+| P18-FE-14 | `AIChatPanel` mounted at `AppShell` level (all pages, not just Dashboard) | ✅ Done | `App.tsx` |
+| P18-FE-15 | `AIChatPage` route `/ai-chat` added | ✅ Done | `App.tsx` |
+| P18-FE-16 | Old `AIChatButton` FAB removed from Dashboard | ✅ Done | `Dashboard.tsx` |
+
+### 18-P0 — Critical Fixes (Screams "AI-Generated")
+
+| # | Task | Priority | Status | Design needed? | Notes |
+|---|---|---|---|---|---|
+| P18-1 | **AI Chat — render markdown properly** (bold, lists, code, tables — no raw asterisks/backticks) | P0 | ✅ Done | No | `react-markdown` + `remark-gfm` in `MessageBubble` |
+| P18-2 | **AI Chat — structured response cards** (chain-verify, comparison, draft) | P0 | ✅ Done | 🎨 Yes | `ResponseCard.tsx` — 3 card types, design-matched dark scheme |
+| P18-3 | **AI Chat — suggested follow-up chips** below each answer | P0 | ✅ Done | 🎨 Yes | `inferFollowUps()` backend + chips in `MessageBubble` |
+| P18-4 | **AI Chat — slash-command launcher** (`/explain`, `/draft`, `/compare`, `/verify`, `/report`) | P0 | ✅ Done | 🎨 Yes | `SlashLauncher.tsx` — keyboard-navigable picker |
+| P18-5 | **AI Chat — sources strip** at bottom of each answer | P0 | ✅ Done | No | Sources strip rendered in `MessageBubble` |
+| P18-6 | **AI Chat — empty state + suggested prompts** on first open | P0 | ✅ Done | 🎨 Yes | `EmptyState` component with 4 role-aware prompt cards |
+| P18-7 | **AI Chat — inline citations** linking into dashboard | P0 | ⏳ | No | Regex-detect event counts in response, linkify to `/events?filter=...` |
+| P18-8 | **Toast notification system** — Sonner-style stacked toasts (success / error / warning / info / action / promise) | P0 | ⏳ | No | Install `sonner`; replace all silent failures + `alert()` calls |
+| P18-9 | **Action toasts** — "Webhook delivered ✓ [View payload]", "Chain verified ✓ 247 events" | P0 | ⏳ | No | Depends on P18-8 |
+| P18-10 | **Critical risk alert toast** — SSE pushes CRITICAL event → slide-in toast with View + Dismiss + Mute 1h | P0 | ⏳ | No | Depends on P18-8 |
+| P18-11 | **Empty states — Events page** (purposeful hash-chain illustration + "Connect your first app" CTA) | P0 | ⏳ | 🎨 Yes | Replace blank list |
+| P18-12 | **Empty states — filtered no results** ("No CRITICAL events in last 7 days — that's good news. [Clear filters]") | P0 | ⏳ | No | Inline empty state within filtered list |
+| P18-13 | **Empty states — Risk Alerts** (waiting state while analysis runs, not just blank) | P0 | ⏳ | 🎨 Yes | |
+
+### 18-P1 — Big Humanisation Wins
+
+| # | Task | Priority | Status | Design needed? | Notes |
+|---|---|---|---|---|---|
+| P18-14 | **Onboarding first-run wizard** — 3-step: Connect app → Verify webhook → Watch first event arrive live | P1 | ⏳ | 🎨 Yes | Shown only on first login; "Send test event" button + real-time event animation |
+| P18-15 | **Command palette (⌘K)** — search events, jump to pages, run actions (Export, Verify chain, Delete, Toggle consent) | P1 | ⏳ | No | Install `cmdk`; no design needed — well-established pattern |
+| P18-16 | **Privacy timeline heatmap** — event density × hour-of-day × tenant (GitHub contribution graph style) | P1 | ⏳ | 🎨 Yes | Replace or supplement generic donut chart |
+| P18-17 | **Sankey diagram** — Tenants → Actions → Data Fields → Third Parties | P1 | ⏳ | 🎨 Yes | Signature visual of privacy products; dissertation hero shot |
+| P18-18 | **Field-level trust scores** — each data field (medical_record, location…) mini-card: how many parties touched it + delta vs last week | P1 | ⏳ | 🎨 Yes | |
+| P18-19 | **Risk Alert investigation view** — severity badge + GDPR article cited + evidence panel (4 triggering events with 1-click view) + AI reasoning collapsed "Why?" + action stack (Dismiss / Snooze / Draft email / Export evidence PDF) + status pipeline (New → Acknowledged → Action taken → Resolved) | P1 | ⏳ | 🎨 Yes | Replaces current expandable paragraph card |
+| P18-20 | **GDPR Rights portal — active requests timeline** ("Export submitted Oct 5 → Processing → Ready Oct 6 [Download]") | P1 | ⏳ | No | Upgrade to timeline view from current button-only |
+| P18-21 | **GDPR consent receipts** — every toggle change generates a hash-chained receipt the user can share/download | P1 | ⏳ | No | Hash-sign the consent event; show receipt modal |
+| P18-22 | **Pre-drafted DPC complaint letters** (Data Protection Commission Ireland) — download per GDPR article | P1 | ⏳ | No | Static templated markdown → download as .txt |
+
+### 18-P2 — Polish (Prototype → Production)
+
+| # | Task | Priority | Status | Design needed? | Notes |
+|---|---|---|---|---|---|
+| P18-23 | **Live event slide-in** — new event slides into top of feed with gradient sweep (not pulse), counter on sidebar increments | P2 | ⏳ | No | CSS animation only; no design file needed |
+| P18-24 | **Density toggle** — Comfortable / Compact / Spacious for event feed | P2 | ⏳ | No | CSS custom property `--row-height` |
+| P18-25 | **Mobile / tablet responsive layout** | P2 | ⏳ | No | Collapsible sidebar, stacked cards |
+| P18-26 | **Trust-building micro-copy** — "247 times apps touched your data" not "Total Events: 247"; "You've given consent for 80%…" not "Consent Rate: 80%" | P2 | ⏳ | No | String replacements only |
+| P18-27 | **Data export preview card** — before download: "Your export will include 247 events, 5 receipts, ~340 KB JSON. [Customize fields]" | P2 | ⏳ | No | Modal before download trigger |
+| P18-28 | **Settings — sessions list** with "Sign out everywhere" | P2 | ⏳ | No | Store sessions in DB; privacy product table stakes |
+| P18-29 | **Settings — notification preferences** (which events trigger toasts / emails) | P2 | ⏳ | No | |
+| P18-30 | **Print-friendly compliance report** — one-click PDF (gauge + alerts + GDPR receipts) | P2 | ⏳ | No | Extend existing PDF endpoint |
+
+### 18-P3 — Stretch / Dissertation Hero Shots
+
+| # | Task | Priority | Status | Design needed? | Notes |
+|---|---|---|---|---|---|
+| P18-31 | **Privacy Timeline mode** — vertical scrubbable timeline, every data interaction by day (Apple Health "Today" style) | P3 | ⏳ | 🎨 Yes | Dissertation differentiator — memorable screenshot |
+| P18-32 | **Tenant comparison page** — HealthTrack vs ConnectSocial side-by-side: events, sensitivity mix, consent rate, risk score | P3 | ⏳ | 🎨 Yes | |
+| P18-33 | **Verifiable GDPR receipt sharing** — public URL for each consent/deletion receipt, anyone can verify against hash chain without seeing data | P3 | ⏳ | No | Academically novel for dissertation |
+| P18-34 | **AI agent mode** — AI pre-drafts deletion requests / consent revocations / DPC complaints, queued for 1-click approval | P3 | ⏳ | 🎨 Yes | Nobody in privacy does this yet |
+
+---
+
+### Items that need design mockups before implementation
+
+The following items are marked 🎨 above. **Get design from Claude before starting these:**
+
+| # | Item |
+|---|---|
+| P18-2 | AI Chat structured response cards |
+| P18-3 | AI Chat suggested follow-up chips |
+| P18-4 | AI Chat slash-command launcher |
+| P18-6 | AI Chat empty state + suggested prompts |
+| P18-11 | Empty state — Events page |
+| P18-13 | Empty state — Risk Alerts |
+| P18-14 | Onboarding first-run wizard |
+| P18-16 | Privacy timeline heatmap |
+| P18-17 | Sankey diagram |
+| P18-18 | Field-level trust scores |
+| P18-19 | Risk Alert investigation view |
+| P18-31 | Privacy Timeline mode (full page) |
+| P18-32 | Tenant comparison page |
+| P18-34 | AI agent mode |
+
+### Items that can be implemented immediately (no design needed)
+
+| # | Item |
+|---|---|
+| P18-1 | AI Chat markdown rendering |
+| P18-5 | AI Chat sources strip |
+| P18-7 | AI Chat inline citations |
+| P18-8 | Toast system (sonner) |
+| P18-9 | Action toasts |
+| P18-10 | Critical risk toast |
+| P18-12 | Filtered empty state |
+| P18-15 | Command palette (⌘K) |
+| P18-20 | GDPR requests timeline view |
+| P18-21 | Consent receipts |
+| P18-22 | DPC complaint letters |
+| P18-23 | Live event slide-in animation |
+| P18-24 | Density toggle |
+| P18-25 | Mobile responsive layout |
+| P18-26 | Micro-copy trust language |
+| P18-27 | Export preview card |
+| P18-28 | Settings sessions list |
+| P18-29 | Settings notification prefs |
+| P18-30 | Print-friendly PDF |
+| P18-33 | Verifiable receipt sharing |
+
+---
+
 ## Summary
 
 | Area | Done | Total |
@@ -590,9 +739,15 @@ _Last updated: 2026-05-06_
 | Phase 17A — 4 User Types | 3 | 4 |
 | Phase 17B — Nav & UX | 3 | 3 |
 | Phase 17C — New Pages | 4 | 4 |
-| Phase 17D — Notifications | 0 | 7 |
-| Phase 17E — Connected Apps | 0 | 3 |
-| Phase 17F — GDPR Management | 0 | 3 |
-| Phase 17G — Hash in Events | 0 | 2 |
-| Phase 17H — AI Context | 0 | 2 |
-| **Grand Total** | **212** | **243** |
+| Phase 17D — Notifications | 7 | 7 |
+| Phase 17E — Connected Apps | 3 | 3 |
+| Phase 17F — GDPR Management | 3 | 3 |
+| Phase 17G — Hash in Events | 2 | 2 |
+| Phase 17H — AI Context | 2 | 2 |
+| Phase 18-AI Chat Backend Streaming | 11 | 11 |
+| Phase 18-AI Chat Frontend Components | 16 | 16 |
+| Phase 18-P0 — Critical AI + Toast + Empty States | 6 | 13 |
+| Phase 18-P1 — Humanisation Wins | 0 | 9 |
+| Phase 18-P2 — Polish | 0 | 8 |
+| Phase 18-P3 — Stretch / Hero Shots | 0 | 4 |
+| **Grand Total** | **276** | **310** |

@@ -17,7 +17,6 @@ import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import KeyboardArrowLeftIcon from '@mui/icons-material/KeyboardArrowLeft';
 import KeyboardArrowRightIcon from '@mui/icons-material/KeyboardArrowRight';
 import WarningAmberIcon from '@mui/icons-material/WarningAmber';
-import AIChatButton from '../components/AIChatButton/AIChatButton';
 import ConnectAppModal from '../components/ConnectAppModal/ConnectAppModal';
 import TenantTabs, { HEALTH_TENANT_ID, SOCIAL_TENANT_ID } from '../components/TenantTabs/TenantTabs';
 import { dashboardApi, devApi } from '../api/client';
@@ -1098,7 +1097,6 @@ export default function Dashboard({ initialSection }: Props) {
       </>}
 
       <ConnectAppModal open={connectModalOpen} onClose={() => setConnectModalOpen(false)} />
-      <AIChatButton />
 
       {/* Demo Tour FAB */}
       <button

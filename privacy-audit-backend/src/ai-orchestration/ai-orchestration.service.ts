@@ -120,7 +120,83 @@ export class AiOrchestrationService {
     return this.chat([{ role: 'user', content: prompt }]);
   }
 
+  /**
+   * streamChat() — stream tokens from the active AI provider.
+   * Yields raw text chunks as they arrive. Falls back to a single chunk
+   * if the provider does not support streaming.
+   */
+  async *streamChat(messages: AiMessage[]): AsyncGenerator<string> {
+    const setting = await this.resolveActiveSetting();
+    const apiKey = decrypt(setting.encryptedApiKey);
+
+    switch (setting.provider) {
+      case 'claude':
+        yield* this.claudeStream(apiKey, setting.model, messages);
+        break;
+      case 'gemini':
+        yield* this.geminiStream(apiKey, setting.model, messages);
+        break;
+      case 'openai':
+        yield* this.openaiStream(apiKey, setting.model, messages);
+        break;
+    }
+  }
+
   // ── Private adapters ──────────────────────────────────────────────────────
+
+  private async *claudeStream(apiKey: string, model: string, messages: AiMessage[]): AsyncGenerator<string> {
+    const client = new Anthropic({ apiKey });
+    const stream = client.messages.stream({
+      model,
+      max_tokens: 2048,
+      messages: messages.map((m) => ({ role: m.role, content: m.content })),
+    });
+    for await (const chunk of stream) {
+      if (
+        chunk.type === 'content_block_delta' &&
+        chunk.delta.type === 'text_delta'
+      ) {
+        yield chunk.delta.text;
+      }
+    }
+  }
+
+  private async *geminiStream(apiKey: string, model: string, messages: AiMessage[]): AsyncGenerator<string> {
+    const genAI = new GoogleGenerativeAI(apiKey);
+    const geminiModel = genAI.getGenerativeModel({ model });
+    const history = messages.slice(0, -1).map((m) => ({
+      role: m.role === 'assistant' ? 'model' : 'user',
+      parts: [{ text: m.content }],
+    }));
+    const lastMessage = messages[messages.length - 1];
+    const chat = geminiModel.startChat({ history });
+    const result = await chat.sendMessageStream(lastMessage.content);
+    for await (const chunk of result.stream) {
+      const text = chunk.text();
+      if (text) yield text;
+    }
+  }
+
+  private async *openaiStream(apiKey: string, model: string, messages: AiMessage[]): AsyncGenerator<string> {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    let OpenAI: any;
+    try {
+      OpenAI = require('openai').default ?? require('openai');
+    } catch {
+      throw new Error('openai package not installed. Run: npm install openai');
+    }
+    const client = new OpenAI({ apiKey });
+    const stream = await client.chat.completions.create({
+      model,
+      messages: messages.map((m: AiMessage) => ({ role: m.role, content: m.content })),
+      max_tokens: 2048,
+      stream: true,
+    });
+    for await (const chunk of stream) {
+      const text: string = chunk.choices[0]?.delta?.content ?? '';
+      if (text) yield text;
+    }
+  }
 
   private async resolveActiveSetting(): Promise<AiProviderSettingDocument> {
     const setting = await this.getActiveProvider();

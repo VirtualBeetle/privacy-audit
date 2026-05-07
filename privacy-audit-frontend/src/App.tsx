@@ -20,6 +20,7 @@ import QueuePage from './pages/QueuePage';
 import ConnectedAppsPage from './pages/ConnectedAppsPage';
 import GDPRPage from './pages/GDPRPage';
 import GuidePage from './pages/GuidePage';
+import { AIChatPanel, AIChatPage } from './components/AIChat';
 
 /* ── MUI theme — minimal, inherits from CSS vars ─────────── */
 const muiTheme = createTheme({
@@ -96,6 +97,7 @@ function AppShell() {
             <Route path="/queue"             element={<PrivateRoute element={<QueuePage />} />} />
             <Route path="/connected-apps"   element={<PrivateRoute element={<ConnectedAppsPage />} />} />
             <Route path="/guide"            element={<PrivateRoute element={<GuidePage />} />} />
+            <Route path="/ai-chat"          element={<PrivateRoute element={<AIChatPage />} />} />
             <Route path="/onboard"          element={<PrivateRoute element={<Onboard />} />} />
             <Route path="/auth/redirect"    element={<AuthRedirect />} />
             <Route path="/auth/google/callback" element={<AuthRedirect />} />
@@ -103,6 +105,8 @@ function AppShell() {
           </Routes>
         </main>
       </div>
+      {/* Floating AI chat panel — self-hides on /ai-chat route */}
+      <AIChatPanel />
     </div>
   );
 }

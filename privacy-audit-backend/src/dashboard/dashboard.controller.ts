@@ -257,6 +257,42 @@ export class DashboardController {
     return this.aiChatService.sendMessage(user, body.message, body.sessionId);
   }
 
+  @Post('ai-chat/stream')
+  @UseGuards(DashboardAnyGuard)
+  async streamChat(
+    @CurrentUser() user: any,
+    @Body() body: { message: string; sessionId?: string },
+    @Res() res: Response,
+  ) {
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Connection', 'keep-alive');
+    res.setHeader('X-Accel-Buffering', 'no');
+    res.flushHeaders();
+
+    const write = (type: string, data: Record<string, unknown>) => {
+      try {
+        res.write(`event: ${type}\ndata: ${JSON.stringify(data)}\n\n`);
+      } catch {
+        // client disconnected — ignore
+      }
+    };
+
+    try {
+      for await (const event of this.aiChatService.streamMessage(
+        user,
+        body.message,
+        body.sessionId,
+      )) {
+        write(event.type, event.data);
+      }
+    } catch (err) {
+      write('error', { message: (err as Error).message ?? 'Stream error' });
+    } finally {
+      res.end();
+    }
+  }
+
   @Get('ai-chat/history')
   @UseGuards(DashboardAnyGuard)
   async getChatHistory(
@@ -270,6 +306,16 @@ export class DashboardController {
       parseInt(page, 10),
       parseInt(limit, 10),
     );
+  }
+
+  @Get('ai-chat/sessions/:id')
+  @UseGuards(DashboardAnyGuard)
+  async getChatSession(
+    @CurrentUser() user: any,
+    @Param('id') id: string,
+  ) {
+    const userId = user.tenantUserId ?? user.dashboardUserId ?? 'unknown';
+    return this.aiChatService.getSession(userId, id);
   }
 
   @Get('ai-analysis')
