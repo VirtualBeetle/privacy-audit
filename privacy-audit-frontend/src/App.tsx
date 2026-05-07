@@ -11,7 +11,7 @@ import Login from './pages/Login';
 import AuthRedirect from './pages/AuthRedirect';
 import Onboard from './pages/Onboard';
 import Webhooks from './pages/Webhooks';
-import AISettings from './pages/AISettings';
+// AISettings kept for potential direct URL access (ai-settings route uses SettingsPage)
 import EventsPage from './pages/EventsPage';
 import RiskPage from './pages/RiskPage';
 import SettingsPage from './pages/SettingsPage';

@@ -84,7 +84,6 @@ function GoogleUserView() {
   }, []);
 
   const linkedTenantIds = new Set(linked.map((l) => l.tenantId));
-  const unlinkable = available.filter((t) => linkedTenantIds.has(t.id));
   const linkable = available.filter((t) => !linkedTenantIds.has(t.id));
 
   const handleLink = async () => {

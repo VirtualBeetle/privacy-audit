@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import Alert from '@mui/material/Alert';
-import { useAuth, isSuperAdmin, isTenantAdmin, isAnyAdmin } from '../contexts/AuthContext';
+import { useAuth, isAnyAdmin } from '../contexts/AuthContext';
 import { dashboardApi } from '../api/client';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
