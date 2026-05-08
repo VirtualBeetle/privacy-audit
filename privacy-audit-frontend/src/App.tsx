@@ -21,6 +21,8 @@ import ConnectedAppsPage from './pages/ConnectedAppsPage';
 import GDPRPage from './pages/GDPRPage';
 import GuidePage from './pages/GuidePage';
 import { AIChatPanel, AIChatPage } from './components/AIChat';
+import ToastContainer from './components/Toast/ToastContainer';
+import CommandPalette from './components/CommandPalette/CommandPalette';
 
 /* ── MUI theme — minimal, inherits from CSS vars ─────────── */
 const muiTheme = createTheme({
@@ -107,6 +109,9 @@ function AppShell() {
       </div>
       {/* Floating AI chat panel — self-hides on /ai-chat route */}
       <AIChatPanel />
+      {/* Global overlays */}
+      <CommandPalette />
+      <ToastContainer />
     </div>
   );
 }

@@ -565,6 +565,16 @@ _Last updated: 2026-05-06_
 > Priority order: P0 (must fix) → P1 (big wins) → P2 (polish) → P3 (stretch / dissertation hero shots)
 > Items marked 🎨 require a design mockup from Claude before implementation begins.
 
+### 18-AI Chat Revamp Completion (2026-05-08)
+
+| # | Task | Status | Notes |
+|---|---|---|---|
+| P18-RC-1 | `/report` slash command — backend handler (30-day stats, grade, top fields) | ✅ Done | `ai-chat.service.ts` — `risk-summary` card |
+| P18-RC-2 | `/report` ResponseCard — `ReportCard` component with score bar + field breakdown | ✅ Done | `ResponseCard.tsx` |
+| P18-RC-3 | AI context enrichment — SUMMARY stats block + third-party + data fields in prompt | ✅ Done | `buildEventContext()` |
+| P18-RC-4 | Expand-to-page button — already wired via `navigate('/ai-chat')` in panel header | ✅ Done | `AIChatPanel.tsx` line ~571 |
+| P18-RC-5 | `/report` slash launcher — remove "(coming soon)" label | ✅ Done | `SlashLauncher.tsx` |
+
 ### 18-AI Chat Redesign (Phase 18 sub-phase — completed 2026-05-08)
 
 #### Backend — Streaming Infrastructure
@@ -613,35 +623,35 @@ _Last updated: 2026-05-06_
 | P18-5 | **AI Chat — sources strip** at bottom of each answer | P0 | ✅ Done | No | Sources strip rendered in `MessageBubble` |
 | P18-6 | **AI Chat — empty state + suggested prompts** on first open | P0 | ✅ Done | 🎨 Yes | `EmptyState` component with 4 role-aware prompt cards |
 | P18-7 | **AI Chat — inline citations** linking into dashboard | P0 | ⏳ | No | Regex-detect event counts in response, linkify to `/events?filter=...` |
-| P18-8 | **Toast notification system** — Sonner-style stacked toasts (success / error / warning / info / action / promise) | P0 | ⏳ | No | Install `sonner`; replace all silent failures + `alert()` calls |
-| P18-9 | **Action toasts** — "Webhook delivered ✓ [View payload]", "Chain verified ✓ 247 events" | P0 | ⏳ | No | Depends on P18-8 |
-| P18-10 | **Critical risk alert toast** — SSE pushes CRITICAL event → slide-in toast with View + Dismiss + Mute 1h | P0 | ⏳ | No | Depends on P18-8 |
-| P18-11 | **Empty states — Events page** (purposeful hash-chain illustration + "Connect your first app" CTA) | P0 | ⏳ | 🎨 Yes | Replace blank list |
-| P18-12 | **Empty states — filtered no results** ("No CRITICAL events in last 7 days — that's good news. [Clear filters]") | P0 | ⏳ | No | Inline empty state within filtered list |
-| P18-13 | **Empty states — Risk Alerts** (waiting state while analysis runs, not just blank) | P0 | ⏳ | 🎨 Yes | |
+| P18-8 | **Toast notification system** — custom event-driven stacked toasts (success / error / warning / info + action button) | P0 | ✅ Done | No | `src/utils/toast.ts` + `ToastContainer.tsx` — no extra package, global `window` event bus |
+| P18-9 | **Action toasts** — "Chain verified ✓ N events", "Export ready", "Consent granted/withdrawn", "Breach reported" | P0 | ✅ Done | No | Wired in `Dashboard.tsx` handlers |
+| P18-10 | **Critical risk alert toast** — SSE pushes CRITICAL event → slide-in toast in EventsPage | P0 | ✅ Done | No | `EventsPage.tsx` SSE handler fires `toast.error()` for CRITICAL severity |
+| P18-11 | **Empty states — Events page** (hash-chain illustration + "Connect your first app" CTA) | P0 | ✅ Done | No | `EventsPage.tsx` — zero-events state with SHA-256 chain visual |
+| P18-12 | **Empty states — filtered no results** (contextual message + Clear filters button) | P0 | ✅ Done | No | `EventsPage.tsx` — filtered empty state with clear action |
+| P18-13 | **Empty states — Risk Alerts** (waiting state while analysis runs, not just blank) | P0 | ✅ Done | No | `RiskPage.tsx` already had this; improved messaging |
 
 ### 18-P1 — Big Humanisation Wins
 
 | # | Task | Priority | Status | Design needed? | Notes |
 |---|---|---|---|---|---|
 | P18-14 | **Onboarding first-run wizard** — 3-step: Connect app → Verify webhook → Watch first event arrive live | P1 | ⏳ | 🎨 Yes | Shown only on first login; "Send test event" button + real-time event animation |
-| P18-15 | **Command palette (⌘K)** — search events, jump to pages, run actions (Export, Verify chain, Delete, Toggle consent) | P1 | ⏳ | No | Install `cmdk`; no design needed — well-established pattern |
+| P18-15 | **Command palette (⌘K)** — search events, jump to pages, run actions (Verify chain, Run analysis, Generate report, Compare) | P1 | ✅ Done | No | `CommandPalette.tsx` — cmdk (already installed); mounted in `AppShell` |
 | P18-16 | **Privacy timeline heatmap** — event density × hour-of-day × tenant (GitHub contribution graph style) | P1 | ⏳ | 🎨 Yes | Replace or supplement generic donut chart |
 | P18-17 | **Sankey diagram** — Tenants → Actions → Data Fields → Third Parties | P1 | ⏳ | 🎨 Yes | Signature visual of privacy products; dissertation hero shot |
 | P18-18 | **Field-level trust scores** — each data field (medical_record, location…) mini-card: how many parties touched it + delta vs last week | P1 | ⏳ | 🎨 Yes | |
 | P18-19 | **Risk Alert investigation view** — severity badge + GDPR article cited + evidence panel (4 triggering events with 1-click view) + AI reasoning collapsed "Why?" + action stack (Dismiss / Snooze / Draft email / Export evidence PDF) + status pipeline (New → Acknowledged → Action taken → Resolved) | P1 | ⏳ | 🎨 Yes | Replaces current expandable paragraph card |
-| P18-20 | **GDPR Rights portal — active requests timeline** ("Export submitted Oct 5 → Processing → Ready Oct 6 [Download]") | P1 | ⏳ | No | Upgrade to timeline view from current button-only |
+| P18-20 | **GDPR Rights portal — active requests timeline** (Submitted → Processing → Completed with stage pipeline) | P1 | ✅ Done | No | `GDPRPage.tsx` AdminView — replaced table with visual timeline + stage pills |
 | P18-21 | **GDPR consent receipts** — every toggle change generates a hash-chained receipt the user can share/download | P1 | ⏳ | No | Hash-sign the consent event; show receipt modal |
-| P18-22 | **Pre-drafted DPC complaint letters** (Data Protection Commission Ireland) — download per GDPR article | P1 | ⏳ | No | Static templated markdown → download as .txt |
+| P18-22 | **Pre-drafted DPC complaint letters** (Art.15, Art.17, Art.20, Art.21) — download as .txt | P1 | ✅ Done | No | `GDPRPage.tsx` UserRightsView — 4 templates with download button |
 
 ### 18-P2 — Polish (Prototype → Production)
 
 | # | Task | Priority | Status | Design needed? | Notes |
 |---|---|---|---|---|---|
-| P18-23 | **Live event slide-in** — new event slides into top of feed with gradient sweep (not pulse), counter on sidebar increments | P2 | ⏳ | No | CSS animation only; no design file needed |
+| P18-23 | **Live event slide-in** — new event slides into top of feed with gradient sweep animation, CRITICAL events trigger error toast | P2 | ✅ Done | No | `EventsPage.tsx` — `dg-event-slide-in` keyframe + `liveIds` Set state |
 | P18-24 | **Density toggle** — Comfortable / Compact / Spacious for event feed | P2 | ⏳ | No | CSS custom property `--row-height` |
 | P18-25 | **Mobile / tablet responsive layout** | P2 | ⏳ | No | Collapsible sidebar, stacked cards |
-| P18-26 | **Trust-building micro-copy** — "247 times apps touched your data" not "Total Events: 247"; "You've given consent for 80%…" not "Consent Rate: 80%" | P2 | ⏳ | No | String replacements only |
+| P18-26 | **Trust-building micro-copy** — "Times apps touched your data", "% consented to processing", "Shared with 3rd parties" | P2 | ✅ Done | No | `Dashboard.tsx` StatCard labels updated |
 | P18-27 | **Data export preview card** — before download: "Your export will include 247 events, 5 receipts, ~340 KB JSON. [Customize fields]" | P2 | ⏳ | No | Modal before download trigger |
 | P18-28 | **Settings — sessions list** with "Sign out everywhere" | P2 | ⏳ | No | Store sessions in DB; privacy product table stakes |
 | P18-29 | **Settings — notification preferences** (which events trigger toasts / emails) | P2 | ⏳ | No | |

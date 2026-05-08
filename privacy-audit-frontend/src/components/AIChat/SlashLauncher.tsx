@@ -18,7 +18,7 @@ export const SLASH_COMMANDS = [
   { cmd: '/draft',   desc: 'Draft a GDPR request or DPC complaint' },
   { cmd: '/compare', desc: 'Compare this week vs last week statistics' },
   { cmd: '/verify',  desc: 'Verify the audit log SHA-256 hash chain integrity' },
-  { cmd: '/report',  desc: 'Generate a compliance report (coming soon)' },
+  { cmd: '/report',  desc: 'Generate a 30-day privacy compliance report' },
 ];
 
 interface SlashLauncherProps {

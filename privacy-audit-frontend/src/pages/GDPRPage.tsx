@@ -149,54 +149,68 @@ function AdminView() {
           </div>
         </div>
       ) : (
-        <div style={{
-          background: 'var(--surface)', border: '1px solid var(--border)',
-          borderRadius: 14, overflow: 'hidden',
-        }}>
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: tab === 'exports' ? '1fr 160px 120px 80px 120px' : '1fr 160px 120px 120px',
-            padding: '9px 16px', background: 'var(--surface-2)',
-            borderBottom: '1px solid var(--border)',
-          }}>
-            {(tab === 'exports'
-              ? ['Request ID', 'Tenant User', 'Status', 'Events', 'Requested']
-              : ['Request ID', 'Tenant User', 'Status', 'Requested']
-            ).map((h) => (
-              <div key={h} style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-3)', letterSpacing: '0.5px', textTransform: 'uppercase' }}>
-                {h}
-              </div>
-            ))}
-          </div>
-          {rows.map((r, i) => (
-            <div
-              key={r.id}
-              style={{
-                display: 'grid',
-                gridTemplateColumns: tab === 'exports' ? '1fr 160px 120px 80px 120px' : '1fr 160px 120px 120px',
-                padding: '11px 16px', alignItems: 'center',
-                borderBottom: i < rows.length - 1 ? '1px solid var(--border)' : 'none',
-              }}
-              onMouseEnter={(e) => { (e.currentTarget as HTMLDivElement).style.background = 'var(--surface-2)'; }}
-              onMouseLeave={(e) => { (e.currentTarget as HTMLDivElement).style.background = 'transparent'; }}
-            >
-              <div style={{ fontSize: 11, color: 'var(--text-3)', fontFamily: "'JetBrains Mono', monospace" }}>
-                {r.id.slice(0, 14)}…
-              </div>
-              <div style={{ fontSize: 11, color: 'var(--text-2)', fontFamily: "'JetBrains Mono', monospace" }}>
-                {r.tenantUserId.slice(0, 12)}…
-              </div>
-              <div><StatusBadge status={r.status} /></div>
-              {tab === 'exports' && (
-                <div style={{ fontSize: 12, color: 'var(--text-2)', fontFamily: "'JetBrains Mono', monospace" }}>
-                  {(r as any).eventCount ?? '—'}
+        /* Timeline view */
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 0, position: 'relative', paddingLeft: 24 }}>
+          {/* Vertical line */}
+          <div style={{ position: 'absolute', left: 8, top: 12, bottom: 12, width: 2, background: 'var(--border)', borderRadius: 2 }} />
+          {rows.map((r, i) => {
+            const stages = ['requested', 'processing', 'completed'];
+            const currentIdx = stages.indexOf(r.status) === -1
+              ? (r.status === 'failed' ? 2 : 0)
+              : stages.indexOf(r.status);
+            const sc = STATUS_COLOR[r.status] ?? { color: 'var(--text-3)', bg: 'var(--surface-2)' };
+            return (
+              <div key={r.id} style={{ display: 'flex', gap: 14, paddingBottom: i < rows.length - 1 ? 20 : 0, position: 'relative' }}>
+                {/* Dot */}
+                <div style={{
+                  position: 'absolute', left: -20, top: 12,
+                  width: 10, height: 10, borderRadius: '50%',
+                  background: sc.color, border: '2px solid var(--bg)', flexShrink: 0,
+                  boxShadow: `0 0 0 3px ${sc.bg}`,
+                }} />
+                {/* Card */}
+                <div style={{
+                  flex: 1, background: 'var(--surface)', border: '1px solid var(--border)',
+                  borderRadius: 11, padding: '12px 14px',
+                  transition: 'box-shadow .15s',
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 7, flexWrap: 'wrap' }}>
+                    <StatusBadge status={r.status} />
+                    <span style={{ fontSize: 10.5, color: 'var(--accent)', fontWeight: 700 }}>
+                      {tab === 'exports' ? 'Art.20 Export' : 'Art.17 Erasure'}
+                    </span>
+                    <span style={{ fontSize: 10, color: 'var(--text-3)', marginLeft: 'auto' }}>
+                      {new Date(r.requestedAt).toLocaleDateString('en-IE', { day: 'numeric', month: 'short', year: 'numeric' })}
+                    </span>
+                  </div>
+                  {/* Stage pipeline */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginBottom: 8 }}>
+                    {(['Submitted', 'Processing', r.status === 'failed' ? 'Failed' : 'Completed'] as string[]).map((stage, si) => {
+                      const done = si < currentIdx || (si === currentIdx && (r.status === 'completed' || r.status === 'failed'));
+                      const active = si === currentIdx && r.status !== 'completed' && r.status !== 'failed';
+                      const color = r.status === 'failed' && si === 2 ? '#ef4444' : done ? '#22c55e' : active ? '#f97316' : 'var(--text-3)';
+                      return (
+                        <span key={stage} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                          <span style={{
+                            width: 6, height: 6, borderRadius: '50%', flexShrink: 0,
+                            background: done || active ? color : 'var(--border)',
+                          }} />
+                          <span style={{ fontSize: 10.5, color, fontWeight: done || active ? 600 : 400 }}>{stage}</span>
+                          {si < 2 && <span style={{ fontSize: 10, color: 'var(--border)', margin: '0 2px' }}>→</span>}
+                        </span>
+                      );
+                    })}
+                  </div>
+                  <div style={{ display: 'flex', gap: 16, fontSize: 10.5, color: 'var(--text-3)', fontFamily: "'JetBrains Mono', monospace" }}>
+                    <span>ID: {r.id.slice(0, 10)}…</span>
+                    <span>User: {r.tenantUserId.slice(0, 10)}…</span>
+                    {tab === 'exports' && <span>Events: {(r as any).eventCount ?? '—'}</span>}
+                    {r.completedAt && <span>Done: {new Date(r.completedAt).toLocaleDateString('en-IE')}</span>}
+                  </div>
                 </div>
-              )}
-              <div style={{ fontSize: 11, color: 'var(--text-3)' }}>
-                {new Date(r.requestedAt).toLocaleDateString()}
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>
@@ -396,6 +410,81 @@ function UserRightsView() {
             Cancel
           </button>
         )}
+      </SectionCard>
+
+      {/* DPC Complaint Letters */}
+      <SectionCard
+        title="Pre-Drafted DPC Complaint Letters"
+        sub="Download template letters for the Data Protection Commission Ireland. Fill in the [BRACKETS] before sending."
+      >
+        {[
+          {
+            art: 'Art. 15',
+            title: 'Right of Access',
+            desc: 'Request a copy of all personal data held about you.',
+            body: `To: Data Protection Commission Ireland\nSubject: GDPR Article 15 — Right of Access Request\n\nDear Data Protection Commission,\n\nI am writing to exercise my right of access under Article 15 of the General Data Protection Regulation (GDPR).\n\nI have requested a copy of all personal data held about me by [ORGANISATION NAME] (the "Controller") and have not received a satisfactory response within the statutory one-month period.\n\nI therefore request that the DPC investigate this matter and ensure my rights are upheld.\n\nMy details:\n  Full name: [YOUR FULL NAME]\n  Email:     [YOUR EMAIL]\n  Reference: [ANY REFERENCE PROVIDED BY CONTROLLER]\n\nYours sincerely,\n[YOUR NAME]\n[DATE]`,
+          },
+          {
+            art: 'Art. 17',
+            title: 'Right to Erasure',
+            desc: 'Escalate an unanswered erasure request to the DPC.',
+            body: `To: Data Protection Commission Ireland\nSubject: GDPR Article 17 — Right to Erasure Complaint\n\nDear Data Protection Commission,\n\nI am writing to make a formal complaint under Article 77 GDPR.\n\nOn [DATE], I submitted a Right to Erasure request under GDPR Article 17 to [ORGANISATION NAME]. They have failed to comply within the statutory one-month period.\n\nI request that the DPC investigate and direct the Controller to erase my personal data without undue delay.\n\nMy details:\n  Full name: [YOUR FULL NAME]\n  Email:     [YOUR EMAIL]\n  Original request date: [DATE OF YOUR REQUEST]\n\nYours sincerely,\n[YOUR NAME]\n[DATE]`,
+          },
+          {
+            art: 'Art. 20',
+            title: 'Data Portability',
+            desc: 'Escalate an unanswered data portability request.',
+            body: `To: Data Protection Commission Ireland\nSubject: GDPR Article 20 — Data Portability Complaint\n\nDear Data Protection Commission,\n\nI am writing under Article 77 GDPR to report a failure to comply with my data portability rights.\n\nOn [DATE], I requested a machine-readable copy of my personal data from [ORGANISATION NAME] under GDPR Article 20. The Controller has not provided the data within the statutory one-month period.\n\nI request the DPC investigate this matter and direct the Controller to provide my data in a structured, commonly used, and machine-readable format.\n\nMy details:\n  Full name: [YOUR FULL NAME]\n  Email:     [YOUR EMAIL]\n\nYours sincerely,\n[YOUR NAME]\n[DATE]`,
+          },
+          {
+            art: 'Art. 21',
+            title: 'Right to Object',
+            desc: 'Object to processing for direct marketing or legitimate interests.',
+            body: `To: Data Protection Commission Ireland\nSubject: GDPR Article 21 — Right to Object Complaint\n\nDear Data Protection Commission,\n\nI am filing a complaint under Article 77 GDPR regarding [ORGANISATION NAME]'s failure to honour my objection to data processing.\n\nOn [DATE], I exercised my right to object under GDPR Article 21 to the processing of my personal data for [DIRECT MARKETING / LEGITIMATE INTERESTS — delete as applicable]. The Controller has continued to process my data in violation of this objection.\n\nI request the DPC to investigate and direct the Controller to cease the relevant processing immediately.\n\nMy details:\n  Full name: [YOUR FULL NAME]\n  Email:     [YOUR EMAIL]\n\nYours sincerely,\n[YOUR NAME]\n[DATE]`,
+          },
+        ].map((letter) => (
+          <div key={letter.art} style={{
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12,
+            padding: '11px 14px', background: 'var(--surface-2)', borderRadius: 10,
+            border: '1px solid var(--border)', marginBottom: 8,
+          }}>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: 3 }}>
+                <span style={{ padding: '2px 7px', borderRadius: 5, background: 'rgba(99,102,241,0.1)', color: 'var(--accent)', fontSize: 9.5, fontWeight: 800 }}>
+                  {letter.art}
+                </span>
+                <span style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--text)' }}>{letter.title}</span>
+              </div>
+              <div style={{ fontSize: 11.5, color: 'var(--text-3)' }}>{letter.desc}</div>
+            </div>
+            <button
+              onClick={() => {
+                const blob = new Blob([letter.body], { type: 'text/plain' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `dpc-complaint-${letter.art.replace(/[^a-z0-9]/gi, '-').toLowerCase()}.txt`;
+                a.click();
+                URL.revokeObjectURL(url);
+              }}
+              style={{
+                padding: '7px 14px', borderRadius: 8, flexShrink: 0,
+                border: '1px solid var(--border)', background: 'transparent',
+                color: 'var(--text-2)', fontSize: 12, fontWeight: 600,
+                cursor: 'pointer', fontFamily: "'DM Sans', sans-serif",
+                transition: 'all 0.15s',
+                display: 'flex', alignItems: 'center', gap: 6,
+              }}
+              onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--accent)'; e.currentTarget.style.color = 'var(--accent)'; }}
+              onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.color = 'var(--text-2)'; }}
+            >
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
+              </svg>
+              Download .txt
+            </button>
+          </div>
+        ))}
       </SectionCard>
     </div>
   );

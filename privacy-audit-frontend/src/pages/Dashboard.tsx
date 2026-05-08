@@ -20,6 +20,7 @@ import WarningAmberIcon from '@mui/icons-material/WarningAmber';
 import ConnectAppModal from '../components/ConnectAppModal/ConnectAppModal';
 import TenantTabs, { HEALTH_TENANT_ID, SOCIAL_TENANT_ID } from '../components/TenantTabs/TenantTabs';
 import { dashboardApi, devApi } from '../api/client';
+import { toast } from '../utils/toast';
 import { useAuth } from '../contexts/AuthContext';
 import type { AuditEvent, LinkedAccount, TenantFilter } from '../types';
 import {
@@ -521,25 +522,36 @@ export default function Dashboard({ initialSection }: Props) {
   /* ── Handlers ── */
   const handleVerifyChain = async () => {
     setChainVerifying(true);
-    try { setChainResult(await dashboardApi.verifyChainIntegrity()); } catch { setChainResult(null); } finally { setChainVerifying(false); }
+    try {
+      const res = await dashboardApi.verifyChainIntegrity();
+      setChainResult(res);
+      if (res.valid) toast.success(`Chain verified ✓ ${res.eventCount} events — no tampering detected`);
+      else toast.error(`Chain integrity failed — tampering detected!`, { duration: 7000 });
+    } catch { setChainResult(null); } finally { setChainVerifying(false); }
   };
 
   const handleExport = async () => {
     setExportLoading(true);
+    toast.info('Export requested — processing now…');
     try {
       const res = await dashboardApi.requestExport();
       setExportStatus({ id: res.requestId, status: res.status });
       const poll = setInterval(async () => {
         const s = await dashboardApi.getExportStatus(res.requestId);
         setExportStatus({ id: res.requestId, status: s.status });
-        if (s.status === 'completed') { clearInterval(poll); await dashboardApi.downloadExport(res.requestId); }
-        if (s.status === 'failed') clearInterval(poll);
+        if (s.status === 'completed') {
+          clearInterval(poll);
+          await dashboardApi.downloadExport(res.requestId);
+          toast.success('Export ready — download started ✓');
+        }
+        if (s.status === 'failed') { clearInterval(poll); toast.error('Export failed. Please try again.'); }
       }, 2000);
-    } catch { setExportStatus(null); } finally { setExportLoading(false); }
+    } catch { setExportStatus(null); toast.error('Export request failed.'); } finally { setExportLoading(false); }
   };
 
   const handleDelete = async () => {
     setDeleteConfirm(false); setDeleteLoading(true);
+    toast.warning('Deletion request submitted — processing…');
     try {
       const res = await dashboardApi.requestDeletion();
       setDeleteStatus({ id: res.requestId, status: res.status });
@@ -548,10 +560,11 @@ export default function Dashboard({ initialSection }: Props) {
         setDeleteStatus({ id: res.requestId, status: s.status });
         if (s.status === 'completed' || s.status === 'failed') {
           clearInterval(poll);
-          if (s.status === 'completed') { setEvents([]); }
+          if (s.status === 'completed') { setEvents([]); toast.success('Your data has been erased. Evidence hash retained per GDPR Art.17 ✓'); }
+          else toast.error('Deletion failed. Please contact support.');
         }
       }, 2000);
-    } catch { setDeleteStatus(null); } finally { setDeleteLoading(false); }
+    } catch { setDeleteStatus(null); toast.error('Deletion request failed.'); } finally { setDeleteLoading(false); }
   };
 
   const handleConsentToggle = async (dataType: string, granted: boolean) => {
@@ -561,7 +574,8 @@ export default function Dashboard({ initialSection }: Props) {
     try {
       await dashboardApi.setConsent(userId, dataType, granted);
       setConsents(prev => prev.map(c => c.dataType === dataType ? { ...c, granted } : c));
-    } catch { /* silently handle */ } finally { setConsentToggling(null); }
+      toast.success(`Consent ${granted ? 'granted' : 'withdrawn'} for ${dataType.replace(/_/g, ' ')}`);
+    } catch { toast.error('Consent update failed. Please try again.'); } finally { setConsentToggling(null); }
   };
 
   const handleReportBreach = async () => {
@@ -571,14 +585,16 @@ export default function Dashboard({ initialSection }: Props) {
       const report = await dashboardApi.reportBreach(breachInput.trim());
       setBreachReports(prev => [report, ...prev]);
       setBreachInput('');
-    } catch { /* silently handle */ } finally { setBreachLoading(false); }
+      toast.warning('Breach reported — 72h GDPR Art.33 countdown started');
+    } catch { toast.error('Breach report failed.'); } finally { setBreachLoading(false); }
   };
 
   const handleNotifyRegulator = async (id: string) => {
     try {
       const updated = await dashboardApi.notifyRegulator(id);
       setBreachReports(prev => prev.map(r => r.id === id ? { ...r, ...updated } : r));
-    } catch { /* silently handle */ }
+      toast.success('Regulator notified ✓ — GDPR Art.33 deadline cleared');
+    } catch { toast.error('Notification failed. Please try again.'); }
   };
 
   const getDevToken = () =>
@@ -760,10 +776,10 @@ export default function Dashboard({ initialSection }: Props) {
 
         {/* Stat cards */}
         <div style={{ display: 'flex', gap: 14, marginBottom: 14 }}>
-          <StatCard label="Total Events"    value={totalEvents}    icon={EventsIcon}  accent="indigo" delay={0} trend={{ up: true, val: '+' + totalEvents, label: 'total logged' }} />
-          <StatCard label="Critical Events" value={criticalCount}  icon={RiskIcon}    accent="red"    delay={1} />
-          <StatCard label="Third-party"     value={thirdPartyCount} icon={WebhookIcon} accent="amber"  delay={2} />
-          <StatCard label="Consent Rate"    value={`${consentRate}%`} icon={VerifyIcon} accent="green" delay={3} />
+          <StatCard label="Times apps touched your data" value={totalEvents}    icon={EventsIcon}  accent="indigo" delay={0} trend={{ up: true, val: '+' + totalEvents, label: 'total logged' }} />
+          <StatCard label="Critical risk events"        value={criticalCount}  icon={RiskIcon}    accent="red"    delay={1} />
+          <StatCard label="Shared with 3rd parties"     value={thirdPartyCount} icon={WebhookIcon} accent="amber"  delay={2} />
+          <StatCard label="% consented to processing"   value={`${consentRate}%`} icon={VerifyIcon} accent="green" delay={3} />
         </div>
 
         {/* Charts */}

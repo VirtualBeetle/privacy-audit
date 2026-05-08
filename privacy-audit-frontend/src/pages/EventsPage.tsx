@@ -2,9 +2,26 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { dashboardApi } from '../api/client';
 import type { AuditEvent } from '../types';
+import { toast } from '../utils/toast';
 import {
-  SearchIcon, FilterIcon, RefreshIcon,
+  SearchIcon, RefreshIcon,
 } from '../components/icons/Icons';
+
+/* ── Live-event slide-in animation ─────────────────────────────── */
+const LIVE_STYLE_ID = 'dg-events-live-styles';
+if (typeof document !== 'undefined' && !document.getElementById(LIVE_STYLE_ID)) {
+  const el = document.createElement('style');
+  el.id = LIVE_STYLE_ID;
+  el.textContent = `
+    @keyframes dg-event-slide-in {
+      from { opacity:0; transform:translateY(-8px); box-shadow:0 0 0 2px rgba(99,102,241,0.4); }
+      50%  { box-shadow:0 0 0 2px rgba(99,102,241,0.15); }
+      to   { opacity:1; transform:translateY(0);  box-shadow:none; }
+    }
+    .dg-event-live { animation:dg-event-slide-in .45s ease both; }
+  `;
+  document.head.appendChild(el);
+}
 
 /* ── Helpers ──────────────────────────────────────────────────── */
 function timeAgo(ts: string): string {
@@ -335,6 +352,7 @@ function SelectFilter({
 export default function EventsPage() {
   const navigate = useNavigate();
   const [events, setEvents] = useState<AuditEvent[]>([]);
+  const [liveIds, setLiveIds] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [refreshing, setRefreshing] = useState(false);
@@ -371,6 +389,14 @@ export default function EventsPage() {
         const newEvent = payload.event as AuditEvent;
         setEvents(prev => {
           if (prev.some(e => e.id === newEvent.id)) return prev;
+          const severity = newEvent.sensitivityCode;
+          if (severity === 'CRITICAL') {
+            toast.error(`CRITICAL event: ${newEvent.actionLabel || newEvent.actionCode} — ${newEvent.reasonLabel?.slice(0, 50) ?? ''}`, { duration: 7000 });
+          } else {
+            toast.info(`New event: ${newEvent.actionLabel || newEvent.actionCode} via ${newEvent.tenantName ?? 'unknown app'}`, { duration: 4000 });
+          }
+          setLiveIds(s => new Set([...s, String(newEvent.id)]));
+          setTimeout(() => setLiveIds(s => { const n = new Set(s); n.delete(String(newEvent.id)); return n; }), 2000);
           return [newEvent, ...prev];
         });
       } catch { /* ignore */ }
@@ -524,14 +550,77 @@ export default function EventsPage() {
       <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 8, paddingBottom: 24 }}>
         {loading ? (
           Array.from({ length: 6 }).map((_, i) => <SkeletonEventCard key={i} />)
-        ) : filtered.length > 0 ? (
-          filtered.map((e, i) => <EventCard key={e.id} event={e} idx={i} />)
-        ) : (
-          <div style={{ textAlign: 'center', padding: '60px 20px', color: 'var(--text-3)' }}>
-            <FilterIcon style={{ width: 40, height: 40, margin: '0 auto 12px', display: 'block', opacity: 0.25 }} />
-            <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-2)' }}>No events match your filters</div>
-            <div style={{ fontSize: 12, marginTop: 4 }}>Try adjusting the search or filter options</div>
+        ) : events.length === 0 ? (
+          /* No events at all — purposeful empty state */
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '60px 20px', gap: 16 }}>
+            <div style={{
+              width: 72, height: 72, borderRadius: 20,
+              background: 'linear-gradient(140deg, rgba(99,102,241,0.15), rgba(139,92,246,0.08))',
+              border: '1px solid rgba(99,102,241,0.2)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+            }}>
+              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/>
+                <polyline points="13 2 13 9 20 9"/>
+                <line x1="9" y1="13" x2="15" y2="13"/>
+              </svg>
+            </div>
+            <div style={{ textAlign: 'center' }}>
+              <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--text)', marginBottom: 6, fontFamily: "'Space Grotesk', sans-serif" }}>No audit events yet</div>
+              <div style={{ fontSize: 13, color: 'var(--text-3)', lineHeight: 1.6, maxWidth: 340 }}>
+                Connect your first app and send an audit event to start tracking how your data is accessed, shared, and processed — all SHA-256 chained per GDPR Art.30.
+              </div>
+            </div>
+            <div style={{ display: 'flex', gap: 10 }}>
+              <button
+                onClick={() => navigate('/dashboard')}
+                style={{ padding: '8px 16px', background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: 9, cursor: 'pointer', fontSize: 13, fontWeight: 600, fontFamily: "'DM Sans', sans-serif" }}
+              >
+                Connect an app →
+              </button>
+              <button
+                onClick={() => load(true)}
+                style={{ padding: '8px 16px', background: 'var(--surface)', color: 'var(--text-2)', border: '1px solid var(--border)', borderRadius: 9, cursor: 'pointer', fontSize: 13, fontWeight: 600, fontFamily: "'DM Sans', sans-serif" }}
+              >
+                Refresh
+              </button>
+            </div>
+            {/* Hash chain visual */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '10px 16px', background: 'rgba(5,150,105,0.05)', border: '1px solid rgba(5,150,105,0.15)', borderRadius: 10, marginTop: 8 }}>
+              {[...Array(5)].map((_, i) => (
+                <span key={i} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <span style={{ width: 28, height: 18, background: 'rgba(5,150,105,0.15)', border: '1px solid rgba(5,150,105,0.25)', borderRadius: 4, display: 'inline-block' }} />
+                  {i < 4 && <span style={{ color: '#059669', fontSize: 10, fontFamily: 'monospace' }}>→</span>}
+                </span>
+              ))}
+              <span style={{ fontSize: 10.5, color: '#059669', fontWeight: 600, marginLeft: 4 }}>SHA-256 chain · GDPR Art.30</span>
+            </div>
           </div>
+        ) : filtered.length === 0 ? (
+          /* Filters returned no results */
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '48px 20px', gap: 12 }}>
+            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="var(--text-3)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.4 }}>
+              <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/>
+            </svg>
+            <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-2)' }}>
+              No {sensFilter !== 'All' ? sensFilter.toLowerCase() : ''} {actionFilter !== 'All' ? actionFilter.toLowerCase() : ''} events found
+            </div>
+            <div style={{ fontSize: 12, color: 'var(--text-3)' }}>
+              {search ? `No events matching "${search}" — that's good news if you're filtering for CRITICAL.` : 'Try adjusting your filters above.'}
+            </div>
+            <button
+              onClick={() => { setSearch(''); setActionFilter('All'); setSensFilter('All'); setTenantFilter('All'); }}
+              style={{ padding: '6px 14px', background: 'transparent', color: 'var(--accent)', border: '1px solid var(--accent)', borderRadius: 8, cursor: 'pointer', fontSize: 12, fontWeight: 600, fontFamily: "'DM Sans', sans-serif", marginTop: 4 }}
+            >
+              Clear filters
+            </button>
+          </div>
+        ) : (
+          filtered.map((e, i) => (
+            <div key={e.id} className={liveIds.has(String(e.id)) ? 'dg-event-live' : undefined} style={{ borderRadius: 12 }}>
+              <EventCard event={e} idx={i} />
+            </div>
+          ))
         )}
       </div>
     </div>

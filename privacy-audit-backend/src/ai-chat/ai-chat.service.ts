@@ -377,6 +377,80 @@ User request: ${message}`;
           },
         };
 
+      // ── /report ────────────────────────────────────────────────────────────
+      } else if (cmd === 'report') {
+        yield { type: 'step', data: { label: 'Collecting 30-day events', status: 'active' } };
+        const d30 = new Date(Date.now() - 30 * 86400000);
+        const allEvents = await this.eventsRepo.find({
+          where: { tenantId: user.tenantId, createdAt: MoreThan(d30) },
+          order: { createdAt: 'DESC' },
+        });
+        yield { type: 'step', data: { label: 'Collecting 30-day events', status: 'done' } };
+        yield { type: 'step', data: { label: 'Computing compliance metrics', status: 'active' } };
+        await this.sleep(220);
+
+        const total = allEvents.length;
+        const consented = allEvents.filter(e => e.consentObtained).length;
+        const critical = allEvents.filter(e => e.sensitivityCode === 'CRITICAL').length;
+        const high = allEvents.filter(e => e.sensitivityCode === 'HIGH').length;
+        const medium = allEvents.filter(e => e.sensitivityCode === 'MEDIUM').length;
+        const low = allEvents.filter(e => e.sensitivityCode === 'LOW').length;
+        const thirdParty = allEvents.filter(e => e.thirdPartyInvolved).length;
+        const noConsent = total - consented;
+        const consentRate = total > 0 ? Math.round((consented / total) * 100) : 0;
+
+        const fieldCounts: Record<string, number> = {};
+        allEvents.forEach(e => (e.dataFields ?? []).forEach(f => { fieldCounts[f] = (fieldCounts[f] ?? 0) + 1; }));
+        const topFields = Object.entries(fieldCounts).sort((a, b) => b[1] - a[1]).slice(0, 8);
+
+        const actionCounts: Record<string, number> = {};
+        allEvents.forEach(e => { actionCounts[e.actionCode] = (actionCounts[e.actionCode] ?? 0) + 1; });
+        const topActions = Object.entries(actionCounts).sort((a, b) => b[1] - a[1]).slice(0, 5);
+
+        const thirdPartyNames = [...new Set(allEvents.filter(e => e.thirdPartyInvolved && e.thirdPartyName).map(e => e.thirdPartyName!))];
+
+        let score = 100;
+        if (total > 0) {
+          score -= Math.round((1 - consentRate / 100) * 25);
+          score -= Math.min(thirdParty * 2, 20);
+          score -= Math.min(critical * 5, 30);
+        }
+        score = Math.max(0, score);
+        const grade = score >= 90 ? 'A' : score >= 75 ? 'B' : score >= 60 ? 'C' : 'D';
+
+        yield { type: 'step', data: { label: 'Computing compliance metrics', status: 'done' } };
+        yield { type: 'step', data: { label: 'Generating report', status: 'active' } };
+        await this.sleep(150);
+        yield { type: 'step', data: { label: 'Generating report', status: 'done' } };
+
+        fullReply = total === 0
+          ? 'No events recorded in the last 30 days. Connect a tenant app and send audit events to begin compliance tracking.'
+          : `30-day compliance report generated. ${total} events processed. Privacy grade: ${grade} (${score}/100). ${noConsent} events lacked consent — ${consentRate}% consent rate overall. ${thirdParty > 0 ? `${thirdParty} events involved third-party data sharing (${thirdPartyNames.slice(0, 3).join(', ')}).` : 'No third-party sharing detected.'}`;
+
+        yield {
+          type: 'card',
+          data: {
+            cardType: 'risk-summary',
+            period: 'Last 30 days',
+            totalEvents: total,
+            consentRate,
+            noConsentCount: noConsent,
+            criticalCount: critical,
+            highCount: high,
+            mediumCount: medium,
+            lowCount: low,
+            thirdPartyCount: thirdParty,
+            thirdPartyNames: thirdPartyNames.slice(0, 5),
+            topDataFields: topFields,
+            topActions,
+            score,
+            grade,
+            generatedAt: new Date().toISOString(),
+            followUps: ['Show CRITICAL events', '/compare this week vs last', 'Draft compliance email to DPC'],
+            sources: [`${total} events`, '30-day window', 'GDPR Art. 30'],
+          },
+        };
+
       // ── free-form ──────────────────────────────────────────────────────────
       } else {
         yield { type: 'step', data: { label: 'Analyzing your query', status: 'active' } };
@@ -574,6 +648,21 @@ ${context}`;
 
     if (!events.length) return 'No events found in the last 7 days.';
 
+    const total = events.length;
+    const consented = events.filter(e => e.consentObtained).length;
+    const critical = events.filter(e => e.sensitivityCode === 'CRITICAL').length;
+    const high = events.filter(e => e.sensitivityCode === 'HIGH').length;
+    const thirdParty = events.filter(e => e.thirdPartyInvolved).length;
+    const consentRate = Math.round((consented / total) * 100);
+    const allFields = [...new Set(events.flatMap(e => e.dataFields ?? []))];
+    const thirdPartyNames = [...new Set(events.filter(e => e.thirdPartyInvolved && e.thirdPartyName).map(e => e.thirdPartyName!))];
+
+    const summary = [
+      `SUMMARY (last 7 days): ${total} events | ${consentRate}% consent rate | ${critical} CRITICAL, ${high} HIGH severity`,
+      `Third-party shares: ${thirdParty}${thirdPartyNames.length ? ` (${thirdPartyNames.slice(0, 3).join(', ')})` : ''}`,
+      `Data fields accessed: ${allFields.slice(0, 10).join(', ') || 'none'}`,
+    ].join('\n');
+
     const lines = events.map((e) => {
       const flags: string[] = [];
       if (!e.consentObtained) flags.push('NO_CONSENT');
@@ -583,6 +672,6 @@ ${context}`;
       return `- ${e.occurredAt?.toISOString?.() ?? '?'}: [${e.sensitivityCode}] ${e.actionCode} "${e.actionLabel}" on [${e.dataFields?.join(', ') ?? '?'}] by ${e.actorType}${flagStr}`;
     });
 
-    return `${events.length} events in last 7 days (newest first):\n${lines.join('\n')}`;
+    return `${summary}\n\nRecent events (newest first):\n${lines.join('\n')}`;
   }
 }
