@@ -18,6 +18,7 @@ import KeyboardArrowLeftIcon from '@mui/icons-material/KeyboardArrowLeft';
 import KeyboardArrowRightIcon from '@mui/icons-material/KeyboardArrowRight';
 import WarningAmberIcon from '@mui/icons-material/WarningAmber';
 import ConnectAppModal from '../components/ConnectAppModal/ConnectAppModal';
+import OnboardingWizard from '../components/OnboardingWizard/OnboardingWizard';
 import TenantTabs, { HEALTH_TENANT_ID, SOCIAL_TENANT_ID } from '../components/TenantTabs/TenantTabs';
 import { dashboardApi, devApi } from '../api/client';
 import { toast } from '../utils/toast';
@@ -604,6 +605,319 @@ function MiniRiskPanel({ findings, chainResult, onViewAlerts }: {
   );
 }
 
+/* ── Privacy Timeline Heatmap (P18-16) ──────────────────────────── */
+function PrivacyHeatmap({ events }: { events: AuditEvent[] }) {
+  const WEEKS = 12;
+  const DAY_LABELS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
+  const now = new Date();
+
+  // Build day-bucket map for last 12 weeks
+  const buckets = new Map<string, number>();
+  const startDate = new Date(now);
+  startDate.setDate(startDate.getDate() - (WEEKS * 7 - 1));
+
+  events.forEach(e => {
+    const d = new Date(e.timestamp ?? e.occurredAt);
+    const key = d.toDateString();
+    buckets.set(key, (buckets.get(key) ?? 0) + 1);
+  });
+
+  // 7 rows × 12 cols grid
+  const cols: { date: Date; count: number }[][] = Array.from({ length: 12 }, () => []);
+  for (let i = 0; i < WEEKS * 7; i++) {
+    const d = new Date(startDate);
+    d.setDate(startDate.getDate() + i);
+    cols[Math.floor(i / 7)].push({ date: d, count: buckets.get(d.toDateString()) ?? 0 });
+  }
+
+  const maxCount = Math.max(1, ...Array.from(buckets.values()));
+
+  const monthLabels: { label: string; col: number }[] = [];
+  let lastMonth = -1;
+  cols.forEach((week, ci) => {
+    const m = week[0]?.date.getMonth();
+    if (m !== lastMonth) {
+      monthLabels.push({ label: week[0].date.toLocaleDateString('en', { month: 'short' }), col: ci });
+      lastMonth = m;
+    }
+  });
+
+  return (
+    <div className="dg-card anim-fade-up d3" style={{ padding: '20px 22px', marginBottom: 14 }}>
+      <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)', fontFamily: "'Space Grotesk', sans-serif", marginBottom: 14 }}>
+        Privacy Activity Timeline
+        <span style={{ fontSize: 11, fontWeight: 400, color: 'var(--text-3)', marginLeft: 8 }}>last 12 weeks</span>
+      </div>
+      <div style={{ overflowX: 'auto' }}>
+        {/* Month row */}
+        <div style={{ display: 'grid', gridTemplateColumns: '20px repeat(12, 1fr)', gap: 3, marginBottom: 4 }}>
+          <div />
+          {cols.map((week, ci) => {
+            const ml = monthLabels.find(m => m.col === ci);
+            return <div key={ci} style={{ fontSize: 9, color: 'var(--text-3)', textAlign: 'left' }}>{ml?.label ?? ''}</div>;
+          })}
+        </div>
+        {/* Day grid */}
+        {Array.from({ length: 7 }, (_, ri) => (
+          <div key={ri} style={{ display: 'grid', gridTemplateColumns: '20px repeat(12, 1fr)', gap: 3, marginBottom: 3 }}>
+            <div style={{ fontSize: 9, color: 'var(--text-3)', display: 'flex', alignItems: 'center' }}>{ri % 2 === 1 ? DAY_LABELS[ri] : ''}</div>
+            {cols.map((week, ci) => {
+              const cell = week[ri];
+              if (!cell) return <div key={ci} />;
+              const intensity = cell.count / maxCount;
+              return (
+                <div
+                  key={ci}
+                  title={`${cell.date.toLocaleDateString('en-IE', { weekday: 'short', day: 'numeric', month: 'short' })} — ${cell.count} event${cell.count !== 1 ? 's' : ''}`}
+                  style={{
+                    height: 12, borderRadius: 2, cursor: cell.count > 0 ? 'pointer' : 'default',
+                    background: intensity === 0
+                      ? 'var(--surface-3)'
+                      : `rgba(124, 58, 237, ${0.12 + intensity * 0.82})`,
+                  }}
+                />
+              );
+            })}
+          </div>
+        ))}
+        {/* Legend */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 10, fontSize: 10, color: 'var(--text-3)' }}>
+          <span>Less</span>
+          {[0.12, 0.3, 0.5, 0.7, 0.94].map(op => (
+            <div key={op} style={{ width: 12, height: 12, borderRadius: 2, background: `rgba(124,58,237,${op})` }} />
+          ))}
+          <span>More</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ── Sankey Flow (P18-17) ─────────────────────────────────────────── */
+function SankeyFlow({ events }: { events: AuditEvent[] }) {
+  if (events.length === 0) return null;
+
+  // Compute nodes: apps → actions → fields → 3rd parties
+  const appCounts: Record<string, number> = {};
+  const actionCounts: Record<string, number> = {};
+  const fieldCounts: Record<string, number> = {};
+  const thirdPartyCounts: Record<string, number> = {};
+
+  events.forEach(e => {
+    const app = e.appName ?? e.tenantId?.slice(0, 8) ?? 'Unknown';
+    appCounts[app] = (appCounts[app] ?? 0) + 1;
+    const action = e.action?.split('_')[0] ?? 'access';
+    actionCounts[action] = (actionCounts[action] ?? 0) + 1;
+    (e.dataFields ?? []).forEach(f => { fieldCounts[f] = (fieldCounts[f] ?? 0) + 1; });
+    if (e.thirdPartyInvolved && e.recipientId) {
+      thirdPartyCounts[e.recipientId] = (thirdPartyCounts[e.recipientId] ?? 0) + 1;
+    }
+  });
+
+  const topApps = Object.entries(appCounts).sort((a, b) => b[1] - a[1]).slice(0, 3);
+  const topActions = Object.entries(actionCounts).sort((a, b) => b[1] - a[1]).slice(0, 3);
+  const topFields = Object.entries(fieldCounts).sort((a, b) => b[1] - a[1]).slice(0, 4);
+  const topThirdParties = Object.entries(thirdPartyCounts).sort((a, b) => b[1] - a[1]).slice(0, 3);
+
+  const total = events.length;
+  const COLORS = ['var(--accent)', 'var(--brand)', '#10b981', '#eab308', '#ef4444'];
+
+  const Column = ({ title, items }: { title: string; items: [string, number][] }) => (
+    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 8 }}>
+      <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-3)', textTransform: 'uppercase', letterSpacing: '0.6px', marginBottom: 4 }}>{title}</div>
+      {items.map(([name, count], i) => (
+        <div key={name} style={{ padding: '8px 10px', borderRadius: 8, background: 'var(--surface-2)', border: '1px solid var(--border)' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+            <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>{name}</span>
+            <span style={{ fontSize: 10, color: 'var(--text-3)', fontFamily: "'JetBrains Mono', monospace", flexShrink: 0, marginLeft: 6 }}>{count}</span>
+          </div>
+          <div style={{ height: 3, borderRadius: 2, background: 'var(--surface-3)', overflow: 'hidden' }}>
+            <div style={{ width: `${(count / total) * 100}%`, height: '100%', background: COLORS[i % COLORS.length], borderRadius: 2, transition: 'width 0.6s ease' }} />
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+
+  return (
+    <div className="dg-card anim-fade-up d4" style={{ padding: '20px 22px', marginBottom: 14 }}>
+      <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)', fontFamily: "'Space Grotesk', sans-serif", marginBottom: 16 }}>
+        Data Flow — Tenants → Actions → Fields → 3rd Parties
+        <span style={{ fontSize: 11, fontWeight: 400, color: 'var(--text-3)', marginLeft: 8 }}>Sankey overview</span>
+      </div>
+      <div style={{ display: 'flex', gap: 12 }}>
+        <Column title="Apps" items={topApps} />
+        <div style={{ display: 'flex', alignItems: 'center', color: 'var(--text-3)', fontSize: 16 }}>→</div>
+        <Column title="Actions" items={topActions} />
+        <div style={{ display: 'flex', alignItems: 'center', color: 'var(--text-3)', fontSize: 16 }}>→</div>
+        <Column title="Data Fields" items={topFields} />
+        {topThirdParties.length > 0 && (
+          <>
+            <div style={{ display: 'flex', alignItems: 'center', color: 'var(--text-3)', fontSize: 16 }}>→</div>
+            <Column title="3rd Parties" items={topThirdParties} />
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/* ── Field Trust Scores (P18-18) ──────────────────────────────────── */
+function FieldTrustScores({ events }: { events: AuditEvent[] }) {
+  if (events.length === 0) return null;
+
+  const now = Date.now();
+  const last7 = events.filter(e => now - new Date(e.timestamp ?? e.occurredAt).getTime() < 7 * 86400000);
+  const prev7 = events.filter(e => {
+    const age = now - new Date(e.timestamp ?? e.occurredAt).getTime();
+    return age >= 7 * 86400000 && age < 14 * 86400000;
+  });
+
+  const fieldCounts: Record<string, number> = {};
+  events.forEach(e => (e.dataFields ?? []).forEach(f => { fieldCounts[f] = (fieldCounts[f] ?? 0) + 1; }));
+
+  const fields = Object.entries(fieldCounts).sort((a, b) => b[1] - a[1]).slice(0, 8).map(([field]) => {
+    const fieldEvents = events.filter(e => (e.dataFields ?? []).includes(field));
+    const total = fieldEvents.length;
+    const consented = fieldEvents.filter(e => e.consentObtained).length;
+    const thirdParty = fieldEvents.filter(e => e.thirdPartyInvolved).length;
+    const critical = fieldEvents.filter(e => e.sensitivityCode === 'CRITICAL').length;
+    const consentPct = total > 0 ? Math.round((consented / total) * 100) : 0;
+    const tpPct = total > 0 ? Math.round((thirdParty / total) * 100) : 0;
+    const trustScore = Math.max(0, Math.round(100 - critical * 10 - tpPct * 0.5 + consentPct * 0.3));
+
+    const last7Count = last7.filter(e => (e.dataFields ?? []).includes(field)).length;
+    const prev7Count = prev7.filter(e => (e.dataFields ?? []).includes(field)).length;
+    const trend = last7Count - prev7Count;
+
+    return { field, total, consentPct, tpPct, trustScore, trend };
+  });
+
+  if (fields.length === 0) return null;
+
+  return (
+    <div className="anim-fade-up d5" style={{ marginBottom: 14 }}>
+      <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-3)', textTransform: 'uppercase', letterSpacing: '0.6px', marginBottom: 10 }}>
+        Field-Level Trust Scores
+      </div>
+      <div style={{ display: 'flex', gap: 10, overflowX: 'auto', paddingBottom: 6 }}>
+        {fields.map(({ field, total, consentPct, tpPct, trustScore, trend }) => {
+          const col = trustScore >= 75 ? 'var(--green)' : trustScore >= 50 ? 'var(--amber)' : 'var(--red)';
+          return (
+            <div key={field} className="dg-card" style={{ padding: '14px 16px', minWidth: 150, flexShrink: 0 }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text)', textTransform: 'capitalize', marginBottom: 8, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {field.replace(/_/g, ' ')}
+              </div>
+              <div style={{ fontSize: 26, fontWeight: 800, color: col, fontFamily: "'JetBrains Mono', monospace", lineHeight: 1, marginBottom: 4 }}>
+                {trustScore}
+              </div>
+              <div style={{ height: 3, borderRadius: 2, background: 'var(--surface-3)', marginBottom: 8, overflow: 'hidden' }}>
+                <div style={{ width: `${trustScore}%`, height: '100%', background: col, borderRadius: 2, transition: 'width 0.6s' }} />
+              </div>
+              <div style={{ fontSize: 10, color: 'var(--text-3)', display: 'flex', flexDirection: 'column', gap: 3 }}>
+                <span>{total} accesses</span>
+                <span style={{ color: consentPct >= 80 ? 'var(--green)' : 'var(--amber)' }}>{consentPct}% consented</span>
+                {tpPct > 0 && <span style={{ color: 'var(--amber)' }}>{tpPct}% 3rd party</span>}
+                {trend !== 0 && (
+                  <span style={{ color: trend > 0 ? 'var(--red)' : 'var(--green)', fontWeight: 700 }}>
+                    {trend > 0 ? '↑' : '↓'} {Math.abs(trend)} vs last week
+                  </span>
+                )}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+/* ── AI Agent Mode (P18-34) ──────────────────────────────────────── */
+function AIAgentPanel({ events, findings }: { events: AuditEvent[]; findings: AnalysisFinding[] }) {
+  const [approved, setApproved] = useState<Set<number>>(new Set());
+  const [dismissed, setDismissed] = useState<Set<number>>(new Set());
+
+  const criticalUnconsented = events.filter(e => e.sensitivityCode === 'CRITICAL' && !e.consentObtained);
+  const flaggedTypes = [...new Set(events.filter(e => e.thirdPartyInvolved && !e.consentObtained).flatMap(e => e.dataFields))].slice(0, 3);
+  const criticalFinding = findings.find(f => f.severity === 'CRITICAL');
+
+  const drafts = [
+    criticalUnconsented.length > 0 && {
+      type: 'deletion',
+      icon: '🗑️',
+      title: 'Auto-Deletion Request',
+      description: `${criticalUnconsented.length} CRITICAL events found without consent. AI recommends submitting an Art.17 deletion request.`,
+      action: 'Approve & Execute',
+      color: 'var(--red)',
+      dimColor: 'var(--red-dim)',
+    },
+    flaggedTypes.length > 0 && {
+      type: 'consent',
+      icon: '🔒',
+      title: 'Consent Revocation Draft',
+      description: `Data types "${flaggedTypes.slice(0, 2).join(', ')}" shared with third parties without consent. AI recommends revoking processing consent.`,
+      action: 'Review & Revoke',
+      color: 'var(--amber)',
+      dimColor: 'var(--amber-dim)',
+    },
+    criticalFinding && {
+      type: 'complaint',
+      icon: '⚖️',
+      title: 'DPC Complaint Draft',
+      description: `AI identified: "${criticalFinding.title}". A draft Data Protection Commission complaint letter is ready for review.`,
+      action: 'Review Draft',
+      color: 'var(--accent)',
+      dimColor: 'var(--accent-dim)',
+    },
+  ].filter(Boolean) as { type: string; icon: string; title: string; description: string; action: string; color: string; dimColor: string }[];
+
+  if (drafts.length === 0) return null;
+
+  const visible = drafts.filter((_, i) => !dismissed.has(i));
+  if (visible.length === 0) return null;
+
+  return (
+    <div className="dg-card anim-fade-up d6" style={{ padding: '20px 22px', marginBottom: 14, border: '1px solid var(--accent-dim)' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
+        <div style={{ width: 34, height: 34, borderRadius: 10, background: 'linear-gradient(135deg, var(--accent), var(--brand))', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16 }}>🤖</div>
+        <div>
+          <div style={{ fontSize: 14, fontWeight: 800, color: 'var(--text)', fontFamily: "'Space Grotesk', sans-serif" }}>DataGuard AI Agent</div>
+          <div style={{ fontSize: 12, color: 'var(--text-3)' }}>Pre-drafted actions based on your risk alerts — review and approve</div>
+        </div>
+      </div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+        {drafts.map((draft, i) => {
+          if (dismissed.has(i)) return null;
+          const isApproved = approved.has(i);
+          return (
+            <div key={i} style={{ padding: '14px 16px', borderRadius: 12, background: draft.dimColor, border: `1px solid ${draft.color}30`, display: 'flex', alignItems: 'flex-start', gap: 14 }}>
+              <span style={{ fontSize: 20, flexShrink: 0, marginTop: 2 }}>{draft.icon}</span>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)', marginBottom: 4 }}>{draft.title}</div>
+                <div style={{ fontSize: 12, color: 'var(--text-2)', lineHeight: 1.55 }}>{draft.description}</div>
+              </div>
+              <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
+                {isApproved ? (
+                  <span style={{ padding: '6px 12px', borderRadius: 8, background: 'var(--green-dim)', color: 'var(--green)', fontSize: 12, fontWeight: 700 }}>✓ Approved</span>
+                ) : (
+                  <>
+                    <button onClick={() => setApproved(s => new Set([...s, i]))} style={{ padding: '6px 12px', borderRadius: 8, border: 'none', background: draft.color, color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: "'DM Sans', sans-serif" }}>
+                      {draft.action}
+                    </button>
+                    <button onClick={() => setDismissed(s => new Set([...s, i]))} style={{ padding: '6px 10px', borderRadius: 8, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-3)', fontSize: 12, cursor: 'pointer', fontFamily: "'DM Sans', sans-serif" }}>
+                      Dismiss
+                    </button>
+                  </>
+                )}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 /* ── Main Dashboard ─────────────────────────────────────────────── */
 export default function Dashboard({ initialSection }: Props) {
   const { user } = useAuth();
@@ -636,6 +950,7 @@ export default function Dashboard({ initialSection }: Props) {
   const [runAnalysisMsg, setRunAnalysisMsg] = useState('');
   const [tourOpen, setTourOpen] = useState(false);
   const [tourStep, setTourStep] = useState(0);
+  const [showWizard, setShowWizard] = useState(false);
 
   /* Section refs for initialSection scrolling */
   const gdprRef = useRef<HTMLDivElement>(null);
@@ -653,7 +968,9 @@ export default function Dashboard({ initialSection }: Props) {
         user?.type === 'google_session' ? dashboardApi.getLinkedAccounts().catch(() => ({ linkedAccounts: [] })) : Promise.resolve({ linkedAccounts: [] }),
         dashboardApi.getViolations().catch(() => []),
       ]);
-      setEvents(Array.isArray(eventsData) ? eventsData : []);
+      const evts = Array.isArray(eventsData) ? eventsData : [];
+      setEvents(evts);
+      if (evts.length === 0 && !sessionStorage.getItem('dg-wizard-dismissed')) setShowWizard(true);
       setAnalysisHistory(Array.isArray(analysisData) ? analysisData : []);
       setPrivacyScore(scoreData);
       setBreachReports(Array.isArray(breachData) ? breachData : []);
@@ -1026,6 +1343,18 @@ export default function Dashboard({ initialSection }: Props) {
           <BarChart data={fieldData} />
         </div>
 
+        {/* Privacy Timeline Heatmap (P18-16) */}
+        <PrivacyHeatmap events={filtered} />
+
+        {/* Sankey Flow (P18-17) */}
+        <SankeyFlow events={filtered} />
+
+        {/* Field-Level Trust Scores (P18-18) */}
+        <FieldTrustScores events={filtered} />
+
+        {/* AI Agent Mode (P18-34) */}
+        <AIAgentPanel events={filtered} findings={analysisHistory[0]?.findings ?? []} />
+
         {/* Data Minimisation Violations */}
         {violations.length > 0 && (
           <div className="dg-card anim-fade-up d3" style={{ padding: '20px 22px', marginBottom: 14, border: '1px solid rgba(220,38,38,0.25)', background: 'var(--red-dim)' }}>
@@ -1351,6 +1680,9 @@ export default function Dashboard({ initialSection }: Props) {
       </>}
 
       <ConnectAppModal open={connectModalOpen} onClose={() => setConnectModalOpen(false)} />
+      {showWizard && (
+        <OnboardingWizard onDismiss={() => { setShowWizard(false); sessionStorage.setItem('dg-wizard-dismissed', '1'); }} />
+      )}
 
       {/* Demo Tour FAB */}
       <button

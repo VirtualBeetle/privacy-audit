@@ -22,6 +22,9 @@ import GDPRPage from './pages/GDPRPage';
 import GuidePage from './pages/GuidePage';
 import TenantDetailPage from './pages/TenantDetailPage';
 import ConsentMatrixPage from './pages/ConsentMatrixPage';
+import TimelinePage from './pages/TimelinePage';
+import TenantComparePage from './pages/TenantComparePage';
+import VerifyReceiptPage from './pages/VerifyReceiptPage';
 import { AIChatPanel, AIChatPage } from './components/AIChat';
 import ToastContainer from './components/Toast/ToastContainer';
 import CommandPalette from './components/CommandPalette/CommandPalette';
@@ -41,7 +44,7 @@ function PrivateRoute({ element }: { element: ReactElement }) {
   return isAuthenticated ? element : <Navigate to="/login" replace />;
 }
 
-const PUBLIC_PATHS = ['/login', '/auth/redirect', '/auth/google/callback'];
+const PUBLIC_PATHS = ['/login', '/auth/redirect', '/auth/google/callback', '/verify'];
 
 function AppShell() {
   const { isAuthenticated } = useAuth();
@@ -63,6 +66,7 @@ function AppShell() {
         <Route path="/onboard" element={<Onboard />} />
         <Route path="/auth/redirect" element={<AuthRedirect />} />
         <Route path="/auth/google/callback" element={<AuthRedirect />} />
+        <Route path="/verify/:hash" element={<VerifyReceiptPage />} />
         <Route path="*" element={<Navigate to="/login" replace />} />
       </Routes>
     );
@@ -104,6 +108,8 @@ function AppShell() {
             <Route path="/ai-chat"          element={<PrivateRoute element={<AIChatPage />} />} />
             <Route path="/tenants/:id"      element={<PrivateRoute element={<TenantDetailPage />} />} />
             <Route path="/consent-matrix"   element={<PrivateRoute element={<ConsentMatrixPage />} />} />
+            <Route path="/timeline"         element={<PrivateRoute element={<TimelinePage />} />} />
+            <Route path="/compare"          element={<PrivateRoute element={<TenantComparePage />} />} />
             <Route path="/onboard"          element={<PrivateRoute element={<Onboard />} />} />
             <Route path="/auth/redirect"    element={<AuthRedirect />} />
             <Route path="/auth/google/callback" element={<AuthRedirect />} />

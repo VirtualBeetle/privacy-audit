@@ -117,6 +117,7 @@ export default function Sidebar() {
   const { isDark, toggle: toggleTheme } = useTheme();
   const [themeHov, setThemeHov] = useState(false);
   const [logoutHov, setLogoutHov] = useState(false);
+  const [mobileOpen, setMobileOpen] = useState(false);
 
   const superAdmin = isSuperAdmin(user);
   const tenantAdmin = isTenantAdmin(user);
@@ -141,6 +142,33 @@ export default function Sidebar() {
   const roleLabel = superAdmin ? 'Super Admin' : tenantAdmin ? 'Tenant Admin' : googleUser ? 'Google User' : 'User';
 
   return (
+    <>
+      {/* Mobile hamburger button */}
+      <button
+        onClick={() => setMobileOpen(v => !v)}
+        style={{
+          display: 'none',
+          position: 'fixed', top: 12, left: 12, zIndex: 2000,
+          width: 38, height: 38, borderRadius: 10,
+          background: 'var(--surface)', border: '1px solid var(--border)',
+          cursor: 'pointer', alignItems: 'center', justifyContent: 'center',
+          fontSize: 16, color: 'var(--text)',
+        }}
+        className="mobile-hamburger"
+        aria-label="Toggle menu"
+      >
+        {mobileOpen ? '✕' : '☰'}
+      </button>
+
+      {/* Mobile overlay */}
+      {mobileOpen && (
+        <div
+          onClick={() => setMobileOpen(false)}
+          style={{ display: 'none', position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', zIndex: 999 }}
+          className="mobile-overlay"
+        />
+      )}
+
     <nav style={{
       width: 216,
       minHeight: '100vh',
@@ -151,10 +179,12 @@ export default function Sidebar() {
       flexShrink: 0,
       borderRight: '1px solid var(--border)',
       position: 'relative',
-      zIndex: 100,
+      zIndex: 1000,
       overflowY: 'auto',
       overflowX: 'hidden',
-    }}>
+    }}
+      className={`dg-sidebar ${mobileOpen ? 'mobile-open' : ''}`}
+    >
       {/* Logo + brand */}
       <div
         onClick={() => navigate('/dashboard')}
@@ -218,6 +248,7 @@ export default function Sidebar() {
 
         <SectionLabel>Tools</SectionLabel>
         <NavItem isDark={isDark} icon={BrainIcon} label="AI Chat" active={p === '/ai-chat'} onClick={() => navigate('/ai-chat')} />
+        <NavItem isDark={isDark} icon={EventsIcon} label="Timeline" active={p === '/timeline'} onClick={() => navigate('/timeline')} />
         {anyAdmin && (
           <NavItem isDark={isDark} icon={WebhookIcon} label="Webhooks" active={p === '/webhooks'} onClick={() => navigate('/webhooks')} />
         )}
@@ -226,6 +257,9 @@ export default function Sidebar() {
         )}
         {(superAdmin || googleUser) && (
           <NavItem isDark={isDark} icon={AppsIcon} label="Connected Apps" active={p === '/connected-apps'} onClick={() => navigate('/connected-apps')} />
+        )}
+        {superAdmin && (
+          <NavItem isDark={isDark} icon={RiskIcon} label="Compare Tenants" active={p === '/compare'} onClick={() => navigate('/compare')} />
         )}
         {superAdmin && (
           <NavItem isDark={isDark} icon={PersonAddIcon} label="Onboard Tenant" active={p === '/onboard'} onClick={() => navigate('/onboard')} />
@@ -349,5 +383,6 @@ export default function Sidebar() {
         </div>
       </div>
     </nav>
+    </>
   );
 }

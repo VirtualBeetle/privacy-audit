@@ -204,32 +204,39 @@ function ProfileSection() {
   );
 }
 
-/* ── Notifications Section ───────────────────────────────────────────────── */
-function NotificationsSection() {
-  const [prefs, setPrefs] = useState({
-    riskHigh: true,
-    riskCritical: true,
-    gdprRequests: true,
-    breachReports: true,
-    systemAlerts: false,
-  });
+const NOTIF_DEFAULTS = { criticalEvents: true, newRiskAlerts: true, flashTopbar: false };
+type NotifPrefs = typeof NOTIF_DEFAULTS;
 
-  const toggle = (key: keyof typeof prefs) => setPrefs(p => ({ ...p, [key]: !p[key] }));
+function loadNotifPrefs(): NotifPrefs {
+  try { return { ...NOTIF_DEFAULTS, ...JSON.parse(localStorage.getItem('dg-notif-prefs') ?? '{}') }; } catch { return NOTIF_DEFAULTS; }
+}
+
+export function getNotifPrefs(): NotifPrefs { return loadNotifPrefs(); }
+
+/* ── Notifications Section (P18-29) ──────────────────────────────────────── */
+function NotificationsSection() {
+  const [prefs, setPrefs] = useState<NotifPrefs>(loadNotifPrefs);
+
+  const toggle = (key: keyof NotifPrefs) => {
+    setPrefs(p => {
+      const next = { ...p, [key]: !p[key] };
+      localStorage.setItem('dg-notif-prefs', JSON.stringify(next));
+      return next;
+    });
+  };
 
   const ITEMS = [
-    { key: 'riskCritical', label: 'Critical risk alerts', sub: 'Immediate alert for CRITICAL severity findings', color: '#ef4444' },
-    { key: 'riskHigh', label: 'High risk alerts', sub: 'Notify on HIGH severity findings from AI analysis', color: '#f97316' },
-    { key: 'gdprRequests', label: 'GDPR requests', sub: 'Data export / deletion requests from users', color: 'var(--accent)' },
-    { key: 'breachReports', label: 'Breach reports', sub: '72h Art.33 countdown notifications', color: '#eab308' },
-    { key: 'systemAlerts', label: 'System alerts', sub: 'Queue failures, provider errors', color: '#9ca3af' },
-  ] as const;
+    { key: 'criticalEvents' as const, label: 'Toast for CRITICAL events', sub: 'Show a toast when a CRITICAL event arrives via live stream', color: '#ef4444' },
+    { key: 'newRiskAlerts' as const, label: 'Toast for new risk alerts', sub: 'Show a toast when AI analysis generates new findings', color: '#f97316' },
+    { key: 'flashTopbar' as const, label: 'Flash topbar on new event', sub: 'Briefly highlight the topbar notification bell when events arrive', color: 'var(--accent)' },
+  ];
 
   return (
     <SectionCard
       icon={<BellIcon style={{ width: 18, height: 18, color: '#f59e0b' }} />}
       iconBg="rgba(245,158,11,0.1)"
       title="Notification Preferences"
-      sub="Choose what triggers bell notifications in the dashboard"
+      sub="Saved to localStorage — takes effect immediately"
       delay={2}
     >
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -239,11 +246,7 @@ function NotificationsSection() {
             padding: '12px 14px', borderRadius: 10,
             border: '1px solid var(--border)', background: 'var(--surface-2)',
           }}>
-            <div style={{
-              width: 8, height: 8, borderRadius: '50%', flexShrink: 0,
-              background: item.color,
-              boxShadow: `0 0 6px ${item.color}60`,
-            }} />
+            <div style={{ width: 8, height: 8, borderRadius: '50%', flexShrink: 0, background: item.color, boxShadow: `0 0 6px ${item.color}60` }} />
             <div style={{ flex: 1 }}>
               <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>{item.label}</div>
               <div style={{ fontSize: 11, color: 'var(--text-3)', marginTop: 1 }}>{item.sub}</div>
@@ -252,7 +255,7 @@ function NotificationsSection() {
               onClick={() => toggle(item.key)}
               style={{
                 width: 40, height: 22, borderRadius: 11, border: 'none', cursor: 'pointer',
-                background: prefs[item.key] ? '#6366f1' : 'var(--border)',
+                background: prefs[item.key] ? 'var(--accent)' : 'var(--border)',
                 position: 'relative', transition: 'background 0.2s', flexShrink: 0,
               }}
             >
@@ -268,8 +271,65 @@ function NotificationsSection() {
         ))}
       </div>
       <p style={{ margin: '12px 0 0', fontSize: 11, color: 'var(--text-3)' }}>
-        Preferences are saved locally. Full MongoDB-backed push notifications are in progress.
+        Key: <code style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 10 }}>dg-notif-prefs</code> in localStorage.
       </p>
+    </SectionCard>
+  );
+}
+
+/* ── Sessions Section (P18-28) ───────────────────────────────────────────── */
+function SessionsSection() {
+  const { user, logout } = useAuth();
+  const token = localStorage.getItem('session_token') ?? '';
+  const ua = navigator.userAgent;
+  const browser = ua.includes('Chrome') ? 'Chrome' : ua.includes('Firefox') ? 'Firefox' : ua.includes('Safari') ? 'Safari' : 'Browser';
+  const os = ua.includes('Mac') ? 'macOS' : ua.includes('Win') ? 'Windows' : ua.includes('Linux') ? 'Linux' : 'Unknown OS';
+
+  const handleSignOutAll = () => {
+    sessionStorage.clear();
+    logout();
+    window.location.href = '/login';
+  };
+
+  return (
+    <SectionCard
+      icon={<ShieldIcon style={{ width: 18, height: 18, color: '#10b981' }} />}
+      iconBg="rgba(16,185,129,0.1)"
+      title="Active Sessions"
+      sub="Review and revoke active login sessions"
+      delay={3}
+    >
+      <div style={{ marginBottom: 16 }}>
+        <div style={{ padding: '14px 16px', borderRadius: 10, background: 'var(--surface-2)', border: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 14 }}>
+          <div style={{ width: 38, height: 38, borderRadius: 10, background: 'var(--green-dim)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+            <span style={{ fontSize: 18 }}>💻</span>
+          </div>
+          <div style={{ flex: 1 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 3 }}>
+              <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)' }}>{browser} on {os}</span>
+              <span style={{ padding: '1px 8px', borderRadius: 20, fontSize: 10, fontWeight: 800, background: 'var(--green-dim)', color: 'var(--green)' }}>● Active</span>
+            </div>
+            <div style={{ fontSize: 11, color: 'var(--text-3)', fontFamily: "'JetBrains Mono', monospace" }}>
+              Token: {token.slice(0, 12)}{token.length > 12 ? '…' : ''} · {user?.type ?? 'session'}
+            </div>
+          </div>
+          <span style={{ fontSize: 11, color: 'var(--text-3)', flexShrink: 0 }}>This device</span>
+        </div>
+      </div>
+      <button
+        onClick={handleSignOutAll}
+        style={{
+          padding: '9px 18px', borderRadius: 10, border: '1px solid var(--red)',
+          background: 'var(--red-dim)', color: 'var(--red)',
+          fontSize: 13, fontWeight: 700, cursor: 'pointer',
+          fontFamily: "'DM Sans', sans-serif", transition: 'all 0.15s',
+        }}
+        onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = 'var(--red)'; (e.currentTarget as HTMLButtonElement).style.color = '#fff'; }}
+        onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'var(--red-dim)'; (e.currentTarget as HTMLButtonElement).style.color = 'var(--red)'; }}
+      >
+        Sign Out Everywhere
+      </button>
+      <p style={{ margin: '8px 0 0', fontSize: 11, color: 'var(--text-3)' }}>Clears all local tokens and redirects to login.</p>
     </SectionCard>
   );
 }
@@ -636,6 +696,7 @@ export default function SettingsPage() {
 
         <ProfileSection />
         <NotificationsSection />
+        <SessionsSection />
         <SecuritySection />
         {superAdmin && <AISettingsSection />}
 

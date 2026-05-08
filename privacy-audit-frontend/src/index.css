@@ -312,3 +312,32 @@ input, select, textarea { font-family: 'DM Sans', sans-serif; }
   background: var(--red);
   animation: pulseRing 2s ease-out infinite;
 }
+
+/* ── Mobile / Tablet Responsive (P18-25) ───────────────────────── */
+@media (max-width: 768px) {
+  /* Show hamburger, hide sidebar by default */
+  .mobile-hamburger { display: flex !important; }
+  .mobile-overlay   { display: block !important; }
+
+  .dg-sidebar {
+    position: fixed !important;
+    left: -220px;
+    top: 0;
+    height: 100vh;
+    transition: left 0.25s ease;
+    z-index: 1000;
+    box-shadow: none;
+  }
+  .dg-sidebar.mobile-open {
+    left: 0;
+    box-shadow: 8px 0 32px rgba(0,0,0,0.25);
+  }
+
+  /* Stack columns vertically */
+  [style*="display: flex"][style*="gap: 14px"] {
+    flex-wrap: wrap;
+  }
+
+  /* Topbar extra padding for hamburger button */
+  .dg-topbar { padding-left: 56px !important; }
+}

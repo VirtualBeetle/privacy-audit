@@ -392,6 +392,34 @@ export class DashboardController {
     return this.dataMinimisationService.getViolationsForTenants(pairs);
   }
 
+  // ─── Tenant Stats (P19-13) ────────────────────────────────────────────────
+
+  @Get('tenant-stats')
+  @UseGuards(DashboardAnyGuard)
+  async getTenantStats(
+    @CurrentUser() user: any,
+    @Query('tenantId') tenantId: string,
+    @Query('window') window = '30d',
+  ) {
+    const effectiveTenantId = (user.role === 'super_admin' && tenantId) ? tenantId : (user.tenantId ?? tenantId);
+    if (!effectiveTenantId) return { error: 'tenantId required' };
+    return this.dashboardService.getTenantStats(effectiveTenantId, window);
+  }
+
+  // ─── Activity Heatmap (P19-14) ────────────────────────────────────────────
+
+  @Get('activity-heatmap')
+  @UseGuards(DashboardAnyGuard)
+  async getActivityHeatmap(
+    @CurrentUser() user: any,
+    @Query('tenantId') tenantId: string,
+    @Query('window') window = '30d',
+  ) {
+    const effectiveTenantId = (user.role === 'super_admin' && tenantId) ? tenantId : (user.tenantId ?? tenantId);
+    if (!effectiveTenantId) return { grid: Array.from({ length: 7 }, () => Array(24).fill(0)) };
+    return this.dashboardService.getActivityHeatmap(effectiveTenantId, window);
+  }
+
   // ─── Hash Chain Integrity (GDPR Article 30) ────────────────────────────────
 
   /**

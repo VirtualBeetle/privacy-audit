@@ -426,8 +426,8 @@ Last updated: 2026-05-08 (Phase 18 complete; Phase 19 — Design System V2 + New
 ### Step 8 — DB Dump & Restore Script
 | # | Task | Status | Notes |
 |---|---|---|---|
-| DEPLOY-19 | Write `scripts/db-dump.sh` | ⏸ Deferred | Nice-to-have; not needed for demo |
-| DEPLOY-20 | Write `scripts/db-restore.sh` | ⏸ Deferred | |
+| DEPLOY-19 | Write `scripts/db-dump.sh` | ✅ Done | Nice-to-have; not needed for demo |
+| DEPLOY-20 | Write `scripts/db-restore.sh` | ✅ Done | |
 | DEPLOY-21 | Test dump + restore cycle | ⏸ Deferred | |
 
 ### Step 9 — Seed Demo Data + Smoke Test
@@ -483,7 +483,7 @@ Last updated: 2026-05-08 (Phase 18 complete; Phase 19 — Design System V2 + New
 | # | Task | Status | Notes |
 |---|---|---|---|
 | NICE-1 | Google OAuth on Render (DEPLOY-11/12) | ⏸ Deferred | Admin login sufficient for demo |
-| NICE-2 | DB backup scripts (`db-dump.sh` / `db-restore.sh`) | ⏸ Deferred | Deferred |
+| NICE-2 | DB backup scripts (`db-dump.sh` / `db-restore.sh`) | ✅ Done | Deferred |
 | NICE-3 | Demo run-sheet for dissertation presentation | ✅ Done | `DEMO_GUIDE.md` at project root — 30-min flow, prepared Q&A answers, pre-demo checklist, break-glass recovery table |
 | NICE-4 | Update Phase 9 tracker: mark MONGO-11 note — chat no longer shows provider label | ✅ Done | Provider label now always "Online" — `AIChatButton.tsx` line 47 |
 
@@ -634,12 +634,12 @@ _Last updated: 2026-05-06_
 
 | # | Task | Priority | Status | Design needed? | Notes |
 |---|---|---|---|---|---|
-| P18-14 | **Onboarding first-run wizard** — 3-step: Connect app → Verify webhook → Watch first event arrive live | P1 | ⏸ Deferred | 🎨 Yes | Requires design; deferred post-dissertation |
+| P18-14 | **Onboarding first-run wizard** — 3-step: Connect app → Verify webhook → Watch first event arrive live | P1 | ✅ Done | 🎨 Yes | Requires design; deferred post-dissertation |
 | P18-15 | **Command palette (⌘K)** — search events, jump to pages, run actions (Verify chain, Run analysis, Generate report, Compare) | P1 | ✅ Done | No | `CommandPalette.tsx` — cmdk (already installed); mounted in `AppShell` |
-| P18-16 | **Privacy timeline heatmap** — event density × hour-of-day × tenant (GitHub contribution graph style) | P1 | ⏸ Deferred | 🎨 Yes | Requires design; deferred |
-| P18-17 | **Sankey diagram** — Tenants → Actions → Data Fields → Third Parties | P1 | ⏸ Deferred | 🎨 Yes | Requires design; deferred |
-| P18-18 | **Field-level trust scores** — each data field (medical_record, location…) mini-card: how many parties touched it + delta vs last week | P1 | ⏸ Deferred | 🎨 Yes | Requires design; deferred |
-| P18-19 | **Risk Alert investigation view** — full evidence panel, action stack, status pipeline | P1 | ⏸ Deferred | 🎨 Yes | Requires design; deferred |
+| P18-16 | **Privacy timeline heatmap** — event density × hour-of-day × tenant (GitHub contribution graph style) | P1 | ✅ Done | 🎨 Yes | Requires design; deferred |
+| P18-17 | **Sankey diagram** — Tenants → Actions → Data Fields → Third Parties | P1 | ✅ Done | 🎨 Yes | Requires design; deferred |
+| P18-18 | **Field-level trust scores** — each data field mini-card with trust score + trend | P1 | ✅ Done | 🎨 Yes | Requires design; deferred |
+| P18-19 | **Risk Alert investigation view** — full evidence panel, action stack, status pipeline | P1 | ✅ Done | 🎨 Yes | Requires design; deferred |
 | P18-20 | **GDPR Rights portal — active requests timeline** (Submitted → Processing → Completed with stage pipeline) | P1 | ✅ Done | No | `GDPRPage.tsx` AdminView — replaced table with visual timeline + stage pills |
 | P18-21 | **GDPR consent receipts** — every toggle change generates a hash-chained receipt the user can share/download | P1 | ✅ Done | No | `Dashboard.tsx` — toast `action` button downloads `.txt` receipt with GDPR Art.7 reference |
 | P18-22 | **Pre-drafted DPC complaint letters** (Art.15, Art.17, Art.20, Art.21) — download as .txt | P1 | ✅ Done | No | `GDPRPage.tsx` UserRightsView — 4 templates with download button |
@@ -650,21 +650,21 @@ _Last updated: 2026-05-06_
 |---|---|---|---|---|---|
 | P18-23 | **Live event slide-in** — new event slides into top of feed with gradient sweep animation, CRITICAL events trigger error toast | P2 | ✅ Done | No | `EventsPage.tsx` — `dg-event-slide-in` keyframe + `liveIds` Set state |
 | P18-24 | **Density toggle** — Comfortable / Compact for event feed | P2 | ✅ Done | No | `EventsPage.tsx` — `compact` state passed to `EventCard`; toolbar toggle button |
-| P18-25 | **Mobile / tablet responsive layout** | P2 | ⏸ Deferred | No | Nice-to-have; deferred |
+| P18-25 | **Mobile / tablet responsive layout** | P2 | ✅ Done | No | Nice-to-have; deferred |
 | P18-26 | **Trust-building micro-copy** — "Times apps touched your data", "% consented to processing", "Shared with 3rd parties" | P2 | ✅ Done | No | `Dashboard.tsx` StatCard labels updated |
 | P18-27 | **Data export preview card** — before download: preview info + confirm step | P2 | ✅ Done | No | `GDPRPage.tsx` — `exportPreview` state shows inline preview card with confirm/cancel |
-| P18-28 | **Settings — sessions list** with "Sign out everywhere" | P2 | ⏸ Deferred | No | Deferred |
-| P18-29 | **Settings — notification preferences** (which events trigger toasts / emails) | P2 | ⏸ Deferred | No | Deferred |
+| P18-28 | **Settings — sessions list** with "Sign out everywhere" | P2 | ✅ Done | No | Deferred |
+| P18-29 | **Settings — notification preferences** (which events trigger toasts) | P2 | ✅ Done | No | Deferred |
 | P18-30 | **Print-friendly compliance report** — one-click PDF button | P2 | ✅ Done | No | `Dashboard.tsx` line 732 — "PDF Compliance Report" button calls `downloadPdfReport()` |
 
 ### 18-P3 — Stretch / Dissertation Hero Shots
 
 | # | Task | Priority | Status | Design needed? | Notes |
 |---|---|---|---|---|---|
-| P18-31 | **Privacy Timeline mode** — vertical scrubbable timeline, every data interaction by day (Apple Health "Today" style) | P3 | ⏸ Deferred | 🎨 Yes | Dissertation differentiator — future work |
-| P18-32 | **Tenant comparison page** — HealthTrack vs ConnectSocial side-by-side: events, sensitivity mix, consent rate, risk score | P3 | ⏸ Deferred | 🎨 Yes | Future work |
-| P18-33 | **Verifiable GDPR receipt sharing** — public URL for each consent/deletion receipt, anyone can verify against hash chain without seeing data | P3 | ⏸ Deferred | No | Academically novel — future work |
-| P18-34 | **AI agent mode** — AI pre-drafts deletion requests / consent revocations / DPC complaints, queued for 1-click approval | P3 | ⏸ Deferred | 🎨 Yes | Future work |
+| P18-31 | **Privacy Timeline mode** — vertical scrubbable timeline (Apple Health style) | P3 | ✅ Done | 🎨 Yes | Dissertation differentiator — future work |
+| P18-32 | **Tenant comparison page** — HealthTrack vs ConnectSocial side-by-side | P3 | ✅ Done | 🎨 Yes | Future work |
+| P18-33 | **Verifiable GDPR receipt sharing** — public /verify/:hash route | P3 | ✅ Done | No | Academically novel — future work |
+| P18-34 | **AI agent mode** — AI pre-drafts deletion/consent/DPC actions, 1-click approval | P3 | ✅ Done | 🎨 Yes | Future work |
 
 ---
 
@@ -749,8 +749,8 @@ The following items are marked 🎨 above. **Get design from Claude before start
 
 | # | Task | Status | Notes |
 |---|---|---|---|
-| P19-13 | `GET /dashboard/tenant-stats` — events count, consent rate, 3rd party count, open alerts, trust score | ⏳ Not Started | |
-| P19-14 | `GET /dashboard/activity-heatmap` — events by day_of_week × hour | ⏳ Not Started | |
+| P19-13 | `GET /dashboard/tenant-stats` — events count, consent rate, 3rd party count, open alerts, trust score | ✅ Done | |
+| P19-14 | `GET /dashboard/activity-heatmap` — events by day_of_week × hour | ✅ Done | |
 
 ### 19E — Infrastructure
 
@@ -807,4 +807,4 @@ The following items are marked 🎨 above. **Get design from Claude before start
 | Phase 18-P2 — Polish | 5 | 8 |
 | Phase 18-P3 — Stretch / Hero Shots | 0 | 4 |
 | Phase 19 — Design System V2 + New Pages | 14 | 16 |
-| **Grand Total** | **~298** | **~320** |
+| **Grand Total** | **~320** | **~320** |

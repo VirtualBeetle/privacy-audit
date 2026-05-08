@@ -215,6 +215,18 @@ export const dashboardApi = {
     setTimeout(() => URL.revokeObjectURL(url), 10000);
   },
 
+  /** P19-13: Tenant-level stats (super admin only). */
+  getTenantStats: (tenantId: string, window = '30d') =>
+    api.get(`/dashboard/tenant-stats?tenantId=${tenantId}&window=${window}`).then(r => r.data as {
+      eventsCount: number; consentRate: number; thirdPartyCount: number;
+      openAlertsCount: number; trustScore: number;
+      recentActivity: { id: string; action: string; severity: string; occurredAt: string }[];
+    }),
+
+  /** P19-14: Activity heatmap — 7×24 grid of event counts. */
+  getActivityHeatmap: (tenantId: string, window = '30d') =>
+    api.get(`/dashboard/activity-heatmap?tenantId=${tenantId}&window=${window}`).then(r => r.data as { grid: number[][] }),
+
   /** Admin: get all exports + deletions across visible tenants. */
   getGdprRequests: () =>
     api.get('/dashboard/gdpr/requests').then((r) => r.data as {

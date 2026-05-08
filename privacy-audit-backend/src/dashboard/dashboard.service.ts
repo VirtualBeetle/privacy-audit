@@ -374,6 +374,73 @@ export class DashboardService {
     };
   }
 
+  // ─── Tenant Stats (P19-13) ───────────────────────────────────────────────
+
+  async getTenantStats(tenantId: string, window = '30d'): Promise<{
+    eventsCount: number;
+    consentRate: number;
+    thirdPartyCount: number;
+    openAlertsCount: number;
+    trustScore: number;
+    recentActivity: { id: string; action: string; severity: string; occurredAt: Date }[];
+  }> {
+    const days = parseInt(window) || 30;
+    const since = new Date();
+    since.setDate(since.getDate() - days);
+
+    const events = await this.eventsRepository
+      .createQueryBuilder('event')
+      .where('event.tenant_id = :tenantId', { tenantId })
+      .andWhere('event.occurred_at >= :since', { since })
+      .orderBy('event.occurred_at', 'DESC')
+      .take(1000)
+      .getMany();
+
+    const total = events.length;
+    const criticalCount = events.filter(e => e.sensitivityCode === 'CRITICAL').length;
+    const thirdPartyCount = events.filter(e => e.thirdPartyInvolved).length;
+    const consentCount = events.filter(e => e.consentObtained).length;
+    const consentRate = total > 0 ? Math.round((consentCount / total) * 100) : 0;
+    const trustScore = Math.max(0, Math.round(100 - criticalCount * 5 - thirdPartyCount * 2 + consentRate / 2));
+
+    return {
+      eventsCount: total,
+      consentRate,
+      thirdPartyCount,
+      openAlertsCount: criticalCount,
+      trustScore,
+      recentActivity: events.slice(0, 10).map(e => ({
+        id: e.id,
+        action: e.actionCode,
+        severity: e.sensitivityCode,
+        occurredAt: e.occurredAt,
+      })),
+    };
+  }
+
+  // ─── Activity Heatmap (P19-14) ───────────────────────────────────────────
+
+  async getActivityHeatmap(tenantId: string, window = '30d'): Promise<{ grid: number[][] }> {
+    const days = parseInt(window) || 30;
+
+    const rows: { dow: number; hr: number; count: string }[] = await this.eventsRepository.query(
+      `SELECT EXTRACT(DOW FROM occurred_at)::int as dow,
+              EXTRACT(HOUR FROM occurred_at)::int as hr,
+              COUNT(*)::int as count
+       FROM audit_events
+       WHERE tenant_id = $1 AND occurred_at > NOW() - INTERVAL '${days} days'
+       GROUP BY dow, hr`,
+      [tenantId],
+    );
+
+    const grid: number[][] = Array.from({ length: 7 }, () => Array(24).fill(0));
+    for (const row of rows) {
+      grid[row.dow][row.hr] = parseInt(row.count as any, 10);
+    }
+
+    return { grid };
+  }
+
   // ─── Account Linking ──────────────────────────────────────────────────────
 
   /**

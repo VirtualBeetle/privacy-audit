@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import { createHash } from 'crypto';
 import { Consent } from './consent.entity';
 
 const DEFAULT_DATA_TYPES = [
@@ -83,5 +84,19 @@ export class ConsentsService {
     });
 
     return { tenantUserId, consents: merged };
+  }
+
+  /**
+   * Find a consent record by its GDPR receipt hash.
+   * Hash = SHA-256(tenantUserId:dataType:granted:updatedAt.toISOString())
+   */
+  async findByReceiptHash(targetHash: string): Promise<Consent | null> {
+    const all = await this.consentsRepo.find({ take: 5000 });
+    for (const c of all) {
+      const input = `${c.tenantUserId}:${c.dataType}:${c.granted}:${c.updatedAt?.toISOString() ?? ''}`;
+      const computed = createHash('sha256').update(input).digest('hex');
+      if (computed === targetHash) return c;
+    }
+    return null;
   }
 }

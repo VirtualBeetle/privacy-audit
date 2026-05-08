@@ -37,13 +37,8 @@ function KpiCard({ label, value, icon: Icon, color, sub }: {
 }
 
 /* Activity heatmap (day × hour) */
-function Heatmap({ events }: { events: AuditEvent[] }) {
+function Heatmap({ grid }: { grid: number[][] }) {
   const hours = Array.from({ length: 24 }, (_, i) => i);
-  const grid: number[][] = Array.from({ length: 7 }, () => Array(24).fill(0));
-  events.forEach(e => {
-    const d = new Date(e.timestamp);
-    grid[d.getDay()][d.getHours()]++;
-  });
   const maxVal = Math.max(1, ...grid.flat());
 
   return (
@@ -167,6 +162,8 @@ export default function TenantDetailPage() {
 
   const [tenant, setTenant] = useState<{ id: string; name: string; email: string; isActive: boolean; retentionDays: number; createdAt: string; eventCount: number } | null>(null);
   const [events, setEvents] = useState<AuditEvent[]>([]);
+  const [heatmapGrid, setHeatmapGrid] = useState<number[][]>(Array.from({ length: 7 }, () => Array(24).fill(0)));
+  const [stats, setStats] = useState<{ eventsCount: number; consentRate: number; thirdPartyCount: number; trustScore: number } | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -175,15 +172,19 @@ export default function TenantDetailPage() {
     (async () => {
       setLoading(true);
       try {
-        const [allTenants, eventsRes] = await Promise.all([
+        const [allTenants, statsRes, heatmapRes, eventsRaw] = await Promise.all([
           tenantsApi.listAll(),
-          dashboardApi.getEvents({ tenantId: id }).catch(() => ({ events: [] })),
+          dashboardApi.getTenantStats(id).catch(() => null),
+          dashboardApi.getActivityHeatmap(id).catch(() => ({ grid: Array.from({ length: 7 }, () => Array(24).fill(0)) })),
+          dashboardApi.getEvents().catch(() => []),
         ]);
         const found = allTenants.find(t => t.id === id);
         setTenant(found ?? null);
-        const raw = (eventsRes as any).events ?? eventsRes ?? [];
+        if (statsRes) setStats(statsRes);
+        setHeatmapGrid(heatmapRes.grid);
+        const raw = (eventsRaw as any).events ?? eventsRaw ?? [];
         setEvents(Array.isArray(raw) ? raw : []);
-      } catch (e) {
+      } catch {
         setError('Failed to load tenant data.');
       } finally {
         setLoading(false);
@@ -221,9 +222,10 @@ export default function TenantDetailPage() {
   }
 
   const criticalCount = events.filter(e => e.sensitivityCode === 'CRITICAL').length;
-  const thirdPartyCount = events.filter(e => e.thirdPartyInvolved).length;
-  const consentRate = events.length > 0 ? Math.round((events.filter(e => e.consentObtained).length / events.length) * 100) : 0;
-  const trustScore = Math.max(0, 100 - criticalCount * 5 - thirdPartyCount * 2 + consentRate / 2);
+  const thirdPartyCount = stats?.thirdPartyCount ?? events.filter(e => e.thirdPartyInvolved).length;
+  const consentRate = stats?.consentRate ?? (events.length > 0 ? Math.round((events.filter(e => e.consentObtained).length / events.length) * 100) : 0);
+  const trustScore = stats?.trustScore ?? Math.max(0, 100 - criticalCount * 5 - thirdPartyCount * 2 + consentRate / 2);
+  const totalEventsCount = stats?.eventsCount ?? events.length;
 
   return (
     <div style={{ padding: '24px 28px', overflowY: 'auto', height: '100%' }}>
@@ -269,7 +271,7 @@ export default function TenantDetailPage() {
 
       {/* KPIs */}
       <div style={{ display: 'flex', gap: 14, marginBottom: 14 }} className="anim-fade-up d1">
-        <KpiCard label="Total Events" value={events.length} icon={EventsIcon} color="var(--accent)" sub="all time" />
+        <KpiCard label="Total Events" value={totalEventsCount} icon={EventsIcon} color="var(--accent)" sub="last 30 days" />
         <KpiCard label="Critical Events" value={criticalCount} icon={RiskIcon} color="var(--red)" sub={`${Math.round((criticalCount / (events.length || 1)) * 100)}% of total`} />
         <KpiCard label="3rd Party Sharing" value={thirdPartyCount} icon={WebhookIcon} color="var(--amber)" sub="events shared" />
         <KpiCard label="Consent Rate" value={`${consentRate}%`} icon={VerifyIcon} color="var(--green)" sub="events consented" />
@@ -278,7 +280,7 @@ export default function TenantDetailPage() {
 
       {/* Heatmap */}
       <div className="anim-fade-up d2" style={{ marginBottom: 14 }}>
-        <Heatmap events={events} />
+        <Heatmap grid={heatmapGrid} />
       </div>
 
       {/* Bottom row: sensitivity + 3rd party + recent events */}
