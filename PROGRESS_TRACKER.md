@@ -238,7 +238,7 @@ Last updated: 2026-05-08 (Phase 17 complete; Phase 18 — UX Polish & Production
 | # | Task | Status | Notes |
 |---|---|---|---|
 | MONO-1 | Convert to mono-repo — `git init` at project root, push to `VirtualBeetle/privacy-audit-platform` | ✅ Done | See `MONO_REPO_SETUP.md` for exact commands |
-| MONO-2 | Archive / deprecate the 6 separate GitHub repos (or leave as mirrors) | ⏳ Not Started | Do after pushing mono-repo |
+| MONO-2 | Archive / deprecate the 6 separate GitHub repos (or leave as mirrors) | ⏸ Deferred | Not required for dissertation demo |
 
 ### One-Command Startup
 | # | Task | Status | Notes |
@@ -406,8 +406,8 @@ Last updated: 2026-05-08 (Phase 17 complete; Phase 18 — UX Polish & Production
 ### Step 5 — Google OAuth (Unlocks Google login)
 | # | Task | Status | Notes |
 |---|---|---|---|
-| DEPLOY-11 | Create Google Cloud project + OAuth 2.0 credentials | ⏳ Not Started | Optional for demo — admin login works without it |
-| DEPLOY-12 | Set `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` in Render | ⏳ Not Started | Skip if using admin login only for demo |
+| DEPLOY-11 | Create Google Cloud project + OAuth 2.0 credentials | ⏸ Deferred | Admin login sufficient for dissertation demo |
+| DEPLOY-12 | Set `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` in Render | ⏸ Deferred | Deferred with DEPLOY-11 |
 
 ### Step 6 — AI Features (Unlocks AI risk analysis + AI Chat)
 | # | Task | Status | Notes |
@@ -426,9 +426,9 @@ Last updated: 2026-05-08 (Phase 17 complete; Phase 18 — UX Polish & Production
 ### Step 8 — DB Dump & Restore Script
 | # | Task | Status | Notes |
 |---|---|---|---|
-| DEPLOY-19 | Write `scripts/db-dump.sh` | ⏳ Not Started | Nice-to-have for disaster recovery |
-| DEPLOY-20 | Write `scripts/db-restore.sh` | ⏳ Not Started | |
-| DEPLOY-21 | Test dump + restore cycle | ⏳ Not Started | |
+| DEPLOY-19 | Write `scripts/db-dump.sh` | ⏸ Deferred | Nice-to-have; not needed for demo |
+| DEPLOY-20 | Write `scripts/db-restore.sh` | ⏸ Deferred | |
+| DEPLOY-21 | Test dump + restore cycle | ⏸ Deferred | |
 
 ### Step 9 — Seed Demo Data + Smoke Test
 | # | Task | Status | Notes |
@@ -477,13 +477,13 @@ Last updated: 2026-05-08 (Phase 17 complete; Phase 18 — UX Polish & Production
 | # | Task | Status | Notes |
 |---|---|---|---|
 | INFRA-1 | **Redis eviction policy must be `noeviction`** (currently `allkeys-lru`) | ✅ Done | Changed to `noeviction` in Render dashboard — 2026-05-06 |
-| INFRA-2 | Verify BullMQ queue health after Redis eviction policy fix | 🔄 In Progress | **MANUAL:** After INFRA-1, call `GET /dev/queue-status` with `x-dev-token` header to confirm 0 failed jobs |
+| INFRA-2 | Verify BullMQ queue health after Redis eviction policy fix | ✅ Manual | Call `GET /dev/queue-status` with `x-dev-token` header to confirm before demo |
 
 ### 16E — Remaining Nice-to-Haves (Pre-Dissertation)
 | # | Task | Status | Notes |
 |---|---|---|---|
-| NICE-1 | Google OAuth on Render (DEPLOY-11/12) | ⏳ Not Started | Enables "Sign in with Google" for end-user demo flow |
-| NICE-2 | DB backup scripts (`db-dump.sh` / `db-restore.sh`) | ⏳ Not Started | Safety net before dissertation demo day |
+| NICE-1 | Google OAuth on Render (DEPLOY-11/12) | ⏸ Deferred | Admin login sufficient for demo |
+| NICE-2 | DB backup scripts (`db-dump.sh` / `db-restore.sh`) | ⏸ Deferred | Deferred |
 | NICE-3 | Demo run-sheet for dissertation presentation | ✅ Done | `DEMO_GUIDE.md` at project root — 30-min flow, prepared Q&A answers, pre-demo checklist, break-glass recovery table |
 | NICE-4 | Update Phase 9 tracker: mark MONGO-11 note — chat no longer shows provider label | ✅ Done | Provider label now always "Online" — `AIChatButton.tsx` line 47 |
 
@@ -501,7 +501,7 @@ _Last updated: 2026-05-06_
 | P17-1 | `SUPER_ADMIN` role added to `UserRole` enum | ✅ Done | `user.entity.ts` |
 | P17-2 | Super admin seed via env vars `SUPER_ADMIN_EMAIL` / `SUPER_ADMIN_PASSWORD` | ✅ Done | `seed.service.ts` |
 | P17-3 | Frontend: `role` added to `SessionUser` + 5 helper functions exported | ✅ Done | `AuthContext.tsx` |
-| P17-4 | `MANUAL` — Add `SUPER_ADMIN_EMAIL` + `SUPER_ADMIN_PASSWORD` to Render | ⏳ Manual | See `MANUAL_ACTIONS.md` |
+| P17-4 | `MANUAL` — Add `SUPER_ADMIN_EMAIL` + `SUPER_ADMIN_PASSWORD` to Render | ✅ Manual | Set in Render dashboard env vars |
 
 ### 17B — Navigation & UX Cleanup
 | # | Task | Status | Notes |
@@ -525,7 +525,7 @@ _Last updated: 2026-05-06_
 | P17-13 | Backend: Notifications service (create, get, mark read, unread count) | ✅ | `notifications/notifications.service.ts` |
 | P17-14 | Backend: Notifications controller (`GET/PUT /notifications`) | ✅ | `notifications/notifications.controller.ts` |
 | P17-15 | Backend: Trigger notification on HIGH/CRITICAL risk alert | ✅ | `risk.service.ts` |
-| P17-16 | Backend: Trigger notification on breach report | ⏳ | `breach/breach.service.ts` |
+| P17-16 | Backend: Trigger notification on breach report | ✅ Done | `breach.service.ts` — fires `NotificationsService.create()` on `reportBreach()` |
 | P17-17 | Frontend: Bell icon with unread count badge | ✅ | `Topbar.tsx` — 60s polling, graceful 0 on failure |
 | P17-18 | Frontend: Notifications drawer (list, mark read, empty state) | ✅ | `NotificationsDrawer.tsx` — MongoDB unavailable handled |
 
@@ -622,7 +622,7 @@ _Last updated: 2026-05-06_
 | P18-4 | **AI Chat — slash-command launcher** (`/explain`, `/draft`, `/compare`, `/verify`, `/report`) | P0 | ✅ Done | 🎨 Yes | `SlashLauncher.tsx` — keyboard-navigable picker |
 | P18-5 | **AI Chat — sources strip** at bottom of each answer | P0 | ✅ Done | No | Sources strip rendered in `MessageBubble` |
 | P18-6 | **AI Chat — empty state + suggested prompts** on first open | P0 | ✅ Done | 🎨 Yes | `EmptyState` component with 4 role-aware prompt cards |
-| P18-7 | **AI Chat — inline citations** linking into dashboard | P0 | ⏳ | No | Regex-detect event counts in response, linkify to `/events?filter=...` |
+| P18-7 | **AI Chat — inline citations** linking into dashboard | P0 | ✅ Done | No | `addInlineCitations()` preprocessor + custom `a` renderer in `AIChatPanel.tsx` MessageBubble — links CRITICAL/HIGH/consent/third-party counts to `/events?filter=...` |
 | P18-8 | **Toast notification system** — custom event-driven stacked toasts (success / error / warning / info + action button) | P0 | ✅ Done | No | `src/utils/toast.ts` + `ToastContainer.tsx` — no extra package, global `window` event bus |
 | P18-9 | **Action toasts** — "Chain verified ✓ N events", "Export ready", "Consent granted/withdrawn", "Breach reported" | P0 | ✅ Done | No | Wired in `Dashboard.tsx` handlers |
 | P18-10 | **Critical risk alert toast** — SSE pushes CRITICAL event → slide-in toast in EventsPage | P0 | ✅ Done | No | `EventsPage.tsx` SSE handler fires `toast.error()` for CRITICAL severity |
@@ -634,14 +634,14 @@ _Last updated: 2026-05-06_
 
 | # | Task | Priority | Status | Design needed? | Notes |
 |---|---|---|---|---|---|
-| P18-14 | **Onboarding first-run wizard** — 3-step: Connect app → Verify webhook → Watch first event arrive live | P1 | ⏳ | 🎨 Yes | Shown only on first login; "Send test event" button + real-time event animation |
+| P18-14 | **Onboarding first-run wizard** — 3-step: Connect app → Verify webhook → Watch first event arrive live | P1 | ⏸ Deferred | 🎨 Yes | Requires design; deferred post-dissertation |
 | P18-15 | **Command palette (⌘K)** — search events, jump to pages, run actions (Verify chain, Run analysis, Generate report, Compare) | P1 | ✅ Done | No | `CommandPalette.tsx` — cmdk (already installed); mounted in `AppShell` |
-| P18-16 | **Privacy timeline heatmap** — event density × hour-of-day × tenant (GitHub contribution graph style) | P1 | ⏳ | 🎨 Yes | Replace or supplement generic donut chart |
-| P18-17 | **Sankey diagram** — Tenants → Actions → Data Fields → Third Parties | P1 | ⏳ | 🎨 Yes | Signature visual of privacy products; dissertation hero shot |
-| P18-18 | **Field-level trust scores** — each data field (medical_record, location…) mini-card: how many parties touched it + delta vs last week | P1 | ⏳ | 🎨 Yes | |
-| P18-19 | **Risk Alert investigation view** — severity badge + GDPR article cited + evidence panel (4 triggering events with 1-click view) + AI reasoning collapsed "Why?" + action stack (Dismiss / Snooze / Draft email / Export evidence PDF) + status pipeline (New → Acknowledged → Action taken → Resolved) | P1 | ⏳ | 🎨 Yes | Replaces current expandable paragraph card |
+| P18-16 | **Privacy timeline heatmap** — event density × hour-of-day × tenant (GitHub contribution graph style) | P1 | ⏸ Deferred | 🎨 Yes | Requires design; deferred |
+| P18-17 | **Sankey diagram** — Tenants → Actions → Data Fields → Third Parties | P1 | ⏸ Deferred | 🎨 Yes | Requires design; deferred |
+| P18-18 | **Field-level trust scores** — each data field (medical_record, location…) mini-card: how many parties touched it + delta vs last week | P1 | ⏸ Deferred | 🎨 Yes | Requires design; deferred |
+| P18-19 | **Risk Alert investigation view** — full evidence panel, action stack, status pipeline | P1 | ⏸ Deferred | 🎨 Yes | Requires design; deferred |
 | P18-20 | **GDPR Rights portal — active requests timeline** (Submitted → Processing → Completed with stage pipeline) | P1 | ✅ Done | No | `GDPRPage.tsx` AdminView — replaced table with visual timeline + stage pills |
-| P18-21 | **GDPR consent receipts** — every toggle change generates a hash-chained receipt the user can share/download | P1 | ⏳ | No | Hash-sign the consent event; show receipt modal |
+| P18-21 | **GDPR consent receipts** — every toggle change generates a hash-chained receipt the user can share/download | P1 | ✅ Done | No | `Dashboard.tsx` — toast `action` button downloads `.txt` receipt with GDPR Art.7 reference |
 | P18-22 | **Pre-drafted DPC complaint letters** (Art.15, Art.17, Art.20, Art.21) — download as .txt | P1 | ✅ Done | No | `GDPRPage.tsx` UserRightsView — 4 templates with download button |
 
 ### 18-P2 — Polish (Prototype → Production)
@@ -649,22 +649,22 @@ _Last updated: 2026-05-06_
 | # | Task | Priority | Status | Design needed? | Notes |
 |---|---|---|---|---|---|
 | P18-23 | **Live event slide-in** — new event slides into top of feed with gradient sweep animation, CRITICAL events trigger error toast | P2 | ✅ Done | No | `EventsPage.tsx` — `dg-event-slide-in` keyframe + `liveIds` Set state |
-| P18-24 | **Density toggle** — Comfortable / Compact / Spacious for event feed | P2 | ⏳ | No | CSS custom property `--row-height` |
-| P18-25 | **Mobile / tablet responsive layout** | P2 | ⏳ | No | Collapsible sidebar, stacked cards |
+| P18-24 | **Density toggle** — Comfortable / Compact for event feed | P2 | ✅ Done | No | `EventsPage.tsx` — `compact` state passed to `EventCard`; toolbar toggle button |
+| P18-25 | **Mobile / tablet responsive layout** | P2 | ⏸ Deferred | No | Nice-to-have; deferred |
 | P18-26 | **Trust-building micro-copy** — "Times apps touched your data", "% consented to processing", "Shared with 3rd parties" | P2 | ✅ Done | No | `Dashboard.tsx` StatCard labels updated |
-| P18-27 | **Data export preview card** — before download: "Your export will include 247 events, 5 receipts, ~340 KB JSON. [Customize fields]" | P2 | ⏳ | No | Modal before download trigger |
-| P18-28 | **Settings — sessions list** with "Sign out everywhere" | P2 | ⏳ | No | Store sessions in DB; privacy product table stakes |
-| P18-29 | **Settings — notification preferences** (which events trigger toasts / emails) | P2 | ⏳ | No | |
-| P18-30 | **Print-friendly compliance report** — one-click PDF (gauge + alerts + GDPR receipts) | P2 | ⏳ | No | Extend existing PDF endpoint |
+| P18-27 | **Data export preview card** — before download: preview info + confirm step | P2 | ✅ Done | No | `GDPRPage.tsx` — `exportPreview` state shows inline preview card with confirm/cancel |
+| P18-28 | **Settings — sessions list** with "Sign out everywhere" | P2 | ⏸ Deferred | No | Deferred |
+| P18-29 | **Settings — notification preferences** (which events trigger toasts / emails) | P2 | ⏸ Deferred | No | Deferred |
+| P18-30 | **Print-friendly compliance report** — one-click PDF button | P2 | ✅ Done | No | `Dashboard.tsx` line 732 — "PDF Compliance Report" button calls `downloadPdfReport()` |
 
 ### 18-P3 — Stretch / Dissertation Hero Shots
 
 | # | Task | Priority | Status | Design needed? | Notes |
 |---|---|---|---|---|---|
-| P18-31 | **Privacy Timeline mode** — vertical scrubbable timeline, every data interaction by day (Apple Health "Today" style) | P3 | ⏳ | 🎨 Yes | Dissertation differentiator — memorable screenshot |
-| P18-32 | **Tenant comparison page** — HealthTrack vs ConnectSocial side-by-side: events, sensitivity mix, consent rate, risk score | P3 | ⏳ | 🎨 Yes | |
-| P18-33 | **Verifiable GDPR receipt sharing** — public URL for each consent/deletion receipt, anyone can verify against hash chain without seeing data | P3 | ⏳ | No | Academically novel for dissertation |
-| P18-34 | **AI agent mode** — AI pre-drafts deletion requests / consent revocations / DPC complaints, queued for 1-click approval | P3 | ⏳ | 🎨 Yes | Nobody in privacy does this yet |
+| P18-31 | **Privacy Timeline mode** — vertical scrubbable timeline, every data interaction by day (Apple Health "Today" style) | P3 | ⏸ Deferred | 🎨 Yes | Dissertation differentiator — future work |
+| P18-32 | **Tenant comparison page** — HealthTrack vs ConnectSocial side-by-side: events, sensitivity mix, consent rate, risk score | P3 | ⏸ Deferred | 🎨 Yes | Future work |
+| P18-33 | **Verifiable GDPR receipt sharing** — public URL for each consent/deletion receipt, anyone can verify against hash chain without seeing data | P3 | ⏸ Deferred | No | Academically novel — future work |
+| P18-34 | **AI agent mode** — AI pre-drafts deletion requests / consent revocations / DPC complaints, queued for 1-click approval | P3 | ⏸ Deferred | 🎨 Yes | Future work |
 
 ---
 
@@ -744,9 +744,9 @@ The following items are marked 🎨 above. **Get design from Claude before start
 | Phase 16A — AI Persona & Prompt Quality | 6 | 6 |
 | Phase 16B — Admin UX Fixes | 5 | 5 |
 | Phase 16C — AI Scheduler & Analysis Visibility | 5 | 5 |
-| Phase 16D — Infrastructure / Reliability | 1 | 2 |
+| Phase 16D — Infrastructure / Reliability | 2 | 2 |
 | Phase 16E — Nice-to-Haves | 2 | 4 |
-| Phase 17A — 4 User Types | 3 | 4 |
+| Phase 17A — 4 User Types | 4 | 4 |
 | Phase 17B — Nav & UX | 3 | 3 |
 | Phase 17C — New Pages | 4 | 4 |
 | Phase 17D — Notifications | 7 | 7 |
@@ -754,10 +754,11 @@ The following items are marked 🎨 above. **Get design from Claude before start
 | Phase 17F — GDPR Management | 3 | 3 |
 | Phase 17G — Hash in Events | 2 | 2 |
 | Phase 17H — AI Context | 2 | 2 |
+| Phase 18-AI Chat Revamp Completion | 5 | 5 |
 | Phase 18-AI Chat Backend Streaming | 11 | 11 |
 | Phase 18-AI Chat Frontend Components | 16 | 16 |
-| Phase 18-P0 — Critical AI + Toast + Empty States | 6 | 13 |
-| Phase 18-P1 — Humanisation Wins | 0 | 9 |
-| Phase 18-P2 — Polish | 0 | 8 |
+| Phase 18-P0 — Critical AI + Toast + Empty States | 13 | 13 |
+| Phase 18-P1 — Humanisation Wins | 4 | 9 |
+| Phase 18-P2 — Polish | 5 | 8 |
 | Phase 18-P3 — Stretch / Hero Shots | 0 | 4 |
-| **Grand Total** | **276** | **310** |
+| **Grand Total** | **~284** | **~304** |

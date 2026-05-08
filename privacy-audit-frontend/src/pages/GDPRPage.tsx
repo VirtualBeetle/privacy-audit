@@ -222,12 +222,15 @@ function AdminView() {
 function UserRightsView() {
   const [exportLoading, setExportLoading] = useState(false);
   const [exportStatus, setExportStatus] = useState<{ id: string; status: string } | null>(null);
+  const [exportPreview, setExportPreview] = useState(false);
   const [deletionLoading, setDeletionLoading] = useState(false);
   const [deletionStatus, setDeletionStatus] = useState<{ id: string; status: string } | null>(null);
   const [deletionConfirm, setDeletionConfirm] = useState(false);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const handleExport = async () => {
+    if (!exportPreview) { setExportPreview(true); return; }
+    setExportPreview(false);
     setExportLoading(true);
     try {
       const res = await dashboardApi.requestExport();
@@ -328,6 +331,30 @@ function UserRightsView() {
         title="Article 20 — Data Portability"
         sub="Download a complete JSON export of your audit records."
       >
+        {exportPreview && (
+          <div style={{
+            padding: '12px 14px', marginBottom: 12,
+            background: 'rgba(99,102,241,0.06)', border: '1px solid rgba(99,102,241,0.2)',
+            borderRadius: 9, fontSize: 12, color: 'var(--text-2)', lineHeight: 1.6,
+          }}>
+            <div style={{ fontWeight: 700, color: 'var(--accent)', marginBottom: 4 }}>Export Preview</div>
+            Your export will include all your audit events in structured JSON format (GDPR Art.20). The file will contain event timestamps, actions, data fields accessed, actor information, and the SHA-256 integrity chain. Click <strong>Confirm Export</strong> to start processing.
+            <div style={{ marginTop: 8, display: 'flex', gap: 8 }}>
+              <button
+                onClick={handleExport}
+                style={{ padding: '6px 14px', borderRadius: 8, background: 'var(--accent)', color: '#fff', border: 'none', fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: "'DM Sans', sans-serif" }}
+              >
+                Confirm Export
+              </button>
+              <button
+                onClick={() => setExportPreview(false)}
+                style={{ padding: '6px 14px', borderRadius: 8, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-3)', fontSize: 12, cursor: 'pointer', fontFamily: "'DM Sans', sans-serif" }}
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        )}
         {exportStatus && (
           <Alert
             severity={exportStatus.status === 'failed' ? 'error' : exportStatus.status === 'completed' ? 'success' : 'info'}
@@ -351,7 +378,7 @@ function UserRightsView() {
             opacity: (exportLoading || exportStatus?.status === 'processing') ? 0.6 : 1,
           }}
         >
-          {exportLoading || exportStatus?.status === 'processing' ? 'Exporting…' : 'Request Export'}
+          {exportLoading || exportStatus?.status === 'processing' ? 'Exporting…' : exportPreview ? 'Previewing…' : 'Request Export'}
         </button>
       </SectionCard>
 

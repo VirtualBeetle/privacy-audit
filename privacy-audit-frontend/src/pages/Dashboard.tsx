@@ -574,7 +574,31 @@ export default function Dashboard({ initialSection }: Props) {
     try {
       await dashboardApi.setConsent(userId, dataType, granted);
       setConsents(prev => prev.map(c => c.dataType === dataType ? { ...c, granted } : c));
-      toast.success(`Consent ${granted ? 'granted' : 'withdrawn'} for ${dataType.replace(/_/g, ' ')}`);
+      toast.success(`Consent ${granted ? 'granted' : 'withdrawn'} for ${dataType.replace(/_/g, ' ')}`, {
+        action: {
+          label: 'Download Receipt',
+          onClick: () => {
+            const ts = new Date().toISOString();
+            const body = [
+              'DATAGUARD CONSENT RECEIPT',
+              '─'.repeat(40),
+              `Date/Time:   ${ts}`,
+              `User ID:     ${userId}`,
+              `Data Type:   ${dataType}`,
+              `Action:      ${granted ? 'CONSENT GRANTED' : 'CONSENT WITHDRAWN'}`,
+              `Basis:       GDPR Article 7 — Freely given, specific, informed consent`,
+              '─'.repeat(40),
+              'This receipt confirms a consent preference change in DataGuard.',
+              'Keep this document for your personal records.',
+            ].join('\n');
+            const blob = new Blob([body], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url; a.download = `consent-receipt-${dataType}-${Date.now()}.txt`; a.click();
+            URL.revokeObjectURL(url);
+          },
+        },
+      });
     } catch { toast.error('Consent update failed. Please try again.'); } finally { setConsentToggling(null); }
   };
 

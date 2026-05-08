@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate, useLocation, Link } from 'react-router-dom';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { useAuth } from '../../contexts/AuthContext';
@@ -45,6 +45,15 @@ if (!document.getElementById(STYLE_ID)) {
     .dg-spin { animation: dg-spin 1s linear infinite; }
   `;
   document.head.appendChild(el);
+}
+
+// ── Citation auto-linker (P18-7) ──────────────────────────────────────────────
+function addInlineCitations(text: string): string {
+  return text
+    .replace(/\b(\d+)\s+critical\s+events?\b/gi, '[$1 critical events](/events?sensitivity=CRITICAL)')
+    .replace(/\b(\d+)\s+high[- ]?(?:risk\s+)?events?\b/gi, '[$1 high-risk events](/events?sensitivity=HIGH)')
+    .replace(/\b(\d+)\s+events?\s+without\s+consent\b/gi, '[$1 events without consent](/events?consent=false)')
+    .replace(/\b(\d+)\s+third[- ]?party\s+events?\b/gi, '[$1 third-party events](/events?thirdParty=true)');
 }
 
 // ── Sub-components ────────────────────────────────────────────────────────────
@@ -114,6 +123,7 @@ function AIAvatar() {
 }
 
 function MessageBubble({ msg, onFollowUp }: { msg: ChatMessage; onFollowUp: (t: string) => void }) {
+  const navigate = useNavigate();
   const isUser = msg.role === 'user';
 
   if (isUser) {
@@ -157,6 +167,15 @@ function MessageBubble({ msg, onFollowUp }: { msg: ChatMessage; onFollowUp: (t: 
             <ReactMarkdown
               remarkPlugins={[remarkGfm]}
               components={{
+                a: ({ href, children }: { href?: string; children?: React.ReactNode }) => href?.startsWith('/') ? (
+                  <Link
+                    to={href}
+                    onClick={() => navigate(href)}
+                    style={{ color: C.accent, textDecoration: 'underline', cursor: 'pointer', fontWeight: 500 }}
+                  >{children}</Link>
+                ) : (
+                  <a href={href} target="_blank" rel="noopener noreferrer" style={{ color: C.accent, textDecoration: 'underline' }}>{children}</a>
+                ),
                 strong: ({ children }) => (
                   <strong style={{ color: C.text, fontWeight: 600 }}>{children}</strong>
                 ),
@@ -189,7 +208,7 @@ function MessageBubble({ msg, onFollowUp }: { msg: ChatMessage; onFollowUp: (t: 
                 ),
               }}
             >
-              {msg.text}
+              {addInlineCitations(msg.text)}
             </ReactMarkdown>
           </div>
         )}

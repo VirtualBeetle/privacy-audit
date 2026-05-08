@@ -2,6 +2,7 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { BreachReport } from './breach-report.entity';
+import { NotificationsService } from '../notifications/notifications.service';
 
 const GDPR_DEADLINE_HOURS = 72;
 
@@ -10,6 +11,7 @@ export class BreachService {
   constructor(
     @InjectRepository(BreachReport)
     private readonly breachRepo: Repository<BreachReport>,
+    private readonly notificationsService: NotificationsService,
   ) {}
 
   async reportBreach(
@@ -24,6 +26,16 @@ export class BreachService {
     const report = await this.breachRepo.save(
       this.breachRepo.create({ tenantId, tenantUserId, description, severity, notifyDeadline }),
     );
+
+    this.notificationsService.create({
+      recipientType: tenantUserId ? 'tenant_user' : 'tenant_admin',
+      tenantId,
+      tenantUserId,
+      type: 'breach',
+      severity,
+      title: `Breach Reported — 72h GDPR Art.33 Countdown Started`,
+      message: `A ${severity.toUpperCase()} severity breach has been reported. You have ${GDPR_DEADLINE_HOURS} hours to notify the regulator. "${description.slice(0, 80)}${description.length > 80 ? '…' : ''}"`,
+    }).catch(() => {});
 
     return this.withCountdown(report);
   }

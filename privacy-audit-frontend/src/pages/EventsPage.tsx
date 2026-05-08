@@ -125,7 +125,7 @@ function TenantBadge({ name }: { name: string }) {
 }
 
 /* ── Event card ───────────────────────────────────────────────── */
-function EventCard({ event, idx }: { event: AuditEvent; idx: number }) {
+function EventCard({ event, idx, compact }: { event: AuditEvent; idx: number; compact?: boolean }) {
   const [expanded, setExpanded] = useState(false);
   const ac = ACTION_CFG[event.actionCode] ?? ACTION_CFG.READ;
   const border = SENS_BORDER[event.sensitivityCode] ?? '#94a3b8';
@@ -139,8 +139,8 @@ function EventCard({ event, idx }: { event: AuditEvent; idx: number }) {
         background: 'var(--surface)',
         border: '1px solid var(--border)',
         borderLeft: `3px solid ${border}`,
-        borderRadius: 12,
-        padding: '14px 16px',
+        borderRadius: compact ? 8 : 12,
+        padding: compact ? '8px 12px' : '14px 16px',
         transition: 'all 0.18s ease',
         cursor: 'pointer',
       }}
@@ -361,6 +361,7 @@ export default function EventsPage() {
   const [actionFilter, setActionFilter] = useState('All');
   const [sensFilter, setSensFilter] = useState('All');
   const [tenantFilter, setTenantFilter] = useState('All');
+  const [compact, setCompact] = useState(false);
 
   const load = async (silent = false) => {
     if (!silent) setLoading(true);
@@ -497,6 +498,32 @@ export default function EventsPage() {
           </button>
         </div>
 
+        {/* Density toggle */}
+        <button
+          onClick={() => setCompact(v => !v)}
+          title={compact ? 'Switch to comfortable view' : 'Switch to compact view'}
+          style={{
+            display: 'flex', alignItems: 'center', gap: 5,
+            padding: '7px 11px', borderRadius: 9,
+            background: compact ? 'var(--accent-dim)' : 'var(--surface)',
+            border: `1px solid ${compact ? 'var(--accent)' : 'var(--border)'}`,
+            color: compact ? 'var(--accent)' : 'var(--text-3)',
+            fontSize: 11, fontWeight: 600, cursor: 'pointer',
+            fontFamily: "'DM Sans', sans-serif", transition: 'all 0.15s',
+          }}
+        >
+          {compact ? (
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+              <line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/><line x1="3" y1="14" x2="21" y2="14"/><line x1="3" y1="18" x2="21" y2="18"/>
+            </svg>
+          ) : (
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+              <line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/>
+            </svg>
+          )}
+          {compact ? 'Compact' : 'Comfortable'}
+        </button>
+
         {/* Refresh */}
         <button
           onClick={() => load(true)}
@@ -617,8 +644,8 @@ export default function EventsPage() {
           </div>
         ) : (
           filtered.map((e, i) => (
-            <div key={e.id} className={liveIds.has(String(e.id)) ? 'dg-event-live' : undefined} style={{ borderRadius: 12 }}>
-              <EventCard event={e} idx={i} />
+            <div key={e.id} className={liveIds.has(String(e.id)) ? 'dg-event-live' : undefined} style={{ borderRadius: compact ? 8 : 12 }}>
+              <EventCard event={e} idx={i} compact={compact} />
             </div>
           ))
         )}

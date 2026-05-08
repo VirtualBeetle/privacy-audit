@@ -6,6 +6,7 @@ import { BreachReport } from './breach-report.entity';
 import { BreachService } from './breach.service';
 import { BreachController } from './breach.controller';
 import { DashboardGuard, DashboardAnyGuard } from '../common/guards/dashboard.guard';
+import { NotificationsModule } from '../notifications/notifications.module';
 
 @Module({
   imports: [
@@ -15,6 +16,7 @@ import { DashboardGuard, DashboardAnyGuard } from '../common/guards/dashboard.gu
       inject: [ConfigService],
       useFactory: (cs: ConfigService) => ({ secret: cs.get<string>('JWT_SECRET') }),
     }),
+    NotificationsModule,
   ],
   controllers: [BreachController],
   providers: [BreachService, DashboardGuard, DashboardAnyGuard],
