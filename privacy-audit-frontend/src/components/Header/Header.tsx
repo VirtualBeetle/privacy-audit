@@ -62,7 +62,7 @@ export default function Header() {
               width: 36,
               height: 36,
               borderRadius: '10px',
-              background: 'linear-gradient(135deg, #38bdf8, #818cf8)',
+              background: 'linear-gradient(135deg, #38bdf8, var(--accent))',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
@@ -138,7 +138,7 @@ export default function Header() {
                 sx={{
                   width: 36,
                   height: 36,
-                  background: 'linear-gradient(135deg, #38bdf8, #818cf8)',
+                  background: 'linear-gradient(135deg, #38bdf8, var(--accent))',
                   color: '#fff',
                   fontSize: '0.8rem',
                   fontWeight: 700,

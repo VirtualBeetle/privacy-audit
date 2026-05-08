@@ -14,7 +14,7 @@ const COLORS: Record<ToastType, { border: string; icon: string; accent: string }
   success: { border: 'rgba(34,197,94,0.4)',  icon: '#22c55e', accent: '#22c55e' },
   error:   { border: 'rgba(239,68,68,0.4)',  icon: '#f87171', accent: '#f87171' },
   warning: { border: 'rgba(251,191,36,0.4)', icon: '#fbbf24', accent: '#fbbf24' },
-  info:    { border: 'rgba(99,102,241,0.4)', icon: '#818cf8', accent: '#818cf8' },
+  info:    { border: 'var(--accent-dim)', icon: 'var(--accent)', accent: 'var(--accent)' },
 };
 
 function Icon({ type }: { type: ToastType }) {

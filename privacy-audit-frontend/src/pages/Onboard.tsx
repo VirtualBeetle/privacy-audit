@@ -44,7 +44,7 @@ function CopyBlock({ label, value }: { label: string; value: string }) {
         </button>
       </div>
       <div style={{
-        background: '#0d1117',
+        background: 'var(--bg)',
         borderRadius: 10, padding: '12px 14px',
         fontFamily: "'JetBrains Mono', monospace",
         fontSize: 12, color: '#c9d1d9',
@@ -178,7 +178,7 @@ export default function Onboard() {
         <div style={{ textAlign: 'center', marginBottom: 40 }} className="anim-fade-up">
           <div style={{
             width: 52, height: 52, borderRadius: 14, margin: '0 auto 16px',
-            background: 'linear-gradient(135deg, #5b5ef6, #7c3aed)',
+            background: 'linear-gradient(135deg, var(--accent), #7c3aed)',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             boxShadow: '0 8px 24px rgba(91,94,246,0.35)',
           }}>
@@ -190,7 +190,7 @@ export default function Onboard() {
           }}>
             Get Started with{' '}
             <span style={{
-              background: 'linear-gradient(90deg, #5b5ef6, #a855f7)',
+              background: 'linear-gradient(90deg, var(--accent), #a855f7)',
               WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
             }}>
               Privacy Audit
@@ -267,7 +267,7 @@ export default function Onboard() {
                 disabled={loading}
                 style={{
                   width: '100%', padding: '11px 0', borderRadius: 10, border: 'none',
-                  background: 'linear-gradient(90deg, #5b5ef6, #a855f7)',
+                  background: 'linear-gradient(90deg, var(--accent), #a855f7)',
                   color: '#fff', fontSize: 14, fontWeight: 700, cursor: loading ? 'wait' : 'pointer',
                   fontFamily: "'DM Sans', sans-serif", transition: 'opacity 0.15s',
                   display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
@@ -341,7 +341,7 @@ export default function Onboard() {
                   onClick={() => setStep(2)}
                   style={{
                     padding: '10px 22px', borderRadius: 10, border: 'none',
-                    background: 'linear-gradient(90deg, #5b5ef6, #a855f7)',
+                    background: 'linear-gradient(90deg, var(--accent), #a855f7)',
                     color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer',
                     fontFamily: "'DM Sans', sans-serif", transition: 'opacity 0.15s',
                   }}
@@ -391,7 +391,7 @@ export default function Onboard() {
                 style={{
                   display: 'inline-flex', alignItems: 'center', gap: 8,
                   padding: '12px 32px', borderRadius: 10,
-                  background: 'linear-gradient(90deg, #5b5ef6, #a855f7)',
+                  background: 'linear-gradient(90deg, var(--accent), #a855f7)',
                   color: '#fff', fontSize: 14, fontWeight: 700,
                   textDecoration: 'none', transition: 'opacity 0.15s',
                 }}

@@ -20,6 +20,8 @@ import QueuePage from './pages/QueuePage';
 import ConnectedAppsPage from './pages/ConnectedAppsPage';
 import GDPRPage from './pages/GDPRPage';
 import GuidePage from './pages/GuidePage';
+import TenantDetailPage from './pages/TenantDetailPage';
+import ConsentMatrixPage from './pages/ConsentMatrixPage';
 import { AIChatPanel, AIChatPage } from './components/AIChat';
 import ToastContainer from './components/Toast/ToastContainer';
 import CommandPalette from './components/CommandPalette/CommandPalette';
@@ -100,6 +102,8 @@ function AppShell() {
             <Route path="/connected-apps"   element={<PrivateRoute element={<ConnectedAppsPage />} />} />
             <Route path="/guide"            element={<PrivateRoute element={<GuidePage />} />} />
             <Route path="/ai-chat"          element={<PrivateRoute element={<AIChatPage />} />} />
+            <Route path="/tenants/:id"      element={<PrivateRoute element={<TenantDetailPage />} />} />
+            <Route path="/consent-matrix"   element={<PrivateRoute element={<ConsentMatrixPage />} />} />
             <Route path="/onboard"          element={<PrivateRoute element={<Onboard />} />} />
             <Route path="/auth/redirect"    element={<AuthRedirect />} />
             <Route path="/auth/google/callback" element={<AuthRedirect />} />

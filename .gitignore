@@ -40,3 +40,4 @@ dumps/*.sql
 .vscode/
 *.swp
 *.swo
+scripts/.env.backup

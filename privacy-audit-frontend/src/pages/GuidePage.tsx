@@ -184,7 +184,7 @@ export default function GuidePage() {
             }}
             style={{
               padding: '7px 10px', borderRadius: 8, border: 'none',
-              background: activeSection === s.id ? 'rgba(99,102,241,0.12)' : 'transparent',
+              background: activeSection === s.id ? 'var(--accent-dim)' : 'transparent',
               color: activeSection === s.id ? 'var(--accent)' : 'var(--text-3)',
               fontSize: 12, fontWeight: activeSection === s.id ? 600 : 400,
               cursor: 'pointer', textAlign: 'left',
@@ -414,7 +414,7 @@ export default function GuidePage() {
               padding: '12px 14px', borderRadius: 9,
               background: '#0f1729', border: '1px solid rgba(255,255,255,0.08)',
               fontFamily: "'JetBrains Mono', monospace", fontSize: 11,
-              color: '#a5b4fc', lineHeight: 1.8, overflowX: 'auto',
+              color: 'var(--accent)', lineHeight: 1.8, overflowX: 'auto',
               whiteSpace: 'pre',
             }}>
 {`curl -X POST https://your-app.onrender.com/api/events \\

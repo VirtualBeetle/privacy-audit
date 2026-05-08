@@ -193,7 +193,7 @@ export default function Topbar({ liveFlash = false }: TopbarProps) {
                 width: 28,
                 height: 28,
                 borderRadius: 8,
-                background: 'linear-gradient(135deg, #5b5ef6, #7c3aed)',
+                background: 'linear-gradient(135deg, var(--accent), var(--accent-2))',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',

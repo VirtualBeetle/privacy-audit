@@ -112,7 +112,7 @@ function AIAvatar() {
   return (
     <div style={{
       width: 26, height: 26, borderRadius: 7, flexShrink: 0, marginTop: 1,
-      background: `linear-gradient(140deg, #6366f1, #8b5cf6)`,
+      background: `linear-gradient(140deg, var(--accent), var(--accent-2))`,
       display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff',
     }}>
       <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
@@ -284,7 +284,7 @@ function EmptyState({ firstName, onPrompt }: { firstName: string; onPrompt: (t: 
       }}>
         Hi {firstName} — what would you like to know about{' '}
         <span style={{
-          background: 'linear-gradient(135deg, #a78bfa, #818cf8)',
+          background: 'linear-gradient(135deg, #a78bfa, var(--accent))',
           WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
           backgroundClip: 'text',
         }}>your data</span>?
@@ -555,7 +555,7 @@ export default function AIChatPanel({ mode = 'panel', onExpandToPage: _onExpandT
         {/* Logo */}
         <div style={{
           width: 28, height: 28, borderRadius: 8, flexShrink: 0,
-          background: 'linear-gradient(140deg, #6366f1, #8b5cf6)',
+          background: 'linear-gradient(140deg, var(--accent), var(--accent-2))',
           display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff',
         }}>
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
@@ -726,7 +726,7 @@ export default function AIChatPanel({ mode = 'panel', onExpandToPage: _onExpandT
         {!open && (
           <div style={{
             position: 'absolute', inset: '-4px', borderRadius: '50%',
-            background: 'rgba(99,102,241,0.2)',
+            background: 'var(--accent-dim)',
             animation: 'pulseRing 2.2s ease-out infinite',
           }} />
         )}
@@ -738,9 +738,9 @@ export default function AIChatPanel({ mode = 'panel', onExpandToPage: _onExpandT
             cursor: 'pointer', position: 'relative', zIndex: 1,
             background: open
               ? 'linear-gradient(135deg, #ef4444, #f97316)'
-              : 'linear-gradient(135deg, #6366f1, #8b5cf6)',
+              : 'linear-gradient(135deg, var(--accent), var(--accent-2))',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            boxShadow: open ? '0 8px 24px rgba(239,68,68,0.4)' : '0 8px 28px rgba(99,102,241,0.5)',
+            boxShadow: open ? '0 8px 24px rgba(239,68,68,0.4)' : '0 8px 28px var(--accent-dim)',
             transition: 'all 0.3s cubic-bezier(0.22,1,0.36,1)',
           }}
           onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.transform = 'scale(1.08)'; }}

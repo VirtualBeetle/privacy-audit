@@ -115,7 +115,7 @@ function TenantBadge({ name }: { name: string }) {
       fontSize: 11,
       fontWeight: 600,
       background: isHealth ? 'rgba(5,150,105,0.1)' : 'rgba(91,94,246,0.1)',
-      color: isHealth ? '#059669' : '#5b5ef6',
+      color: isHealth ? '#059669' : 'var(--accent)',
       border: `1px solid ${isHealth ? 'rgba(5,150,105,0.2)' : 'rgba(91,94,246,0.2)'}`,
       flexShrink: 0,
     }}>

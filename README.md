@@ -16,6 +16,22 @@ A production-grade, multi-tenant GDPR compliance platform. Tenant apps (HealthTr
 | [DEPLOY.md](DEPLOY.md) | Local Docker Compose setup + Render cloud deployment guide + env vars |
 | [CREDENTIALS.md](CREDENTIALS.md) | Demo login credentials for all user types |
 | [DEMO_GUIDE.md](DEMO_GUIDE.md) | 30-minute dissertation demo script with talking points |
+| [DB_BACKUP_GUIDE.md](DB_BACKUP_GUIDE.md) | Render free-tier DB backup & restore — 2-command workflow |
+
+---
+
+## Design System
+
+DataGuard uses a custom CSS token system (no Tailwind utility classes for colors):
+
+| Token | Value | Use |
+|---|---|---|
+| `--brand` | `#f97316` orange | Logo, CTAs, breach alerts |
+| `--accent` | `#7c3aed` / `#8b5cf6` | Active states, links, AI elements |
+| `--bg` | `#f4f4fa` / `#0d0d12` | Page background |
+| `--surface` | `#ffffff` / `#16161d` | Card backgrounds |
+
+Sidebar: 216px labeled with OVERVIEW / TOOLS sections, user avatar, orange brand logo.
 
 ---
 

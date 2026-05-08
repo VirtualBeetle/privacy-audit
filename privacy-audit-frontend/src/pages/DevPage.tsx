@@ -240,7 +240,7 @@ function DevPageContent({ token }: { token: string }) {
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
 
           {/* Trigger Risk Analysis */}
-          <ActionCard title="Trigger Risk Analysis" sub="Run full AI privacy risk analysis across all active tenants immediately (normally every 6h)." color="#818cf8">
+          <ActionCard title="Trigger Risk Analysis" sub="Run full AI privacy risk analysis across all active tenants immediately (normally every 6h)." color="var(--accent)">
             <button
               disabled={!!busy['risk']}
               onClick={() => run('risk', () => devApi.triggerRiskAnalysis(token))}

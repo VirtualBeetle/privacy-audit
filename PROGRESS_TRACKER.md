@@ -5,7 +5,7 @@
 > 🔄 In Progress — partially built or in active development
 > ⏳ Not Started — planned, not yet begun
 
-Last updated: 2026-05-08 (Phase 17 complete; Phase 18 — UX Polish & Production Credibility — planned)
+Last updated: 2026-05-08 (Phase 18 complete; Phase 19 — Design System V2 + New Pages — in progress)
 
 ---
 
@@ -716,6 +716,51 @@ The following items are marked 🎨 above. **Get design from Claude before start
 
 ---
 
+## Phase 19 — Design System V2 + New Pages
+
+### 19A — Color System & Sidebar Redesign
+
+| # | Task | Status | Notes |
+|---|---|---|---|
+| P19-1 | New color token system — `--brand: #f97316` (orange), `--accent: #7c3aed/#8b5cf6` (violet-purple) for light and dark | ✅ Done | `index.css` — replaces all old blue-indigo tokens |
+| P19-2 | Purge all hardcoded blue/indigo hex codes from 20+ component files | ✅ Done | Replaced with CSS variable references |
+| P19-3 | Sidebar redesign — 64px icon-only → 216px labeled sidebar | ✅ Done | `Sidebar.tsx` — OVERVIEW/TOOLS sections, user avatar, orange brand logo |
+| P19-4 | Topbar + AIChatButton + AIChatPanel — update to new color scheme | ✅ Done | All gradients now use `var(--brand)` and `var(--accent)` |
+
+### 19B — Dashboard Layout Redesign
+
+| # | Task | Status | Notes |
+|---|---|---|---|
+| P19-5 | Dashboard greeting banner + chain status card | ✅ Done | "Good morning, [Name] — your data is being watched closely." |
+| P19-6 | Two-column layout — activity feed (60%) + risk/hash panel (40%) | ✅ Done | Replaces current single-column layout |
+| P19-7 | Activity feed filter chips — All / Critical / Today / Filters | ✅ Done | |
+| P19-8 | Event card inline expansion — actor, data classes, legal basis, hash, verify | ✅ Done | |
+| P19-9 | Risk alerts right panel — grouped CRITICAL/HIGH, open count badge | ✅ Done | |
+| P19-10 | Hash chain mini-visualiser in right panel (last 8 blocks) | ✅ Done | |
+
+### 19C — New Pages
+
+| # | Task | Status | Notes |
+|---|---|---|---|
+| P19-11 | Tenant Detail page (`/tenants/:id`) — hero, KPIs, AI insight, heatmap, sensitivity mix | ✅ Done | |
+| P19-12 | Consent Matrix page (`/consent-matrix`) — field-level cross-tenant consent toggles | ✅ Done | |
+
+### 19D — Backend Endpoints
+
+| # | Task | Status | Notes |
+|---|---|---|---|
+| P19-13 | `GET /dashboard/tenant-stats` — events count, consent rate, 3rd party count, open alerts, trust score | ⏳ Not Started | |
+| P19-14 | `GET /dashboard/activity-heatmap` — events by day_of_week × hour | ⏳ Not Started | |
+
+### 19E — Infrastructure
+
+| # | Task | Status | Notes |
+|---|---|---|---|
+| P19-15 | DB backup scripts — `db-dump.sh` (pg_dump + mongodump) and `db-restore.sh` | ✅ Done | `scripts/` directory — see `DB_BACKUP_GUIDE.md` |
+| P19-16 | `DB_BACKUP_GUIDE.md` — step-by-step Render free-tier migration guide | ✅ Done | Two-command workflow: source + run |
+
+---
+
 ## Summary
 
 | Area | Done | Total |
@@ -761,4 +806,5 @@ The following items are marked 🎨 above. **Get design from Claude before start
 | Phase 18-P1 — Humanisation Wins | 4 | 9 |
 | Phase 18-P2 — Polish | 5 | 8 |
 | Phase 18-P3 — Stretch / Hero Shots | 0 | 4 |
-| **Grand Total** | **~284** | **~304** |
+| Phase 19 — Design System V2 + New Pages | 14 | 16 |
+| **Grand Total** | **~298** | **~320** |

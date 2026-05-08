@@ -112,7 +112,7 @@ export default function Login() {
   const btnPrimaryStyle: React.CSSProperties = {
     width: '100%',
     padding: '12px 20px',
-    background: 'linear-gradient(135deg, #5b5ef6, #7c3aed)',
+    background: 'linear-gradient(135deg, var(--accent), #7c3aed)',
     color: '#fff',
     border: 'none',
     borderRadius: 12,
@@ -130,7 +130,7 @@ export default function Login() {
       {/* ── Left panel: brand ───────────────────────────────── */}
       <div style={{
         width: '48%',
-        background: 'linear-gradient(160deg, #0f1729 0%, #1a1040 60%, #0f1729 100%)',
+        background: 'linear-gradient(160deg, #0d0d12 0%, #1a0d2e 60%, #0d0d12 100%)',
         display: 'flex',
         flexDirection: 'column',
         padding: '56px 64px',
@@ -154,7 +154,7 @@ export default function Login() {
           left: '30%',
           width: 400,
           height: 400,
-          background: 'radial-gradient(ellipse, rgba(91,94,246,0.18) 0%, transparent 70%)',
+          background: 'radial-gradient(ellipse, var(--accent-dim) 0%, transparent 70%)',
           pointerEvents: 'none',
         }} />
 
@@ -163,12 +163,12 @@ export default function Login() {
           <div style={{
             width: 42,
             height: 42,
-            background: 'linear-gradient(135deg, #5b5ef6, #7c3aed)',
+            background: 'linear-gradient(135deg, var(--accent), #7c3aed)',
             borderRadius: 12,
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            boxShadow: '0 6px 20px rgba(91,94,246,0.45)',
+            boxShadow: '0 6px 20px var(--accent-glow)',
           }}>
             <ShieldIcon style={{ width: 22, height: 22, color: '#fff' }} />
           </div>
@@ -195,7 +195,7 @@ export default function Login() {
           }}>
             Your data.<br />
             <span style={{
-              background: 'linear-gradient(135deg, #818cf8, #a78bfa)',
+              background: 'linear-gradient(135deg, var(--accent), #a78bfa)',
               WebkitBackgroundClip: 'text',
               WebkitTextFillColor: 'transparent',
               backgroundClip: 'text',
@@ -220,7 +220,7 @@ export default function Login() {
                 justifyContent: 'center',
                 flexShrink: 0,
               }}>
-                <f.icon style={{ width: 15, height: 15, color: '#818cf8' }} />
+                <f.icon style={{ width: 15, height: 15, color: 'var(--accent)' }} />
               </div>
               <span style={{ fontSize: 13.5, color: '#cbd5e1', fontWeight: 500 }}>{f.label}</span>
             </div>

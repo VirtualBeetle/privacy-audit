@@ -15,28 +15,33 @@ body {
 /* ── Design tokens — Light mode (default) ───────────────────────── */
 :root {
   /* Backgrounds */
-  --bg:           #eef0f6;
+  --bg:           #f4f4fa;
   --surface:      #ffffff;
-  --surface-2:    #f7f8fc;
-  --surface-3:    #f0f2f8;
-  --sidebar-bg:   #0f1729;
+  --surface-2:    #f0f0f8;
+  --surface-3:    #e8e8f4;
+  --sidebar-bg:   #ffffff;
 
   /* Borders */
-  --border:       #e2e6f0;
-  --border-soft:  #edf0f7;
+  --border:       #e4e4f0;
+  --border-soft:  #ededf8;
 
   /* Text */
-  --text:         #111827;
-  --text-2:       #4b5563;
-  --text-3:       #9ca3af;
-  --text-inv:     #f1f5f9;
-  --text-inv-2:   #94a3b8;
+  --text:         #0f0f18;
+  --text-2:       #4a4a62;
+  --text-3:       #8888a0;
+  --text-inv:     #f0f0f8;
+  --text-inv-2:   #9090a8;
 
-  /* Accent (indigo-violet) */
-  --accent:       #5b5ef6;
-  --accent-2:     #7c3aed;
-  --accent-dim:   rgba(91, 94, 246, 0.1);
-  --accent-glow:  rgba(91, 94, 246, 0.28);
+  /* Brand (DataGuard orange) */
+  --brand:        #f97316;
+  --brand-dim:    rgba(249, 115, 22, 0.1);
+  --brand-glow:   rgba(249, 115, 22, 0.25);
+
+  /* Accent (violet-purple — new scheme) */
+  --accent:       #7c3aed;
+  --accent-2:     #6d28d9;
+  --accent-dim:   rgba(124, 58, 237, 0.08);
+  --accent-glow:  rgba(124, 58, 237, 0.22);
 
   /* Status */
   --green:        #059669;
@@ -51,54 +56,60 @@ body {
   /* Shadows */
   --shadow-sm:    0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
   --shadow-md:    0 4px 16px rgba(0,0,0,0.08);
-  --shadow-lg:    0 16px 48px rgba(0,0,0,0.14);
-  --shadow-xl:    0 24px 64px rgba(0,0,0,0.18);
+  --shadow-lg:    0 16px 48px rgba(0,0,0,0.12);
+  --shadow-xl:    0 24px 64px rgba(0,0,0,0.16);
 
   /* Skeleton shimmer */
-  --shimmer-from: #e8eaf0;
-  --shimmer-via:  #f4f5f9;
-  --shimmer-to:   #e8eaf0;
+  --shimmer-from: #e8e8f0;
+  --shimmer-via:  #f4f4fb;
+  --shimmer-to:   #e8e8f0;
 }
 
 /* ── Dark mode tokens ───────────────────────────────────────────── */
 .dark {
-  --bg:           #0d1117;
-  --surface:      #161b22;
-  --surface-2:    #1c2128;
-  --surface-3:    #22272e;
-  --sidebar-bg:   #090d14;
+  --bg:           #0d0d12;
+  --surface:      #16161d;
+  --surface-2:    #1e1e28;
+  --surface-3:    #252532;
+  --sidebar-bg:   #111118;
 
-  --border:       rgba(255,255,255,0.08);
-  --border-soft:  rgba(255,255,255,0.05);
+  --border:       rgba(255,255,255,0.07);
+  --border-soft:  rgba(255,255,255,0.04);
 
-  --text:         #e6edf3;
-  --text-2:       #8b949e;
-  --text-3:       #484f58;
-  --text-inv:     #0d1117;
-  --text-inv-2:   #161b22;
+  --text:         #e8e8f2;
+  --text-2:       #9090a8;
+  --text-3:       #565668;
+  --text-inv:     #0d0d12;
+  --text-inv-2:   #16161d;
 
-  --accent:       #818cf8;
+  /* Brand (same in both themes) */
+  --brand:        #f97316;
+  --brand-dim:    rgba(249, 115, 22, 0.12);
+  --brand-glow:   rgba(249, 115, 22, 0.3);
+
+  /* Accent (violet-purple — new scheme) */
+  --accent:       #8b5cf6;
   --accent-2:     #a78bfa;
-  --accent-dim:   rgba(129, 140, 248, 0.12);
-  --accent-glow:  rgba(129, 140, 248, 0.25);
+  --accent-dim:   rgba(139, 92, 246, 0.12);
+  --accent-glow:  rgba(139, 92, 246, 0.28);
 
-  --green:        #3fb950;
-  --green-dim:    rgba(63, 185, 80, 0.1);
-  --red:          #f85149;
-  --red-dim:      rgba(248, 81, 73, 0.1);
-  --amber:        #d29922;
-  --amber-dim:    rgba(210, 153, 34, 0.1);
-  --blue:         #58a6ff;
-  --blue-dim:     rgba(88, 166, 255, 0.1);
+  --green:        #10b981;
+  --green-dim:    rgba(16, 185, 129, 0.1);
+  --red:          #ef4444;
+  --red-dim:      rgba(239, 68, 68, 0.1);
+  --amber:        #f59e0b;
+  --amber-dim:    rgba(245, 158, 11, 0.1);
+  --blue:         #3b82f6;
+  --blue-dim:     rgba(59, 130, 246, 0.1);
 
   --shadow-sm:    0 1px 3px rgba(0,0,0,0.3), 0 1px 2px rgba(0,0,0,0.2);
   --shadow-md:    0 4px 16px rgba(0,0,0,0.4);
   --shadow-lg:    0 16px 48px rgba(0,0,0,0.6);
   --shadow-xl:    0 24px 64px rgba(0,0,0,0.7);
 
-  --shimmer-from: #1c2128;
-  --shimmer-via:  #22272e;
-  --shimmer-to:   #1c2128;
+  --shimmer-from: #1e1e28;
+  --shimmer-via:  #252532;
+  --shimmer-to:   #1e1e28;
 }
 
 /* ── Typography ─────────────────────────────────────────────────── */
@@ -218,13 +229,13 @@ input, select, textarea { font-family: 'DM Sans', sans-serif; }
 
 /* ── Gradient text ──────────────────────────────────────────────── */
 .grad-text {
-  background: linear-gradient(135deg, #5b5ef6, #7c3aed);
+  background: linear-gradient(135deg, #7c3aed, #6d28d9);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
 }
 .dark .grad-text {
-  background: linear-gradient(135deg, #818cf8, #a78bfa);
+  background: linear-gradient(135deg, var(--accent), #a78bfa);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;

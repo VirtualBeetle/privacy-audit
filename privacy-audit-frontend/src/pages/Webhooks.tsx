@@ -11,7 +11,7 @@ interface Webhook {
 }
 
 const TRIGGER_META: Record<string, { label: string; color: string; bg: string }> = {
-  ALL_RISK:      { label: 'All risk alerts', color: '#818cf8', bg: 'rgba(129,140,248,0.12)' },
+  ALL_RISK:      { label: 'All risk alerts', color: 'var(--accent)', bg: 'rgba(129,140,248,0.12)' },
   HIGH_RISK:     { label: 'HIGH + CRITICAL', color: '#f59e0b', bg: 'rgba(245,158,11,0.12)' },
   CRITICAL_RISK: { label: 'CRITICAL only',   color: '#ef4444', bg: 'rgba(239,68,68,0.12)' },
 };

@@ -228,12 +228,12 @@ export default function NotificationsDrawer({ unreadCount, onCountChange }: Prop
                       display: 'flex', alignItems: 'flex-start', gap: 12,
                       padding: '12px 16px',
                       borderBottom: '1px solid var(--border)',
-                      background: n.read ? 'transparent' : 'rgba(99,102,241,0.04)',
+                      background: n.read ? 'transparent' : 'var(--accent-dim)',
                       cursor: n.read ? 'default' : 'pointer',
                       transition: 'background 0.12s',
                     }}
-                    onMouseEnter={e => { if (!n.read) (e.currentTarget as HTMLDivElement).style.background = 'rgba(99,102,241,0.08)'; }}
-                    onMouseLeave={e => { if (!n.read) (e.currentTarget as HTMLDivElement).style.background = 'rgba(99,102,241,0.04)'; }}
+                    onMouseEnter={e => { if (!n.read) (e.currentTarget as HTMLDivElement).style.background = 'var(--accent-dim)'; }}
+                    onMouseLeave={e => { if (!n.read) (e.currentTarget as HTMLDivElement).style.background = 'var(--accent-dim)'; }}
                   >
                     {/* Severity dot */}
                     <div style={{
@@ -261,7 +261,7 @@ export default function NotificationsDrawer({ unreadCount, onCountChange }: Prop
                           {TYPE_LABEL[n.type] ?? n.type}
                         </span>
                         {!n.read && (
-                          <span style={{ width: 5, height: 5, borderRadius: '50%', background: '#6366f1', marginLeft: 'auto', flexShrink: 0 }} />
+                          <span style={{ width: 5, height: 5, borderRadius: '50%', background: 'var(--accent)', marginLeft: 'auto', flexShrink: 0 }} />
                         )}
                       </div>
                       <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text)', marginBottom: 3, lineHeight: 1.4 }}>

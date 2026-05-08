@@ -26,8 +26,8 @@ function useCountUp(target: number, duration = 900) {
 }
 
 const ICON_GRADIENTS = [
-  'linear-gradient(135deg, #3b82f6, #6366f1)',
-  'linear-gradient(135deg, #8b5cf6, #a855f7)',
+  'linear-gradient(135deg, var(--blue), var(--accent))',
+  'linear-gradient(135deg, var(--accent-2), #a855f7)',
   'linear-gradient(135deg, #06b6d4, #0ea5e9)',
   'linear-gradient(135deg, #f59e0b, #f97316)',
 ];

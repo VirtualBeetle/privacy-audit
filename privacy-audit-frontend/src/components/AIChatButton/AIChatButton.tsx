@@ -103,20 +103,20 @@ export default function AIChatButton() {
           style={{
             width: 360, borderRadius: 20,
             overflow: 'hidden',
-            boxShadow: '0 32px 80px rgba(0,0,0,0.35), 0 0 0 1px rgba(99,102,241,0.15)',
+            boxShadow: '0 32px 80px rgba(0,0,0,0.35), 0 0 0 1px var(--accent-glow)',
             background: 'var(--surface)',
             transformOrigin: 'bottom right',
           }}
         >
           {/* Header — always dark for brand consistency */}
           <div style={{
-            background: 'linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%)',
+            background: 'linear-gradient(135deg, #0d0d12 0%, #1a1025 100%)',
             padding: '14px 16px',
             display: 'flex', alignItems: 'center', gap: 12,
           }}>
             <div style={{
               width: 38, height: 38, borderRadius: 11, flexShrink: 0,
-              background: 'linear-gradient(135deg, #38bdf8 0%, #818cf8 100%)',
+              background: 'linear-gradient(135deg, var(--brand) 0%, var(--accent) 100%)',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               boxShadow: '0 4px 14px rgba(56,189,248,0.45)',
             }}>
@@ -144,7 +144,7 @@ export default function AIChatButton() {
 
             <span style={{
               padding: '2px 9px', borderRadius: 6,
-              background: 'rgba(99,102,241,0.3)', color: '#a5b4fc',
+              background: 'var(--accent-dim)', color: 'var(--accent)',
               fontSize: 10, fontWeight: 800, letterSpacing: '0.5px',
             }}>
               AI
@@ -185,7 +185,7 @@ export default function AIChatButton() {
                 {msg.role === 'ai' && (
                   <div style={{
                     width: 26, height: 26, borderRadius: 8, flexShrink: 0, marginTop: 2,
-                    background: 'linear-gradient(135deg, #38bdf8, #818cf8)',
+                    background: 'linear-gradient(135deg, var(--brand), var(--accent))',
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
                     boxShadow: '0 2px 8px rgba(56,189,248,0.3)',
                   }}>
@@ -200,11 +200,11 @@ export default function AIChatButton() {
                     ? '18px 18px 4px 18px'
                     : '18px 18px 18px 4px',
                   background: msg.role === 'user'
-                    ? 'linear-gradient(135deg, #6366f1, #8b5cf6)'
+                    ? 'linear-gradient(135deg, var(--accent), var(--accent-2))'
                     : 'var(--surface)',
                   border: msg.role === 'ai' ? '1px solid var(--border)' : 'none',
                   boxShadow: msg.role === 'user'
-                    ? '0 4px 12px rgba(99,102,241,0.35)'
+                    ? '0 4px 12px var(--accent-glow)'
                     : '0 1px 4px rgba(0,0,0,0.06)',
                 }}>
                   <p style={{
@@ -224,7 +224,7 @@ export default function AIChatButton() {
               <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
                 <div style={{
                   width: 26, height: 26, borderRadius: 8, flexShrink: 0,
-                  background: 'linear-gradient(135deg, #38bdf8, #818cf8)',
+                  background: 'linear-gradient(135deg, var(--brand), var(--accent))',
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
                 }}>
                   <SparkleIcon style={{ width: 13, height: 13, color: '#fff' }} />
@@ -287,13 +287,13 @@ export default function AIChatButton() {
                 style={{
                   width: 38, height: 38, borderRadius: 12, border: 'none', flexShrink: 0,
                   background: canSend
-                    ? 'linear-gradient(135deg, #6366f1, #8b5cf6)'
+                    ? 'linear-gradient(135deg, var(--accent), var(--accent-2))'
                     : 'var(--surface-2)',
                   color: canSend ? '#fff' : 'var(--text-3)',
                   cursor: canSend ? 'pointer' : 'not-allowed',
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
                   transition: 'all 0.2s cubic-bezier(0.22,1,0.36,1)',
-                  boxShadow: canSend ? '0 4px 12px rgba(99,102,241,0.4)' : 'none',
+                  boxShadow: canSend ? '0 4px 12px var(--accent-dim)' : 'none',
                 }}
                 onMouseEnter={e => { if (canSend) e.currentTarget.style.transform = 'scale(1.08)'; }}
                 onMouseLeave={e => { e.currentTarget.style.transform = 'scale(1)'; }}
@@ -318,7 +318,7 @@ export default function AIChatButton() {
         {!open && (
           <div style={{
             position: 'absolute', inset: 0, borderRadius: '50%',
-            background: '#6366f1',
+            background: 'var(--accent)',
             animation: 'pulseRing 2.2s ease-out infinite',
           }} />
         )}
@@ -330,11 +330,11 @@ export default function AIChatButton() {
             cursor: 'pointer', position: 'relative', zIndex: 1,
             background: open
               ? 'linear-gradient(135deg, #ef4444, #f97316)'
-              : 'linear-gradient(135deg, #6366f1, #8b5cf6)',
+              : 'linear-gradient(135deg, var(--accent), var(--accent-2))',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             boxShadow: open
               ? '0 8px 24px rgba(239,68,68,0.4)'
-              : '0 8px 28px rgba(99,102,241,0.5)',
+              : '0 8px 28px var(--accent-glow)',
             transition: 'all 0.3s cubic-bezier(0.22,1,0.36,1)',
           }}
           onMouseEnter={e => (e.currentTarget.style.transform = 'scale(1.1)')}

@@ -36,7 +36,7 @@ const TENANT_META: Record<string, TenantMeta> = {
 const fallbackMeta = (tenantId: string): TenantMeta => ({
   label: `App ${tenantId.slice(0, 6)}`,
   icon: <AppsIcon sx={{ fontSize: 16 }} />,
-  color: '#6366f1',
+  color: 'var(--accent)',
   bg: '#eef2ff',
 });
 
@@ -70,7 +70,7 @@ export default function TenantTabs({
       ...(TENANT_META['all'] ?? {
         label: 'All Apps',
         icon: <AppsIcon sx={{ fontSize: 16 }} />,
-        color: '#6366f1',
+        color: 'var(--accent)',
         bg: '#eef2ff',
       }),
       count: eventCounts['all'] ?? 0,
@@ -87,7 +87,7 @@ export default function TenantTabs({
     id: 'all',
     label: 'All Apps',
     icon: <AppsIcon sx={{ fontSize: 16 }} />,
-    color: '#6366f1',
+    color: 'var(--accent)',
     bg: '#eef2ff',
     count: eventCounts['all'] ?? 0,
   };
@@ -171,8 +171,8 @@ export default function TenantTabs({
           fontWeight: 700,
           fontSize: '0.78rem',
           borderRadius: '10px',
-          borderColor: '#6366f1',
-          color: '#6366f1',
+          borderColor: 'var(--accent)',
+          color: 'var(--accent)',
           px: 2,
           py: 0.75,
           '&:hover': {

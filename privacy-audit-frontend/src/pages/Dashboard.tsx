@@ -239,7 +239,7 @@ function BarChart({ data }: { data: { field: string; count: number }[] }) {
               {d.field.replace(/_/g, ' ')}
             </div>
             <div style={{ flex: 1, height: 8, background: 'var(--surface-2)', borderRadius: 4, overflow: 'hidden' }}>
-              <div style={{ height: '100%', background: 'linear-gradient(90deg, #5b5ef6, #7c3aed)', width: animated ? `${(d.count / max) * 100}%` : '0%', transition: `width 0.9s ${i * 60}ms cubic-bezier(0.4,0,0.2,1)`, borderRadius: 4 }} />
+              <div style={{ height: '100%', background: 'linear-gradient(90deg, var(--accent), #7c3aed)', width: animated ? `${(d.count / max) * 100}%` : '0%', transition: `width 0.9s ${i * 60}ms cubic-bezier(0.4,0,0.2,1)`, borderRadius: 4 }} />
             </div>
             <div style={{ width: 26, fontSize: 12, fontWeight: 700, color: 'var(--accent)', fontFamily: "'JetBrains Mono', monospace", textAlign: 'right', flexShrink: 0 }}>{d.count}</div>
           </div>
@@ -314,7 +314,7 @@ function ChainCard({ onVerify, result, verifying, events }: { onVerify: () => vo
         <div style={{ overflowX: 'auto', paddingBottom: 4, marginBottom: result ? 12 : 0 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 0, minWidth: 'max-content', padding: '8px 0' }}>
             {/* Genesis block */}
-            <div style={{ width: 90, minHeight: 72, borderRadius: 8, border: '2px solid #5b5ef6', background: 'linear-gradient(135deg, #5b5ef6, #7c3aed)', padding: '8px 10px', display: 'flex', flexDirection: 'column', gap: 4, flexShrink: 0 }}>
+            <div style={{ width: 90, minHeight: 72, borderRadius: 8, border: '2px solid var(--accent)', background: 'linear-gradient(135deg, var(--accent), #7c3aed)', padding: '8px 10px', display: 'flex', flexDirection: 'column', gap: 4, flexShrink: 0 }}>
               <span style={{ color: '#fff', fontWeight: 800, fontSize: 9, letterSpacing: 1 }}>GENESIS</span>
               <span style={{ color: '#e0e7ff', fontFamily: 'monospace', fontSize: 9, wordBreak: 'break-all' }}>000000...</span>
             </div>
@@ -378,7 +378,7 @@ function ChainCard({ onVerify, result, verifying, events }: { onVerify: () => vo
 function ConnectedApps({ events }: { events: AuditEvent[] }) {
   const apps = [
     { name: 'HealthTrack', tenantId: HEALTH_TENANT_ID, icon: HealthIcon, color: '#059669', dimColor: 'rgba(5,150,105,0.1)' },
-    { name: 'ConnectSocial', tenantId: SOCIAL_TENANT_ID, icon: SocialIcon, color: '#5b5ef6', dimColor: 'rgba(91,94,246,0.1)' },
+    { name: 'ConnectSocial', tenantId: SOCIAL_TENANT_ID, icon: SocialIcon, color: 'var(--accent)', dimColor: 'rgba(91,94,246,0.1)' },
   ];
   return (
     <div style={{ display: 'flex', gap: 10 }}>
@@ -402,6 +402,204 @@ function ConnectedApps({ events }: { events: AuditEvent[] }) {
           </div>
         );
       })}
+    </div>
+  );
+}
+
+/* ── Greeting banner ─────────────────────────────────────────────── */
+function GreetingBanner({ name, chainValid }: { name: string; chainValid: boolean | null }) {
+  const hour = new Date().getHours();
+  const greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
+  return (
+    <div className="anim-fade-up d0" style={{
+      display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12,
+      padding: '14px 20px', marginBottom: 14, borderRadius: 14,
+      background: 'linear-gradient(135deg, var(--accent-dim), var(--brand-dim))',
+      border: '1px solid var(--border-soft)',
+    }}>
+      <div>
+        <div style={{ fontSize: 15, fontWeight: 800, color: 'var(--text)', fontFamily: "'Space Grotesk', sans-serif", letterSpacing: '-0.02em' }}>
+          {greeting}, {name}
+        </div>
+        <div style={{ fontSize: 12, color: 'var(--text-2)', marginTop: 2 }}>
+          Your data is being watched closely — and now so are the watchers.
+        </div>
+      </div>
+      {chainValid !== null && (
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: 7, padding: '7px 14px',
+          borderRadius: 10, fontSize: 12, fontWeight: 700, flexShrink: 0,
+          background: chainValid ? 'var(--green-dim)' : 'var(--red-dim)',
+          color: chainValid ? 'var(--green)' : 'var(--red)',
+          border: `1px solid ${chainValid ? 'rgba(5,150,105,0.2)' : 'rgba(220,38,38,0.2)'}`,
+        }}>
+          {chainValid ? '🔗' : '⚠️'} Audit chain {chainValid ? 'verified' : 'broken'}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ── Mini activity feed ──────────────────────────────────────────── */
+const SMAP: Record<string, string> = { CRITICAL: '#ef4444', HIGH: '#f97316', MEDIUM: '#eab308', LOW: '#22c55e' };
+
+function MiniActivityFeed({ events, onViewAll }: { events: AuditEvent[]; onViewAll: () => void }) {
+  const [filter, setFilter] = useState<'all' | 'critical' | 'today'>('all');
+  const [expanded, setExpanded] = useState<string | null>(null);
+  const navigate = useNavigate();
+
+  const todayStart = new Date(); todayStart.setHours(0, 0, 0, 0);
+  const shown = events.filter(e => {
+    if (filter === 'critical') return e.sensitivityCode === 'CRITICAL';
+    if (filter === 'today') return new Date(e.timestamp) >= todayStart;
+    return true;
+  }).slice(0, 10);
+
+  return (
+    <div className="dg-card" style={{ flex: '0 0 59%', minWidth: 0, display: 'flex', flexDirection: 'column', maxHeight: 420 }}>
+      <div style={{ padding: '14px 16px', borderBottom: '1px solid var(--border-soft)', display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+        <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)', fontFamily: "'Space Grotesk', sans-serif", flex: 1 }}>Activity Feed</div>
+        <div style={{ display: 'flex', gap: 4 }}>
+          {(['all', 'critical', 'today'] as const).map(f => (
+            <button key={f} onClick={() => setFilter(f)} style={{
+              padding: '3px 10px', borderRadius: 20, border: 'none', cursor: 'pointer',
+              fontSize: 11, fontWeight: 700, fontFamily: "'DM Sans', sans-serif",
+              background: filter === f ? 'var(--accent)' : 'var(--surface-2)',
+              color: filter === f ? '#fff' : 'var(--text-3)', transition: 'all 0.15s',
+            }}>
+              {f === 'all' ? 'All' : f === 'critical' ? 'Critical' : 'Today'}
+            </button>
+          ))}
+        </div>
+        <button onClick={onViewAll} style={{ fontSize: 11, fontWeight: 700, color: 'var(--accent)', background: 'none', border: 'none', cursor: 'pointer', whiteSpace: 'nowrap' }}>
+          View all →
+        </button>
+      </div>
+      <div style={{ overflowY: 'auto', flex: 1 }}>
+        {shown.length === 0 ? (
+          <div style={{ padding: '32px 16px', textAlign: 'center', color: 'var(--text-3)', fontSize: 13 }}>
+            No events {filter !== 'all' ? `matching "${filter}"` : ''} yet.
+          </div>
+        ) : shown.map(e => {
+          const isExp = expanded === e.id;
+          const col = SMAP[e.sensitivityCode] ?? '#94a3b8';
+          return (
+            <div key={e.id} style={{ borderBottom: '1px solid var(--border-soft)', cursor: 'pointer' }}
+              onClick={() => setExpanded(isExp ? null : e.id)}
+              onMouseEnter={ev => { (ev.currentTarget as HTMLDivElement).style.background = 'var(--surface-2)'; }}
+              onMouseLeave={ev => { (ev.currentTarget as HTMLDivElement).style.background = 'transparent'; }}
+            >
+              <div style={{ padding: '9px 16px', display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span style={{ width: 6, height: 6, borderRadius: '50%', background: col, flexShrink: 0 }} />
+                <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 10, fontWeight: 700, color: col, flexShrink: 0, minWidth: 58 }}>{e.sensitivityCode}</span>
+                <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text)', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {e.action} · {e.actorId}
+                </span>
+                <span style={{ fontSize: 11, color: 'var(--text-3)', flexShrink: 0 }}>{timeAgo(e.timestamp)}</span>
+                <span style={{ color: 'var(--text-3)', fontSize: 9, transition: 'transform 0.15s', transform: isExp ? 'rotate(180deg)' : 'none', flexShrink: 0 }}>▾</span>
+              </div>
+              {isExp && (
+                <div style={{ padding: '0 16px 12px 30px' }}>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginBottom: 8 }}>
+                    {e.dataFields.map(f => (
+                      <span key={f} style={{ padding: '2px 7px', borderRadius: 5, background: 'var(--surface-3)', color: 'var(--text-2)', fontSize: 10, fontFamily: "'JetBrains Mono', monospace" }}>{f}</span>
+                    ))}
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 4, fontSize: 11, marginBottom: 8 }}>
+                    <span style={{ color: 'var(--text-3)' }}>Consent: <strong style={{ color: e.consentObtained ? 'var(--green)' : 'var(--red)' }}>{e.consentObtained ? '✓ Yes' : '✗ No'}</strong></span>
+                    <span style={{ color: 'var(--text-3)' }}>3rd party: <strong style={{ color: e.thirdPartyInvolved ? 'var(--amber)' : 'var(--text)' }}>{e.thirdPartyInvolved ? '⚠ Yes' : 'No'}</strong></span>
+                    <span style={{ color: 'var(--text-3)' }}>App: <strong style={{ color: 'var(--text)' }}>{e.appName ?? '—'}</strong></span>
+                    <span style={{ color: 'var(--text-3)' }}>Reason: <strong style={{ color: 'var(--text)' }}>{e.reason ?? '—'}</strong></span>
+                  </div>
+                  {e.hash && (
+                    <div style={{ fontSize: 10, color: 'var(--text-3)', fontFamily: "'JetBrains Mono', monospace", overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginBottom: 8 }}>
+                      SHA-256: {e.hash}
+                    </div>
+                  )}
+                  <div style={{ display: 'flex', gap: 6 }}>
+                    <button onClick={ev => { ev.stopPropagation(); navigate('/events'); }} style={{ padding: '4px 10px', fontSize: 11, borderRadius: 7, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text-2)', cursor: 'pointer', fontFamily: "'DM Sans', sans-serif", fontWeight: 600 }}>
+                      Open detail
+                    </button>
+                    <button onClick={ev => { ev.stopPropagation(); window.dispatchEvent(new CustomEvent('dg-open-chat', { detail: { message: `Explain this event: ${e.action} on ${e.dataFields.join(', ')} by ${e.actorId}` } })); }} style={{ padding: '4px 10px', fontSize: 11, borderRadius: 7, border: '1px solid var(--accent)', background: 'var(--accent-dim)', color: 'var(--accent)', cursor: 'pointer', fontFamily: "'DM Sans', sans-serif", fontWeight: 600 }}>
+                      Ask AI
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+/* ── Mini risk + chain panel ─────────────────────────────────────── */
+function MiniRiskPanel({ findings, chainResult, onViewAlerts }: {
+  findings: AnalysisFinding[];
+  chainResult: ChainIntegrityResult | null;
+  onViewAlerts: () => void;
+}) {
+  const COLORS: Record<string, string> = { CRITICAL: '#ef4444', HIGH: '#f97316', MEDIUM: '#eab308', LOW: '#22c55e' };
+  const sorted = [...findings].sort((a, b) => {
+    const ord: Record<string, number> = { CRITICAL: 0, HIGH: 1, MEDIUM: 2, LOW: 3 };
+    return (ord[a.severity] ?? 4) - (ord[b.severity] ?? 4);
+  }).slice(0, 7);
+
+  return (
+    <div style={{ flex: '0 0 39%', minWidth: 0, display: 'flex', flexDirection: 'column', gap: 14 }}>
+      {/* Risk alerts */}
+      <div className="dg-card" style={{ flex: 1, display: 'flex', flexDirection: 'column', maxHeight: 280 }}>
+        <div style={{ padding: '14px 16px', borderBottom: '1px solid var(--border-soft)', display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+          <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)', fontFamily: "'Space Grotesk', sans-serif", flex: 1 }}>Risk Alerts</div>
+          {findings.length > 0 && (
+            <span style={{ padding: '2px 8px', borderRadius: 20, background: 'var(--red-dim)', color: 'var(--red)', fontSize: 11, fontWeight: 700 }}>
+              {findings.length} open
+            </span>
+          )}
+          <button onClick={onViewAlerts} style={{ fontSize: 11, fontWeight: 700, color: 'var(--accent)', background: 'none', border: 'none', cursor: 'pointer' }}>View all →</button>
+        </div>
+        <div style={{ overflowY: 'auto', flex: 1, padding: '10px 12px', display: 'flex', flexDirection: 'column', gap: 7 }}>
+          {sorted.length === 0 ? (
+            <div style={{ padding: '20px', textAlign: 'center', color: 'var(--green)', fontSize: 12, fontWeight: 600 }}>✓ No open risk alerts</div>
+          ) : sorted.map((alert, i) => (
+            <div key={i} style={{
+              padding: '9px 12px', borderRadius: 9,
+              background: 'var(--surface-2)',
+              borderLeft: `3px solid ${COLORS[alert.severity] ?? 'var(--border)'}`,
+            }}>
+              <div style={{ fontSize: 10, fontWeight: 800, fontFamily: "'JetBrains Mono', monospace", color: COLORS[alert.severity] ?? 'var(--text-3)', marginBottom: 3 }}>{alert.severity}</div>
+              <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text)', lineHeight: 1.35 }}>{alert.title}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+      {/* Chain mini viz */}
+      {chainResult && (
+        <div className="dg-card" style={{ padding: '14px 16px', flexShrink: 0 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+            <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text)', fontFamily: "'Space Grotesk', sans-serif", flex: 1 }}>Audit Chain</div>
+            <span style={{ fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 20, background: chainResult.valid ? 'var(--green-dim)' : 'var(--red-dim)', color: chainResult.valid ? 'var(--green)' : 'var(--red)' }}>
+              {chainResult.valid ? '✓ Valid' : '✗ Broken'}
+            </span>
+          </div>
+          <div style={{ display: 'flex', gap: 3, flexWrap: 'wrap', marginBottom: 8 }}>
+            {Array.from({ length: Math.min(chainResult.eventCount, 16) }).map((_, i) => (
+              <div key={i} style={{
+                width: 16, height: 16, borderRadius: 3,
+                background: chainResult.valid ? 'var(--green-dim)' : i === Math.min(chainResult.eventCount, 16) - 1 ? 'var(--red-dim)' : 'var(--green-dim)',
+                border: `1px solid ${chainResult.valid ? 'rgba(5,150,105,0.25)' : i === Math.min(chainResult.eventCount, 16) - 1 ? 'rgba(220,38,38,0.25)' : 'rgba(5,150,105,0.25)'}`,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontSize: 7, color: chainResult.valid ? 'var(--green)' : i === Math.min(chainResult.eventCount, 16) - 1 ? 'var(--red)' : 'var(--green)',
+              }}>✓</div>
+            ))}
+            {chainResult.eventCount > 16 && (
+              <div style={{ width: 16, height: 16, borderRadius: 3, background: 'var(--surface-3)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 7, color: 'var(--text-3)', fontWeight: 700 }}>…</div>
+            )}
+          </div>
+          <div style={{ fontSize: 10, color: 'var(--text-3)' }}>{chainResult.eventCount} events · GDPR Art.30</div>
+        </div>
+      )}
     </div>
   );
 }
@@ -713,7 +911,7 @@ export default function Dashboard({ initialSection }: Props) {
           </div>
           <button
             onClick={() => setConnectModalOpen(true)}
-            style={{ padding: '11px 24px', background: 'linear-gradient(135deg, #5b5ef6, #7c3aed)', color: '#fff', border: 'none', borderRadius: 12, cursor: 'pointer', fontSize: 14, fontWeight: 700, fontFamily: "'DM Sans', sans-serif", boxShadow: '0 4px 16px rgba(91,94,246,0.35)' }}
+            style={{ padding: '11px 24px', background: 'linear-gradient(135deg, var(--accent), #7c3aed)', color: '#fff', border: 'none', borderRadius: 12, cursor: 'pointer', fontSize: 14, fontWeight: 700, fontFamily: "'DM Sans', sans-serif", boxShadow: '0 4px 16px rgba(91,94,246,0.35)' }}
           >
             + Connect application
           </button>
@@ -721,6 +919,12 @@ export default function Dashboard({ initialSection }: Props) {
       )}
 
       {!isGoogleNoApps && <>
+
+        {/* Greeting banner */}
+        <GreetingBanner
+          name={user?.name?.split(' ')[0] ?? user?.email?.split('@')[0] ?? 'there'}
+          chainValid={chainResult?.valid ?? null}
+        />
 
         {/* Connected Apps — only for Google/tenant sessions, not admin */}
         {!isAdmin && (
@@ -806,6 +1010,16 @@ export default function Dashboard({ initialSection }: Props) {
           <StatCard label="% consented to processing"   value={`${consentRate}%`} icon={VerifyIcon} accent="green" delay={3} />
         </div>
 
+        {/* Two-column: activity feed + risk/chain panel */}
+        <div style={{ display: 'flex', gap: 14, marginBottom: 14 }}>
+          <MiniActivityFeed events={filtered} onViewAll={() => navigate('/events')} />
+          <MiniRiskPanel
+            findings={analysisHistory[0]?.findings ?? []}
+            chainResult={chainResult}
+            onViewAlerts={() => navigate('/risk')}
+          />
+        </div>
+
         {/* Charts */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.4fr', gap: 14, marginBottom: 14 }}>
           <DonutChart data={sensitivityData} />
@@ -825,7 +1039,7 @@ export default function Dashboard({ initialSection }: Props) {
               {violations.map((v, i) => (
                 <div key={v.id ?? i} style={{ background: 'var(--surface)', border: '1px solid rgba(220,38,38,0.2)', borderRadius: 12, padding: '14px 16px' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-                    <span style={{ padding: '2px 8px', borderRadius: 20, fontSize: 11, fontWeight: 600, background: v.tenantName?.includes('Health') ? 'rgba(5,150,105,0.1)' : 'rgba(91,94,246,0.1)', color: v.tenantName?.includes('Health') ? '#059669' : '#5b5ef6' }}>
+                    <span style={{ padding: '2px 8px', borderRadius: 20, fontSize: 11, fontWeight: 600, background: v.tenantName?.includes('Health') ? 'rgba(5,150,105,0.1)' : 'rgba(91,94,246,0.1)', color: v.tenantName?.includes('Health') ? '#059669' : 'var(--accent)' }}>
                       {v.tenantName ?? 'Unknown App'}
                     </span>
                     <span style={{ fontSize: 11, color: 'var(--text-3)', fontFamily: "'JetBrains Mono', monospace" }}>

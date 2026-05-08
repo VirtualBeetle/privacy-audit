@@ -170,7 +170,7 @@ function GoogleUserView() {
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                   <div style={{
                     width: 36, height: 36, borderRadius: 10,
-                    background: 'linear-gradient(135deg, #5b5ef6, #7c3aed)',
+                    background: 'linear-gradient(135deg, var(--accent), #7c3aed)',
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
                     fontSize: 14, fontWeight: 800, color: '#fff',
                     fontFamily: "'Space Grotesk', sans-serif",
@@ -384,12 +384,12 @@ function AdminView() {
         }}>
           {/* Table header */}
           <div style={{
-            display: 'grid', gridTemplateColumns: '1fr 180px 90px 90px 110px',
+            display: 'grid', gridTemplateColumns: '1fr 180px 90px 90px 100px 100px',
             padding: '10px 16px',
             borderBottom: '1px solid var(--border)',
             background: 'var(--surface-2)',
           }}>
-            {['Tenant', 'Email', 'Status', 'Events', 'Registered'].map((h) => (
+            {['Tenant', 'Email', 'Status', 'Events', 'Registered', ''].map((h) => (
               <div key={h} style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-3)', letterSpacing: '0.5px', textTransform: 'uppercase' }}>
                 {h}
               </div>
@@ -399,7 +399,7 @@ function AdminView() {
             <div
               key={t.id}
               style={{
-                display: 'grid', gridTemplateColumns: '1fr 180px 90px 90px 110px',
+                display: 'grid', gridTemplateColumns: '1fr 180px 90px 90px 100px 100px',
                 padding: '12px 16px', alignItems: 'center',
                 borderBottom: i < tenants.length - 1 ? '1px solid var(--border)' : 'none',
                 transition: 'background 0.1s',
@@ -425,6 +425,14 @@ function AdminView() {
               </div>
               <div style={{ fontSize: 11, color: 'var(--text-3)' }}>
                 {new Date(t.createdAt).toLocaleDateString()}
+              </div>
+              <div>
+                <a href={`/tenants/${t.id}`} style={{ fontSize: 11, fontWeight: 700, color: 'var(--accent)', textDecoration: 'none' }}
+                  onMouseEnter={e => { (e.currentTarget as HTMLAnchorElement).style.textDecoration = 'underline'; }}
+                  onMouseLeave={e => { (e.currentTarget as HTMLAnchorElement).style.textDecoration = 'none'; }}
+                >
+                  View Details →
+                </a>
               </div>
             </div>
           ))}

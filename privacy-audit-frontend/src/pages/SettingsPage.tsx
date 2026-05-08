@@ -134,7 +134,7 @@ function ProfileSection() {
         ) : (
           <div style={{
             width: 52, height: 52, borderRadius: 14, flexShrink: 0,
-            background: 'linear-gradient(135deg, #5b5ef6, #7c3aed)',
+            background: 'linear-gradient(135deg, var(--accent), #7c3aed)',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             fontSize: 16, fontWeight: 800, color: '#fff',
             fontFamily: "'Space Grotesk', sans-serif",
@@ -151,8 +151,8 @@ function ProfileSection() {
           </div>
           <span style={{
             display: 'inline-block', marginTop: 5, padding: '2px 9px', borderRadius: 5,
-            background: superAdmin ? 'rgba(99,102,241,0.12)' : tenantAdmin ? 'rgba(245,158,11,0.12)' : googleUser ? 'rgba(16,185,129,0.1)' : 'rgba(156,163,175,0.1)',
-            color: superAdmin ? '#818cf8' : tenantAdmin ? '#f59e0b' : googleUser ? '#10b981' : '#9ca3af',
+            background: superAdmin ? 'var(--accent-dim)' : tenantAdmin ? 'rgba(245,158,11,0.12)' : googleUser ? 'rgba(16,185,129,0.1)' : 'rgba(156,163,175,0.1)',
+            color: superAdmin ? 'var(--accent)' : tenantAdmin ? '#f59e0b' : googleUser ? '#10b981' : '#9ca3af',
             fontSize: 10, fontWeight: 800, letterSpacing: '0.4px',
           }}>
             {roleLabel.toUpperCase()}
@@ -219,7 +219,7 @@ function NotificationsSection() {
   const ITEMS = [
     { key: 'riskCritical', label: 'Critical risk alerts', sub: 'Immediate alert for CRITICAL severity findings', color: '#ef4444' },
     { key: 'riskHigh', label: 'High risk alerts', sub: 'Notify on HIGH severity findings from AI analysis', color: '#f97316' },
-    { key: 'gdprRequests', label: 'GDPR requests', sub: 'Data export / deletion requests from users', color: '#818cf8' },
+    { key: 'gdprRequests', label: 'GDPR requests', sub: 'Data export / deletion requests from users', color: 'var(--accent)' },
     { key: 'breachReports', label: 'Breach reports', sub: '72h Art.33 countdown notifications', color: '#eab308' },
     { key: 'systemAlerts', label: 'System alerts', sub: 'Queue failures, provider errors', color: '#9ca3af' },
   ] as const;

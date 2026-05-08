@@ -93,7 +93,7 @@ export default function QueuePage() {
           <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
             <div style={{
               width: 44, height: 44, borderRadius: 12, flexShrink: 0,
-              background: 'rgba(99,102,241,0.1)', border: '1px solid rgba(99,102,241,0.2)',
+              background: 'var(--accent-dim)', border: '1px solid var(--accent-dim)',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
             }}>
               <QueueIcon style={{ width: 20, height: 20, color: 'var(--accent)' }} />
@@ -171,7 +171,7 @@ export default function QueuePage() {
               ) : stats ? (
                 <>
                   <StatCard label="Waiting" value={stats.waiting} color="#eab308" sub="Jobs pending processing" />
-                  <StatCard label="Active" value={stats.active} color="#6366f1" sub="Currently processing" />
+                  <StatCard label="Active" value={stats.active} color="var(--accent)" sub="Currently processing" />
                   <StatCard label="Completed" value={stats.completed} color="#10b981" sub="Successfully processed" />
                   <StatCard label="Failed" value={stats.failed} color="#ef4444" sub="Needs investigation" />
                   <StatCard label="Delayed" value={stats.delayed} color="#9ca3af" sub="Scheduled for later" />
@@ -230,8 +230,8 @@ export default function QueuePage() {
               </h4>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                 {[
-                  { step: '1', label: 'Receive event', desc: 'Tenant app POSTs audit event via SDK → validated, queued via BullMQ (202 Accepted)', color: '#6366f1' },
-                  { step: '2', label: 'Hash chain', desc: 'Worker fetches previous event\'s hash, computes SHA-256(prevHash + eventFields), stores result', color: '#8b5cf6' },
+                  { step: '1', label: 'Receive event', desc: 'Tenant app POSTs audit event via SDK → validated, queued via BullMQ (202 Accepted)', color: 'var(--accent)' },
+                  { step: '2', label: 'Hash chain', desc: 'Worker fetches previous event\'s hash, computes SHA-256(prevHash + eventFields), stores result', color: 'var(--accent-2)' },
                   { step: '3', label: 'Data minimisation', desc: 'Checks data fields against tenant\'s allowedDataFields policy, emits violation event via SSE if breach detected', color: '#f59e0b' },
                   { step: '4', label: 'Persist', desc: 'Saves to PostgreSQL with hash chain values — tamper-evident, verifiable via GET /dashboard/chain-integrity', color: '#10b981' },
                 ].map(item => (
