@@ -126,7 +126,7 @@ function SensitivityMix({ events }: { events: AuditEvent[] }) {
 function ThirdPartyPanel({ events }: { events: AuditEvent[] }) {
   const tp = events.filter(e => e.thirdPartyInvolved);
   const recipients: Record<string, number> = {};
-  tp.forEach(e => { const r = e.recipientId ?? 'Unknown'; recipients[r] = (recipients[r] ?? 0) + 1; });
+  tp.forEach(e => { const r = e.thirdPartyName ?? 'Unknown'; recipients[r] = (recipients[r] ?? 0) + 1; });
   const sorted = Object.entries(recipients).sort((a, b) => b[1] - a[1]).slice(0, 6);
 
   return (
@@ -298,8 +298,8 @@ export default function TenantDetailPage() {
               <div key={e.id} style={{ padding: '9px 16px', borderBottom: '1px solid var(--border-soft)', display: 'flex', alignItems: 'center', gap: 8 }}>
                 <span style={{ width: 6, height: 6, borderRadius: '50%', background: SMAP[e.sensitivityCode] ?? '#94a3b8', flexShrink: 0 }} />
                 <span style={{ fontSize: 10, fontWeight: 700, color: SMAP[e.sensitivityCode] ?? 'var(--text-3)', fontFamily: "'JetBrains Mono', monospace", flexShrink: 0, minWidth: 58 }}>{e.sensitivityCode}</span>
-                <span style={{ fontSize: 12, color: 'var(--text)', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{e.action}</span>
-                <span style={{ fontSize: 11, color: 'var(--text-3)', flexShrink: 0 }}>{timeAgo(e.timestamp)}</span>
+                <span style={{ fontSize: 12, color: 'var(--text)', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{e.actionCode}</span>
+                <span style={{ fontSize: 11, color: 'var(--text-3)', flexShrink: 0 }}>{timeAgo(e.occurredAt)}</span>
               </div>
             ))}
             {events.length === 0 && (

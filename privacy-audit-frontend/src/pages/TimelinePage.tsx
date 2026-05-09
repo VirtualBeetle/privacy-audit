@@ -7,7 +7,7 @@ const SMAP: Record<string, string> = { CRITICAL: '#ef4444', HIGH: '#f97316', MED
 function groupByDate(events: AuditEvent[]): { label: string; date: string; events: AuditEvent[] }[] {
   const map = new Map<string, AuditEvent[]>();
   events.forEach(e => {
-    const d = new Date(e.timestamp ?? e.occurredAt);
+    const d = new Date(e.occurredAt);
     const key = d.toDateString();
     if (!map.has(key)) map.set(key, []);
     map.get(key)!.push(e);
@@ -41,7 +41,7 @@ export default function TimelinePage() {
 
   const filtered = search
     ? events.filter(e =>
-        (e.action ?? '').toLowerCase().includes(search.toLowerCase()) ||
+        (e.actionCode ?? '').toLowerCase().includes(search.toLowerCase()) ||
         (e.sensitivityCode ?? '').toLowerCase().includes(search.toLowerCase()) ||
         (e.dataFields ?? []).some(f => f.toLowerCase().includes(search.toLowerCase()))
       )
@@ -109,7 +109,7 @@ export default function TimelinePage() {
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                   {group.events.map(e => {
                     const col = SMAP[e.sensitivityCode] ?? '#94a3b8';
-                    const d = new Date(e.timestamp ?? e.occurredAt);
+                    const d = new Date(e.occurredAt);
                     const time = d.toLocaleTimeString('en-IE', { hour: '2-digit', minute: '2-digit' });
                     return (
                       <div key={e.id} className="dg-card" style={{ padding: '14px 16px', display: 'flex', alignItems: 'flex-start', gap: 12 }}>
@@ -125,7 +125,7 @@ export default function TimelinePage() {
                               {e.sensitivityCode}
                             </span>
                             <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                              {e.action ?? e.actionCode}
+                              {e.actionCode ?? e.actionLabel}
                             </span>
                           </div>
                           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginBottom: 4 }}>

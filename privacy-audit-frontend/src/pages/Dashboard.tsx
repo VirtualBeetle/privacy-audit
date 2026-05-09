@@ -452,7 +452,7 @@ function MiniActivityFeed({ events, onViewAll }: { events: AuditEvent[]; onViewA
   const todayStart = new Date(); todayStart.setHours(0, 0, 0, 0);
   const shown = events.filter(e => {
     if (filter === 'critical') return e.sensitivityCode === 'CRITICAL';
-    if (filter === 'today') return new Date(e.timestamp) >= todayStart;
+    if (filter === 'today') return new Date(e.occurredAt) >= todayStart;
     return true;
   }).slice(0, 10);
 
@@ -494,9 +494,9 @@ function MiniActivityFeed({ events, onViewAll }: { events: AuditEvent[]; onViewA
                 <span style={{ width: 6, height: 6, borderRadius: '50%', background: col, flexShrink: 0 }} />
                 <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 10, fontWeight: 700, color: col, flexShrink: 0, minWidth: 58 }}>{e.sensitivityCode}</span>
                 <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text)', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                  {e.action} · {e.actorId}
+                  {e.actionCode} · {e.actorIdentifier}
                 </span>
-                <span style={{ fontSize: 11, color: 'var(--text-3)', flexShrink: 0 }}>{timeAgo(e.timestamp)}</span>
+                <span style={{ fontSize: 11, color: 'var(--text-3)', flexShrink: 0 }}>{timeAgo(e.occurredAt)}</span>
                 <span style={{ color: 'var(--text-3)', fontSize: 9, transition: 'transform 0.15s', transform: isExp ? 'rotate(180deg)' : 'none', flexShrink: 0 }}>▾</span>
               </div>
               {isExp && (
@@ -509,8 +509,8 @@ function MiniActivityFeed({ events, onViewAll }: { events: AuditEvent[]; onViewA
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 4, fontSize: 11, marginBottom: 8 }}>
                     <span style={{ color: 'var(--text-3)' }}>Consent: <strong style={{ color: e.consentObtained ? 'var(--green)' : 'var(--red)' }}>{e.consentObtained ? '✓ Yes' : '✗ No'}</strong></span>
                     <span style={{ color: 'var(--text-3)' }}>3rd party: <strong style={{ color: e.thirdPartyInvolved ? 'var(--amber)' : 'var(--text)' }}>{e.thirdPartyInvolved ? '⚠ Yes' : 'No'}</strong></span>
-                    <span style={{ color: 'var(--text-3)' }}>App: <strong style={{ color: 'var(--text)' }}>{e.appName ?? '—'}</strong></span>
-                    <span style={{ color: 'var(--text-3)' }}>Reason: <strong style={{ color: 'var(--text)' }}>{e.reason ?? '—'}</strong></span>
+                    <span style={{ color: 'var(--text-3)' }}>App: <strong style={{ color: 'var(--text)' }}>{e.tenantName ?? '—'}</strong></span>
+                    <span style={{ color: 'var(--text-3)' }}>Reason: <strong style={{ color: 'var(--text)' }}>{e.reasonLabel ?? '—'}</strong></span>
                   </div>
                   {e.hash && (
                     <div style={{ fontSize: 10, color: 'var(--text-3)', fontFamily: "'JetBrains Mono', monospace", overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginBottom: 8 }}>
@@ -521,7 +521,7 @@ function MiniActivityFeed({ events, onViewAll }: { events: AuditEvent[]; onViewA
                     <button onClick={ev => { ev.stopPropagation(); navigate('/events'); }} style={{ padding: '4px 10px', fontSize: 11, borderRadius: 7, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text-2)', cursor: 'pointer', fontFamily: "'DM Sans', sans-serif", fontWeight: 600 }}>
                       Open detail
                     </button>
-                    <button onClick={ev => { ev.stopPropagation(); window.dispatchEvent(new CustomEvent('dg-open-chat', { detail: { message: `Explain this event: ${e.action} on ${e.dataFields.join(', ')} by ${e.actorId}` } })); }} style={{ padding: '4px 10px', fontSize: 11, borderRadius: 7, border: '1px solid var(--accent)', background: 'var(--accent-dim)', color: 'var(--accent)', cursor: 'pointer', fontFamily: "'DM Sans', sans-serif", fontWeight: 600 }}>
+                    <button onClick={ev => { ev.stopPropagation(); window.dispatchEvent(new CustomEvent('dg-open-chat', { detail: { message: `Explain this event: ${e.actionCode} on ${e.dataFields.join(', ')} by ${e.actorIdentifier}` } })); }} style={{ padding: '4px 10px', fontSize: 11, borderRadius: 7, border: '1px solid var(--accent)', background: 'var(--accent-dim)', color: 'var(--accent)', cursor: 'pointer', fontFamily: "'DM Sans', sans-serif", fontWeight: 600 }}>
                       Ask AI
                     </button>
                   </div>
@@ -617,7 +617,7 @@ function PrivacyHeatmap({ events }: { events: AuditEvent[] }) {
   startDate.setDate(startDate.getDate() - (WEEKS * 7 - 1));
 
   events.forEach(e => {
-    const d = new Date(e.timestamp ?? e.occurredAt);
+    const d = new Date(e.occurredAt);
     const key = d.toDateString();
     buckets.set(key, (buckets.get(key) ?? 0) + 1);
   });
@@ -652,7 +652,7 @@ function PrivacyHeatmap({ events }: { events: AuditEvent[] }) {
         {/* Month row */}
         <div style={{ display: 'grid', gridTemplateColumns: '20px repeat(12, 1fr)', gap: 3, marginBottom: 4 }}>
           <div />
-          {cols.map((week, ci) => {
+          {cols.map((_week, ci) => {
             const ml = monthLabels.find(m => m.col === ci);
             return <div key={ci} style={{ fontSize: 9, color: 'var(--text-3)', textAlign: 'left' }}>{ml?.label ?? ''}</div>;
           })}
@@ -704,13 +704,13 @@ function SankeyFlow({ events }: { events: AuditEvent[] }) {
   const thirdPartyCounts: Record<string, number> = {};
 
   events.forEach(e => {
-    const app = e.appName ?? e.tenantId?.slice(0, 8) ?? 'Unknown';
+    const app = e.tenantName ?? e.tenantId?.slice(0, 8) ?? 'Unknown';
     appCounts[app] = (appCounts[app] ?? 0) + 1;
-    const action = e.action?.split('_')[0] ?? 'access';
+    const action = e.actionCode?.split('_')[0] ?? 'access';
     actionCounts[action] = (actionCounts[action] ?? 0) + 1;
     (e.dataFields ?? []).forEach(f => { fieldCounts[f] = (fieldCounts[f] ?? 0) + 1; });
-    if (e.thirdPartyInvolved && e.recipientId) {
-      thirdPartyCounts[e.recipientId] = (thirdPartyCounts[e.recipientId] ?? 0) + 1;
+    if (e.thirdPartyInvolved && e.thirdPartyName) {
+      thirdPartyCounts[e.thirdPartyName] = (thirdPartyCounts[e.thirdPartyName] ?? 0) + 1;
     }
   });
 
@@ -767,9 +767,9 @@ function FieldTrustScores({ events }: { events: AuditEvent[] }) {
   if (events.length === 0) return null;
 
   const now = Date.now();
-  const last7 = events.filter(e => now - new Date(e.timestamp ?? e.occurredAt).getTime() < 7 * 86400000);
+  const last7 = events.filter(e => now - new Date(e.occurredAt).getTime() < 7 * 86400000);
   const prev7 = events.filter(e => {
-    const age = now - new Date(e.timestamp ?? e.occurredAt).getTime();
+    const age = now - new Date(e.occurredAt).getTime();
     return age >= 7 * 86400000 && age < 14 * 86400000;
   });
 
@@ -1239,7 +1239,7 @@ export default function Dashboard({ initialSection }: Props) {
 
         {/* Greeting banner */}
         <GreetingBanner
-          name={user?.name?.split(' ')[0] ?? user?.email?.split('@')[0] ?? 'there'}
+          name={user?.displayName?.split(' ')[0] ?? user?.email?.split('@')[0] ?? 'there'}
           chainValid={chainResult?.valid ?? null}
         />
 

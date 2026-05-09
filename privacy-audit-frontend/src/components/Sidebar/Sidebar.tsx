@@ -131,7 +131,7 @@ export default function Sidebar() {
 
   const p = location.pathname;
 
-  const displayName = user?.name || user?.email?.split('@')[0] || 'User';
+  const displayName = user?.displayName || user?.email?.split('@')[0] || 'User';
   const initials = displayName
     .split(' ')
     .map((n: string) => n[0])
