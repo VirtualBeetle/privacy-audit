@@ -1,0 +1,460 @@
+\documentclass{report}[a4paper,12pt,onecolumn]
+\usepackage{graphicx}
+
+% default the line spacing to 1.5
+\renewcommand{\baselinestretch}{1.5}
+
+\begin{document}
+
+% the title page of the document
+\begin{center}
+    \Large{A Descriptive Template for Writing Project Documentation}
+    \linebreak[4]
+    \linebreak[4]
+    \linebreak[4]
+    Joe Student
+    \linebreak[4]
+    1234567
+    \linebreak[4]
+    \linebreak[4]
+    \linebreak[4]
+    Submitted in partial fulfilment for the degree of\\
+    Master of Science in Computing Science\\
+    Griffith College Dublin\\
+    Month, Year\\
+    Under the supervision of Supervisor's Name
+\end{center}
+\newpage
+
+% the disclaimer to basically state that this is the students own work
+\textbf{Disclaimer}
+
+I hereby certify that this material, which I now submit for assessment on the
+programme of study leading to the Degree of Master of Science in Computing 
+Science at Griffith College Dublin, is entirely my own work and has not been 
+submitted for assessment for an academic purpose at this or any other academic 
+institution other than in partial fulfilment of the requirements of that stated 
+above.
+
+\textbf{Signed:} \hskip 60mm \textbf{Date:}
+\newpage
+
+% acknowledgemets where the student can thank whoever
+\textbf{Acknowledgements}
+
+Here you can thank your family, colleagues, etc.
+\newpage
+
+% table of contents goes here
+\tableofcontents
+\newpage
+
+% table of equations goes here
+\textbf{Table of Equations}
+\newpage
+
+% table of figures goes here
+\listoffigures
+\newpage
+
+% table of tables goes here
+\listoftables
+\newpage
+
+% table of algorithms goes here
+\textbf{Table of Algorithms}
+\newpage
+
+% abstract goes here
+\textbf{Abstract}\\
+The abstract should be at most one page in length, giving a very high-level overview of your project. Your abstract should state the following:
+\begin{itemize}
+    \item What your project is
+    \item Why you chose it / what are your goals
+    \item What your project does / what problem does it address
+    \item How you did it / what did you use
+    \item What does it accomplish / what goals were achieved
+\end{itemize}
+
+This guide is designed to assist you in writing your project documentation. Different chapters contain instructions regarding all aspects of you document and project. In addition. This document is formatted as a template, and can be used as a starting point for your documentation. All of the font sizes, margins, etc are correct, and the chapter layout presented is an example of what is expected, but will need to be modified to suit your specific project. You should consult you supervisor regarding this. General and overall project/documentation instructions and comments are found in most chapters below, marked with the tag \textbf{``General Material''}. Each chapter also contains chapter-specific instructions specific to that chapter. These instructions are marked with the tag \textbf{``Chapter Specific Material''}.
+
+It is advised that you look at past project documentation in the library, however bear in mind that guidelines and regulations change over time. Thus you should not use past documentation as anything but to get a general feel of what project documentation looks and feels like. This guide is up to date and supersedes any formatting or parameters of past documentation.
+
+\newpage
+
+\chapter{Introduction}
+
+\section{General Material}
+
+First and foremost you must understand what your project is. \textbf{It is a major contribution to your degree}. Your project must address several important points, including your ability to:
+\begin{itemize}
+    \item Understand the state-of-the-art of a specific area: You will need to learn, know and adapt to the most current technologies in your area.
+    \item Learn and apply new technologies on your own: The ability to work under your own inertia on new/changing technologies is important.
+    \item Develop and demonstrate a productive relationship with your supervisor: Collaboration and working productively with others is a very important aspect of your abilities. Co-workers, colleagues, and bosses will always be there.
+    \item Demonstrate a comprehensive understanding of the development lifecycle: You need to know what a project entails, top to bottom, start to finish.
+\end{itemize}
+
+Your work should reflect on your ability to:
+\begin{itemize}
+    \item Take an idea, do background research, understand it thoroughly, and develop and demonstrate an application based on that idea.
+    \item Describe your project in a well structured and formatted documentation so that others can understand what you have achieved.
+    \item Demonstrate a working application, simulation results, etc.
+    \item Discuss your project with faculty examiners, answering any questions put to you regarding your project.
+    \item Take something you have learned and push it further - to take it beyond the classroom.
+\end{itemize}
+
+Your Project should be critical and analytical. Your project and especially your documentation should be focused on not just ``doing'', but explaining. Why are you doing this? What does it do? Why are you doing it this way? Why is it different? Why is it better? Why is it worse? Where are its strengths? Where are its weaknesses? Where is it going? Where is it not going? Notice that the word ``how'' has not yet been mentioned. How you complete your project is only one part of the whole. Equally important to the ``hows'' are these ``whys'' - the decisions you made along the way and the results and impacts of those decisions.
+
+The title page, as in this templated, is centered and not numbered. All other front matter (Disclaimer, Table of Contents, Acknowledgements, Abstracts, etc.) each start on their own page (except for lists of equations/figures/tables if they ares short) and are numbered in lower case Roman numerals (i, ii, iii, iv, v, vi, ...). The Table of Contents should be automatically generated by LaTeX. However the list of equations/figures/tables while automatic will require a little bit of help from you in that you must mark and reference all of your equations/figures/tables for this generation. Do not forget to sign and date the Disclaimer of your final bound copy which you will turn into the faculty.
+
+Starting on the first page of Chapter 1, page numbering should start over (from 1) and count normally (1, 2, 3, etc.). Font should be 12pt, fully justified, with 1.5 line spacing with standard LaTeX margins (all set in this document). Consistency is key to your documentation. All headings should have the same style, all margins should be the same, etc.
+
+The exact chapter layout of your documentation should be discussed with your supervisor and made to fit your project. A traditional layout would be the following:
+\begin{enumerate}
+    \item Introduction \textit{(Page 1 starts here)}
+    \item Background
+    \begin{enumerate}
+        \item Literature Review
+        \item Similar Work
+    \end{enumerate}
+    \item Methodology
+    \item System Analysis and Design
+    \item Implementation
+    \item Testing and Evaluation
+    \item Conclusions and Future Work
+\end{enumerate}
+\begin{itemize}
+    \item Bibliography
+    \item Appendices
+\end{itemize}
+
+From \textit{Introduction through Conclusion and Future Work} should be at least 70 pages. Lengths outside these limits need to be approved by your supervisor. The subsections of Chapters 3-6 will be specific to your project, and additional chapters may be necessary. You should discuss this further with your supervisor. Remember the the 70 page guideline does not include front matter or references. Chapters should always start on their own fresh page, Never on a page where another chapter ends.
+
+\section{Chapter Specific Material}
+
+This chapter is all about your project as a whole, not specifics. It is intended to give the reader a brief summary of the ``what'', ``why'', with a very high-level ``how''. Technical details and procedures will be discussed in later chapters.
+
+\subsection{``Your area'', (or specific field of expertise, problem name, etc.)}
+
+In this subsection you briefly state what your project is. A good rule of thumb is to use about 3-4 paragraphs, expanding on the ``what'' part of your abstract.
+
+\subsection{``Goals'' (or something similar)}
+
+In this subsection you expand again on your abstract but explaining in more detail why you did this project, what you want to achieve, what your goals are, who will benefit from your work and why.
+
+\subsection{``Overview of Approach'' (or something similar)}
+
+In this subsection you briefly describe \underline{how} you achieved your goals and accomplished your work. This should be done at an abstract level at this point. You can name the technologies involved and why you chose them, etc., but the details are for later.
+
+\subsection{``Document Structure / Layout'', (or something 
+similar)}
+
+In this subsection (the last of Chapter 1) you describe your \underline{document layout}. It should read something similar to the following:
+
+``The rest of this document is as follows. Chapter Two provides a literature review of the area of $\langle$ your topic area $\rangle$ and the sources consulted in accomplishing this project, in addition to related work. Chapter Three describes the methodology and high-level design of the project structure. In Chapter Four, the system design, and requirements/ specifications including any hardware and software is discussed. Chapter Five provides the implementation details of the system. In Chapter Six, details of the working prototype of the system are provided, including the testing and evaluation techniques. Also discussed are results including revisions to the overall design and implementation that were deemed necessary. Finally, Chapter Seven presents conclusions and future work.''
+
+\chapter{Background}
+
+\section{Chapter Specific Material}
+
+This chapter will acquaint the reader to the existing literature in the project area and to the related work that has been done. This chapter should contain a discussion of all of your references.
+
+\subsection{Literature Review}
+
+In this section you present the findings of a review of up-to-date literature on your project \textit{topic area and related areas}. The chapter will have many references to some (preferably all) of several of the following: scholarly journals, conference proceedings, books (text books of expert volumes), whitepapers / technical reports, software (including software documentation), etc.
+
+For example, if your project was on parallel computing, you may refer to some of the following:
+
+\begin{itemize}
+    \item Scholarly Journals
+    \begin{itemize}
+        \item IEEE Transactions on Parallel and Distributed Systems (IEEE)
+        \item Journal of Parallel and Distributed Computing (Elsevier)
+        \item International Journal of Parallel Programming (Springer)
+    \end{itemize}
+    \item Conference Proceedings (Similar publishers to Scholarly Journals above)
+    \item Books
+    \begin{itemize}
+        \item University-level texts
+        \item Other expert volumes
+    \end{itemize}
+    \item Software Documentation
+    \begin{itemize}
+        \item Product, Company, Version, Authors, etc.
+        \item Only up-to-date, \underline{official} documentation.
+    \end{itemize}
+    \item Online Material
+    \begin{itemize}
+        \item Only \textit{terminal references}, from official/reputable sources
+        \item No Wikipedia, random/unknown/un-reputable sites
+        \item Treated as endnotes, not a reference (more later)
+    \end{itemize}
+\end{itemize}
+
+\subsection{Related Work}
+
+In this section you present the findings of a review of \textit{specific works closely related to your project}. You should discuss the similarities and differences between your project and others like it that have been done before. A pointed and convincing argument should be presented as to \textit{why} your approach/technique/etc. is an improvement/extension/etc upon previous work. You do not need to go into the specific details on \textit{how} this is achieved here. This will be explained throughout the coming chapters. For now your job is to bring your reader up-to-speed with the current state-of-the-art, how your project fits into that, and why yours is better!
+
+\section{General Material}
+
+References are a very important part of your work and must be done carefully and correctly. References are how readers of your work will connect and relate your work to the work of others and your topic area in general. Without proper referencing your documentation would only be a description of work, not a piece of work on its own, that is related to your field.
+
+\subsection{Bibliography Style:}
+
+\begin{itemize}
+    \item The Bibliography (or References) must contain a list of books, journals, and conference articles and all other material cited in the main body of text (except websites).
+    \item Entries in the bibliography must contain: author(s), title, 
+conference / journal, publisher, date of publication, and possibly other 
+reference-specific information. Consult your supervisor.
+    \item Each entry in the bibliography is numbered consecutively in order of appearance, such as [1], [2], etc. These citation numbers are included in the main body of the text in square brackets.
+    \item All bibliographical information is exclusively included in the list of ``References'' section at the end of the document, next to the respective citation number.
+    \item Please see the following example.
+\end{itemize}
+
+\subsection{Bibliography Example:}
+
+\textbf{Example body of text below:}
+
+``A prefix labelling technique presented in \cite{prefixlabel} seems to be appropriate for topologies similar to a Tree structure. Our research focuses on developing a prefix labelling technique of the B-Tree topology \cite{btree}. Once a network is organised as a B-Tree the prefix can be calculated using a distributed process as suggested in \cite{prefixlabel}. The ultimate aim is to achieve load balancing for distributed systems \cite{loaddistrib}, \cite{loadparallel} organised as a B-Tree topology''
+
+See Bibliography for the references.
+
+\textbf{End of example}
+
+\subsection{Web References}
+
+All referenced websites must be \textit{terminal references}. A terminal 
+reference is the ``root'' reference for a specific idea 
+/ hypothesis / theory / concept / produce / technology / etc. For instance, 
+\textit{no} Wikipedia pages are terminal references. All Wikipedia pages have 
+references to other (possibly terminal) references! Another way to view a 
+terminal references is as the reference where the ``chain of reference'' stops. 
+A chain of reference is (for example) when someone discussing \textit{concept A} 
+refers to a website, which refers to a Wikipedia site on concept A, which refers 
+to another website, which refers to a book, which refers to another book, which 
+then refers to a a scholarly journal article, which presented concept A for the 
+first authoritative time. That journal article is the terminal reference for 
+concept A. In some cases, websites may be terminal references, however, this is 
+rare. Another time that a website may be referenced is when the website is the 
+official website or portal to a specific tool/technology/etc.
+
+Websites \textit{are not} included in the bibliography/references section. They are included as footnotes.
+
+\textbf{Example}
+
+``Although the number of proteins with known structure continues to grow, the number of proteins with known sequence, but unknown structure is growing faster. Thus the gap between the number of proteins of known structure and the number of proteins of known sequence is growing. As protein structure dictates protein function, and proteins of similar sequences often have similar structure and therefore function, databases of protein sequence and structure information such as UniProt\footnote{\label{uniprot}http://www.uniprot.org} have become increasingly useful to both those who are sequencing proteins, and those that are predicting protein structure.''
+
+\textbf{Note the footnote at the bottom of the page, corresponding to the \ref{uniprot} above. This is how websites should be cited.}
+
+\textbf{End of Example}
+
+All references other than websites should be added in LaTeX as an entry in a BibTeX file. BibTeX will then give you options on how to present your references, and automatically generate your bibliography.
+
+\chapter{Methodology}
+
+\section{Chapter Specific Material:}
+
+This chapter \textit{begins} to explain how you accomplished your project and your objectives. Explain here what was needed to implement your project, both in technology and effort. Discuss the high-level decisions you made. These are your design decisions. Why did you choose technology X instead of technology Y? Why did you choose a top-down approach instead of bottom-up? If you chose a divide-and-conquer paradigm to a specific problem, why did you, and why did you not choose a brute force or greedy approach? The subsections of this chapter will be specific to your project and should be discussed with your supervisor.
+
+This chapter does not need specific details about your chosen technologies. For example, you do not need to explain what Java is or what Cloud Computing is. What you do need to discuss is \textit{why} you chose Java, or \textit{why} you chose a cloud platform. If you did choose Java over C\#, why? If you did choose cloud computing, why did you choose PaaS instead of SaaS or IaaS?
+
+\section{General Material}
+
+The role of your supervisor includes the following:
+\begin{itemize}
+    \item Guiding you in the right direction relating to your project idea
+    \item Identifying and suggesting the technologies that might be useful to 
+implement your idea.
+    \item Identifying and setting up project milestones and deadlines
+    \item Monitoring progress, milestones, and deadlines
+\end{itemize}
+
+Remember that you were told about your project almost a year ago, at the start 
+of your Research Methods module. This is when your project started! The summer 
+period is for implementing, not starting your project idea! You should check 
+with the faculty and your supervisor regarding the demonstration and 
+documentation submission dates. You should aim to be done well before these 
+deadlines. You will find that once you are ``done'' and have removed some 
+pressure from yourself, you will go back and make many important changes that 
+you wouldn't if you were rushing to meet the deadline. You will also give a 
+much better presentation if your finished project has had some time to mature.
+
+You are highly advised to keep a ``progress log'' while you are working on 
+implementation. This will be an invaluable help when you begin your 
+documentation proper. Document everything! Document the bad decisions, the 
+mistakes, the things that didn't work, as well as those that did. They will all 
+contribute to your documentation and help you answer and explain the big 
+questions, what, why, and how.
+
+\chapter{System Analysis and Design}
+
+\section{Chapter Specific Material:}
+
+This is the first chapter where you can describe specifics. What technologies 
+did you use? What vendor/version/etc? What features of these technologies made 
+you decide to use them? How were they helpful? How were they difficult? What 
+might have been better? Did you have compatibility issues? Did you have any 
+other issues?
+
+In this chapter you can use architecture diagrams, UML diagrams, formal 
+diagrams, etc. All of these can be included as figures. Note that screenshots 
+and code should not be included here as you are talking about the theoretical 
+design of the system.
+
+You can also describe your process modelling and data modelling here. Data 
+modelling can include the type of input/information your system needs, the use 
+and processing of that information, and what your system generates (output).
+
+\section{General Material:}
+
+Assessment and Evaluation:
+
+\textit{The project will be evaluated on its quality of though, interpretation, 
+and insight; as well as the contribution it makes to hte field of study and the 
+writer's own professional development. An essential ingredient will be the 
+student's ability ot master a technical body of knowledge and apply it to a 
+given problem domain. The ability to think and reason with the material at 
+issue is crucial. The design, layout, quality of expression, structure, and 
+coherence of all documentation will be taken into account when grading the 
+finished work. The ability of the student ot present and defend the material is 
+also of significant importance.}
+
+Marking:
+
+Your project is marked according to Table 4.1
+
+\begin{table}
+    \begin{center}
+        \begin{tabular}{ |c|c| }
+            \hline
+            Process & 10\% \\
+            \hline
+            Supervisor & 10\% \\
+            \hline
+            Demonstration & 40\% \\
+            \hline
+            Documentation & 40\% \\
+            \hline
+        \end{tabular}
+    \end{center}
+    \caption{marking scheme}
+\end{table}
+
+\chapter{Implementation}
+
+A note on code snippets: Code snippets should be just that - snippets. Snippets 
+are small, core pieces of code that are integral and unique to your project. 
+Typicallly a snippet is 10-15 lines of code. \textit{Long segments of code, 
+general structure, headers, etc. should not be included in documentation. If 
+they are necessary then use an appendix.}
+
+\section{Chapter Specific Material:}
+
+This chapter discusses specifically how you implemented the working version of 
+your system. The specifics of this chapter should be discussed with your 
+supervisor. Screenshots \textit{may} be appropriate in certain circumstances in 
+this chapter and subsequent chapters. See the note on screen shots in the 
+general material below.
+
+\section{General Material:}
+
+A note on screenshots: Screenshots should be used carefully and sparingly. Only 
+use those that are very explainatory in nature. A good rule of thumb is that if 
+it would take many lines of text (with a footprint larger than that of hte 
+screenshot, caption, and brief text explaination combined) to explain what you 
+want, use the screenshot/caption/brief text explanation. Otherwise just 
+describe in text.
+
+Tables, figures, and equations may appear throughout your documentation. All 
+tables and figures should be centred and have captions. Captions should be 
+inserted in MS Word with ``Caption...'' after selecting or right-clicking the 
+table/figure. In LaTeX captions are provided as part of the includegraphics 
+command. This will allow you to generate a list of tables and/or figures for 
+your front matter, similar to your table of contents. For an example see Figure 
+5.1
+
+\begin{figure}
+    \begin{center}
+    \includegraphics{logo.png}
+    \caption{sample figure}
+    \end{center}
+\end{figure}
+
+Equations may also appear through your documentation. If you refer back to a 
+particular equation in your documentation more than once, you should centre and 
+number the equation, allowing you to refer to it by number, and to allow you to 
+generate a list of equations, similar to your lists of tables and figures.
+
+\textbf{Example:}
+
+Einstien's famous mass-energy equivalence is given in Equation (5.1)
+
+\begin{equation}
+    E = mc^{2}
+\end{equation}
+
+Where \textit{E} is energy, \textit{m} is mass, and \textit{c} is the speed of 
+light. Equation (5.1) can be rearranged to an expression for the speed of light 
+as in Equation (5.2)
+
+\begin{equation}
+    c = \sqrt{E / m}
+\end{equation}
+
+\textbf{End of Example}
+
+Equations should be inserted with the equation environment of LaTeX and it will 
+handle the rest.
+
+
+\chapter{Testing and Evaluation}
+
+\textbf{Chapter Specific Material:}
+
+This chapter should include a description of hte process of processes you used 
+to test and evaluate your system. You can use things such as user experience 
+reports, attempts by yourself or others to break your own code, graphs/charts 
+of outputs or performance, etc. Include discussions of why things work and why 
+and when they don't work. You can also include any refinements made to your 
+implementation as a result of your testing.
+
+\textbf{General Material:}
+
+Your project demonstration will occur aat the end of the project period. Check 
+with your supervisor fo the exact date. You will be examined by two teams, each 
+consisting of two faculty members. You should answer any questions the 
+examiners may have for you, and then show them your project in action. This is 
+when you should walk through your application from a user's point of view. 
+After this you should be ready to have teh examiners ask you to see code, 
+explain how certain functionalities are implemented, etc. YOur entire 
+demonstration should be no longer than 20 minutes, including examiner 
+questions.
+
+\chapter{Conclusions and Future Work}
+
+\textbf{Chapter Specific Material:}
+
+The first part of this chapter should present your conclusions. A good way to 
+do this is to take your abstract and address all of the goals and objectives 
+stated there. Tell the reader what you achieved, and very briefly how and with 
+what. Be sure to highlight major successes and to note limitations.
+
+The second part is future work. This should include a discussion on what you 
+would do if you had more time and how you would address the current limitations 
+of your system.
+
+This chapter should be no longer than three pages in length.
+
+\bibliography{references}
+\bibliographystyle{plain}
+
+\appendix
+\chapter{Sample Appendix}
+
+One or more appendices may be necessary but should be approved by your 
+supervisor. Appendices should be used for material you would like to refer to 
+such as figures/diagrams/code/etc, but are deemed too large and bulky for the 
+main text, or outside teh ``flow'' of any particular chapter. Appendices are 
+the last section(s) in your document.
+
+\end{document}
