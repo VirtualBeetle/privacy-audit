@@ -91,7 +91,7 @@ function AppShell() {
         <main
           key={location.pathname}
           className="page-enter"
-          style={{ flex: 1, overflow: 'hidden', background: 'var(--bg)' }}
+          style={{ flex: 1, overflowY: 'auto', background: 'var(--bg)' }}
         >
           <Routes>
             <Route path="/dashboard"        element={<PrivateRoute element={<Dashboard />} />} />
