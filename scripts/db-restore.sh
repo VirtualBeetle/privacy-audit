@@ -33,13 +33,13 @@ if [[ -z "$TIMESTAMP" ]]; then
 fi
 
 # ── NEW PostgreSQL URLs (External Database URL from new Render DBs) ───────────
-NEW_AUDIT_DB_URL=""
-NEW_HEALTH_DB_URL=""
-NEW_SOCIAL_DB_URL=""
+NEW_AUDIT_DB_URL="${NEW_AUDIT_DB_URL:-}"
+NEW_HEALTH_DB_URL="${NEW_HEALTH_DB_URL:-}"
+NEW_SOCIAL_DB_URL="${NEW_SOCIAL_DB_URL:-}"
 
 # ── MongoDB: same MONGO_URI (Atlas URL doesn't change when you drop/recreate) ─
 # Drop + re-import to the same MongoDB Atlas cluster.
-MONGO_URI=""
+MONGO_URI="${MONGO_URI:-}"
 
 # ────────────────────────────────────────────────────────────────────────────
 # You can also export these as env vars before running the script:

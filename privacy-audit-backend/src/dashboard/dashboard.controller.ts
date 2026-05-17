@@ -319,8 +319,9 @@ export class DashboardController {
   }
 
   @Get('ai-analysis')
-  @UseGuards(DashboardGuard)
+  @UseGuards(DashboardAnyGuard)
   async getAnalysisHistory(@CurrentUser() user: any) {
+    if (user.type !== 'dashboard_session' || !user.tenantId) return [];
     return this.aiChatService.getAnalysisHistory(user.tenantId, 10);
   }
 

@@ -23,13 +23,13 @@
 set -euo pipefail
 
 # ── PostgreSQL connection URLs (External Database URL from Render dashboard) ──
-AUDIT_DB_URL=""
-HEALTH_DB_URL=""
-SOCIAL_DB_URL=""
+AUDIT_DB_URL="${AUDIT_DB_URL:-}"
+HEALTH_DB_URL="${HEALTH_DB_URL:-}"
+SOCIAL_DB_URL="${SOCIAL_DB_URL:-}"
 
 # ── MongoDB Atlas connection string (from your .env MONGODB_URI) ────────────
 # Format: mongodb+srv://user:password@cluster.mongodb.net/dbname
-MONGO_URI=""
+MONGO_URI="${MONGO_URI:-}"
 
 # ────────────────────────────────────────────────────────────────────────────
 # You can also set these as environment variables instead of hardcoding:
