@@ -1,0 +1,170 @@
+================================================================================
+DEMO SCENARIO REVIEW & FEEDBACK
+================================================================================
+
+
+--------------------------------------------------------------------------------
+YOUR PROPOSED SCENARIOS — QUICK VERDICT
+--------------------------------------------------------------------------------
+
+Scenario 1 — End-to-end risk detection          GOOD. Keep it.
+Scenario 2 — User exercises GDPR rights         GOOD. Reorder the steps slightly.
+Scenario 3 — Google user cross-app view         OK. Move this last or cut if time is short.
+
+
+--------------------------------------------------------------------------------
+DETAILED FEEDBACK ON EACH SCENARIO
+--------------------------------------------------------------------------------
+
+SCENARIO 1 — End-to-end risk detection (Super Admin)
+
+This is a strong technical demo. It shows the AI agent, the notification bell,
+and the hash chain in one flow. A few notes:
+
+Step 2 — When you click 'Seed Events', pick at least 30 events. More events
+means the AI has more to analyse and will produce richer findings. Also seed
+events that include SHARE by DATA_BROKER and READ with consent_obtained=false —
+these trigger the most dramatic risk alerts.
+
+Step 3 — After clicking 'Trigger Risk Analysis', say out loud: "Normally this
+runs automatically every 6 hours. I'm triggering it manually so you can see it
+happen in real time." This pre-empts the obvious question.
+
+Step 5 — The notification bell is a good detail to show. It proves the system
+proactively surfaces issues to the admin — they don't need to go looking.
+
+Step 6 — This is the best step. When you click 'Verify Chain Integrity' and it
+returns valid, say: "Every one of those events is cryptographically chained.
+If anyone altered even one record in the database, this check would fail and
+tell me exactly which event was tampered with." This lands well with supervisors
+who understand security.
+
+ONE ISSUE: You jump from Risk Alerts straight to verifying the hash chain without
+showing what an individual risk alert actually looks like. Before step 6, expand
+one risk alert card and read out the GDPR article it cites (e.g. "Art.6(1)(a) —
+consent not obtained for sensitive data access"). This shows the AI is producing
+actionable, specific findings — not just generic warnings.
+
+
+SCENARIO 2 — User exercises GDPR rights (Tenant User)
+
+This is the most human-focused scenario and the one that will resonate most with
+non-technical supervisors. It shows the system from the perspective of the person
+whose data is at stake — which is the whole point of the project.
+
+Step 3 — The instruction says "use Dev Controls to get a session token". This is
+a bit technical and could confuse during a live demo. A cleaner path:
+Open a second browser tab, go to HealthTrack (localhost:3001 or health.local),
+log in as james.obrien@demo.com (patient123), and click "View My Privacy Dashboard".
+This uses the handshake token flow — which is the actual feature, not a workaround.
+It also lets you say: "Notice the patient didn't type a single password to get
+here — they came straight from HealthTrack." Much more impressive.
+
+Step 4 — After requesting the export, while it is processing, explain what is
+happening: "The system is collecting all audit events for this user, serialising
+them into a JSON document, and preparing a 24-hour download link." This fills the
+brief async wait and makes the background processing visible.
+
+Step 5 — After deletion, explicitly say: "The events are gone. But a
+cryptographic evidence hash is stored — a SHA-256 hash of the deletion count,
+the user ID, and the timestamp. If a regulator asks us to prove we deleted the
+data, we can present that hash as proof, without retaining any personal data."
+This is the key legal point and supervisors will appreciate it.
+
+Steps are otherwise well-ordered. The admin confirming completion in step 6 is a
+good closing beat — shows the admin visibility.
+
+
+SCENARIO 3 — Google user cross-app view
+
+This scenario is technically interesting but takes the most setup time and has
+the most ways to go wrong live (Google OAuth needs to be configured, linking
+both apps requires both admin credentials to be ready). Assess whether you have
+time for it.
+
+If you do show it, the key talking point is: "A user might have a HealthTrack
+account and a ConnectSocial account. Without DataGuard, they'd have to check two
+separate places — if they could check at all. Here they link both apps once and
+see a unified view of every access across both services." That is genuinely
+different from what commercial tools offer.
+
+If time is short, cut this scenario. Scenarios 1 and 2 already demonstrate the
+core value proposition clearly.
+
+
+--------------------------------------------------------------------------------
+SUGGESTED OVERALL DEMO ORDER
+--------------------------------------------------------------------------------
+
+The order you have (Scenario 1 → 2 → 3) starts with the admin/technical view
+and ends with the user view. Consider flipping Scenarios 1 and 2:
+
+RECOMMENDED ORDER:
+
+1. Start as a patient in HealthTrack (Scenario 2 first)
+   — The problem is immediately human and relatable.
+   — "You are a patient. You just clicked View My Privacy."
+   — Land in DataGuard. Show the audit trail. This grabs attention.
+
+2. Then switch to Super Admin (Scenario 1)
+   — "Now let me show you the backend intelligence that powers this."
+   — Seed events → trigger AI analysis → show risk alerts → verify chain.
+   — This proves technical depth after you have the audience's interest.
+
+3. Google cross-app view (Scenario 3) — only if time allows
+   — Nice-to-have. Shows multi-tenancy from the user's perspective.
+
+This order: problem → solution → technical depth → scale. It mirrors how a
+product demo is structured and makes the most intuitive narrative arc.
+
+
+--------------------------------------------------------------------------------
+THINGS TO PREPARE BEFORE THE DEMO
+--------------------------------------------------------------------------------
+
+1. Seed events for both HealthTrack and ConnectSocial before you walk in.
+   Go to /dev → Seed Events for each tenant. At least 30 each.
+
+2. Run AI Risk Analysis at least once before the demo.
+   Go to /dev → Trigger Risk Analysis. Wait for it to complete.
+   You don't want the Risk Alerts page to be empty when you navigate to it.
+
+3. Have a breach report already created (optional).
+   If you want to show the 72-hour countdown, create a breach report beforehand
+   so the timer is already running rather than starting at 72:00 on screen.
+
+4. Have HealthTrack open in a second tab, logged in as james.obrien@demo.com.
+   This way the handshake token flow is one click, not a fresh login.
+
+5. Know your Dev Token. You'll need it if anything goes wrong and you need
+   to manually trigger something mid-demo.
+
+6. If using the live Render deployment: open the backend URL once and wait for
+   the cold start (up to 30 seconds on the free tier) before the demo begins.
+
+
+--------------------------------------------------------------------------------
+WHAT TO SAY IF SOMETHING BREAKS
+--------------------------------------------------------------------------------
+
+AI features not responding:
+  "The AI provider sometimes has latency. Let me show you the stored analysis
+   results instead." → Navigate to /risk to show existing alerts.
+
+Events page is empty:
+  "Let me seed some demo events." → Go to /dev, seed events, come back.
+
+Hash chain verify takes too long:
+  "The verification is running through every event cryptographically. I'll
+   leave it running and come back to it." → Move to another feature and return.
+
+Google OAuth not working:
+  Skip Scenario 3 entirely. Say: "I'll come back to the cross-app linking
+  feature — let me show you the GDPR rights flow instead."
+
+Handshake token expired (the "View My Privacy" button shows expired token):
+  Simply log back into HealthTrack and click the button again.
+  The 15-minute expiry resets.
+
+
+================================================================================

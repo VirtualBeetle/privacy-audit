@@ -1,0 +1,108 @@
+================================================================================
+SLIDE 1 — TITLE
+================================================================================
+
+Building a Reusable Privacy Audit and Data Transparency Service
+for Multi-Tenant Web Applications
+
+Rakesh Velavaluri
+MSc Computing Science | Griffith College Dublin | May 2026
+Supervisor: Seeni
+
+
+================================================================================
+SLIDE 2 — THE PROBLEM
+================================================================================
+
+"Your apps access your data constantly. You have no idea how."
+
+- GDPR gives users the right to know — but no practical tool shows them
+- Cookie banners describe data use in general terms — not per-event, not real-time
+- A healthcare patient can't see their records were shared with an insurance billing system
+- A social media user can't see their location was sold to an ad network
+
+GAP: Users have rights on paper. Zero visibility in practice.
+
+
+================================================================================
+SLIDE 3 — WHAT IS DATAGUARD?
+================================================================================
+
+A reusable, multi-tenant Privacy Audit and Data Transparency Service
+
+Layer                | What it does
+---------------------|--------------------------------------------------------------
+SDK + API            | Any app reports data access events in 2 lines of code
+Hash-chained log     | Every event cryptographically linked with SHA-256 — tamper-evident
+Privacy Dashboard    | Users see who accessed their data, when, and why
+AI Agent             | Analyses events every 6 hours, flags GDPR violations, cites articles
+GDPR Rights Portal   | Export (Art.20), Erasure (Art.17), Consent (Art.7), Breach (Art.33)
+
+Demonstrated through:
+  - HealthTrack    — healthcare portal (Go + Gin)
+  - ConnectSocial  — social media platform (Python + FastAPI)
+
+
+================================================================================
+SLIDE 4 — ARCHITECTURE & TECH STACK
+================================================================================
+
+  HealthTrack (Go + Gin)        ConnectSocial (FastAPI)
+            └──────────── SDK ─────────────┘
+                            │
+            DataGuard Backend (NestJS)
+             │               │              │
+        PostgreSQL          MongoDB         Redis
+       (events, GDPR)      (AI data)    (BullMQ queue)
+                            │
+            DataGuard Dashboard (React)
+
+9 Docker services — single command to run the entire platform
+
+
+================================================================================
+SLIDE 5 — LIVE DEMO
+================================================================================
+
+Demo flow:
+
+1. HealthTrack  →  log in as patient  →  click "View my privacy"
+                →  arrive at DataGuard (no second login required)
+
+2. Events feed  →  expand an event  →  show SHA-256 hash chain
+
+3. AI Chat      →  type /verify  →  chain verification card
+                →  type /report  →  compliance grade
+
+4. Risk Alerts  →  AI-generated findings with GDPR article citations
+
+5. GDPR Rights  →  request data export  →  consent toggles
+                →  breach 72-hour countdown (Art.33)
+
+6. Onboarding wizard  →  register new tenant  →  send test event
+                      →  watch it arrive live
+
+
+================================================================================
+SLIDE 6 — RESULTS & CONCLUSIONS
+================================================================================
+
+What was delivered:
+  - 174 tasks across 14 development phases
+  - All 11 functional requirements met
+  - 18/18 functional test scenarios passed (including tamper detection)
+  - 3 SDKs (Go, Python, TypeScript)
+  - 2 fully integrated demo tenant applications
+  - Single-command Docker deployment
+
+Key differentiator vs OneTrust / DataGrail / BigID:
+  None of them give individual users a real-time, per-event audit trail.
+  DataGuard does.
+
+Future work:
+  - Performance benchmarking under high-throughput load
+  - Kafka SDK mode for high-volume tenants
+  - Formal security audit before production deployment
+  - Granular per-field consent management
+
+================================================================================

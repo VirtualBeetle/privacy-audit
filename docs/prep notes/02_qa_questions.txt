@@ -1,0 +1,314 @@
+================================================================================
+POSSIBLE PROFESSOR/SUPERVISOR QUESTIONS — WITH ANSWERS
+================================================================================
+
+
+--------------------------------------------------------------------------------
+ARCHITECTURE & DESIGN DECISIONS
+--------------------------------------------------------------------------------
+
+Q: Why did you use NestJS instead of Express.js?
+
+A: Express.js is intentionally unopinionated — you have to wire together
+   routing, dependency injection, guards, and middleware yourself. For a system
+   this size (16 modules, multiple guards, three auth strategies), that wiring
+   would be a lot of boilerplate without academic value. NestJS provides a
+   module-based architecture with built-in dependency injection, a Swagger
+   integration that generates API docs automatically, and first-class support
+   for the libraries I needed (TypeORM, BullMQ, Passport.js). The Swagger UI
+   at /api/docs was a genuine dissertation deliverable that came essentially
+   for free with NestJS.
+
+
+Q: Why did you add MongoDB when you already had PostgreSQL?
+
+A: This is called polyglot persistence — using the best database for each data
+   type rather than forcing everything into one store. PostgreSQL is excellent
+   for structured, relational data like audit events and GDPR requests — you
+   need joins, foreign keys, and ACID transactions there. But AI chat sessions
+   are variable-length arrays of messages with no fixed schema, and AI analysis
+   records contain free-form model outputs that differ every run. Storing those
+   in PostgreSQL would require either a serialised JSON blob (losing queryability)
+   or a complex wide nullable schema. MongoDB's document model is a natural fit.
+   The two databases are not redundant — they handle genuinely different data types.
+
+
+Q: Why did you choose BullMQ over Kafka?
+
+A: For the event volumes expected from demo tenant applications, Kafka's
+   throughput advantages are unnecessary. Kafka requires a ZooKeeper instance
+   (or KRaft in newer versions) — that is an extra Docker service that must be
+   healthy before Kafka can start, which increases startup complexity and time.
+   BullMQ with Redis provides job retries with exponential backoff, job
+   prioritisation, and queue status monitoring, all from a single Redis container.
+   The @nestjs/bullmq module is officially maintained by the NestJS team, so
+   the integration is well-documented. For the dissertation scope, BullMQ is
+   the right tool. Kafka is future work if this were to handle millions of events.
+
+
+Q: Why did you change from JWT to API Key for event submission?
+
+A: In the original design, event submission used JWT authentication. The problem
+   appeared during SDK implementation. JWTs expire after 24 hours. A tenant
+   application is a machine client that runs continuously — potentially for weeks
+   without human intervention. Handling JWT expiry in a machine client requires
+   implementing a background token refresh mechanism: detect the 401, re-call the
+   login endpoint, store the new token, retry the failed request. That complexity
+   is real but adds no security benefit over API keys. API keys don't expire.
+   The tenant registers once, receives a key, and it works indefinitely. Security
+   is preserved because the key is SHA-256 hashed before storage — a database
+   breach doesn't expose the plaintext key. This is the same pattern Stripe uses.
+
+
+Q: How do you prevent one tenant from seeing another tenant's data?
+
+A: Three independent layers of isolation. At the API layer, every request is
+   validated by the ApiKeyGuard which resolves a specific tenant and attaches it
+   to the request context. At the service layer, every database query includes
+   WHERE tenant_id = :tenantId — it is architecturally impossible to query without
+   this filter because the tenantId parameter is required by every service method.
+   At the database layer, tenant_id is defined NOT NULL on all tenant-scoped tables,
+   so a record literally cannot exist without a tenant association. This is
+   defence-in-depth — if one layer has a bug, the other two catch it.
+
+
+--------------------------------------------------------------------------------
+GDPR & COMPLIANCE
+--------------------------------------------------------------------------------
+
+Q: Which GDPR articles does your system address?
+
+A: Article 5 — lawfulness and transparency, every event logged with purpose and
+   data minimisation violations flagged. Article 7 — consent management with
+   per-category toggles and downloadable receipts. Article 17 — right to erasure
+   with hard deletion and a cryptographic evidence hash. Article 20 — data
+   portability with async JSON export and expiring download links. Article 30 —
+   records of processing activities, which is the hash-chained audit log itself.
+   Article 33 — breach notification simulation with a 72-hour countdown to
+   regulator notification.
+
+
+Q: How does the GDPR deletion work — how do you prove data was deleted?
+
+A: When deletion is requested, the backend hard-deletes all audit_events records
+   for that user. After deletion, it computes a SHA-256 hash of three values:
+   the deleted event count, the user ID, and the timestamp of deletion. This hash
+   is stored as an evidence_ref in the deletion_requests table. In a regulatory
+   investigation, you can present this hash as proof that deletion occurred and
+   at what time, without retaining any of the deleted personal data itself.
+   Retaining the evidence hash does not violate GDPR because the hash is a
+   one-way function — you cannot reconstruct the deleted data from it.
+
+
+Q: What is Privacy by Design and how does your system implement it?
+
+A: Privacy by Design is a framework by Ann Cavoukian (2009) with seven principles.
+   The key ones in this project are: proactive accountability (the hash chain
+   proves the log hasn't been tampered with before any incident occurs); privacy
+   as the default (all events require explicit SDK calls — the system doesn't
+   collect data passively); privacy embedded into design (GDPR export, deletion,
+   consent, and breach notification are first-class modules, not afterthoughts);
+   and visibility and transparency (the privacy dashboard is the central
+   user-facing feature — the user can see everything). I didn't just describe
+   these principles, I mapped each one to a specific architectural feature in
+   the system.
+
+
+--------------------------------------------------------------------------------
+CRYPTOGRAPHY & SECURITY
+--------------------------------------------------------------------------------
+
+Q: Explain how the hash chain works.
+
+A: Every audit event stores two hash fields. prev_hash is the SHA-256 hash of
+   the previous event for the same tenant and user. hash is SHA-256 of the
+   current event's content concatenated with prev_hash. The first event has
+   prev_hash = null, which is treated as a known sentinel value.
+
+   To verify the chain, the verify-chain endpoint fetches all events for a
+   tenant ordered by occurred_at. For each event, it recomputes the hash using
+   the stored content and the previous event's stored hash. If the recomputed
+   hash matches the stored hash, the event is untampered. If any event has been
+   modified, its hash will not match — and all subsequent events will also
+   fail verification because their prev_hash will point to the tampered value.
+
+   This is based on Haber and Stornetta (1991) — the foundational paper for
+   timestamped tamper-evident sequences, which is also the basis of blockchain.
+
+
+Q: Why did you use SHA-256 for API keys instead of bcrypt?
+
+A: bcrypt is designed for password hashing. Its intentional slowness (via a
+   work factor) protects against dictionary attacks and rainbow tables — which
+   are relevant for user-chosen passwords because users choose weak passwords
+   from a predictable space. An API key is a high-entropy random string generated
+   by a cryptographic random number generator. There is no dictionary attack
+   possible — the key space is too large and the values are not predictable.
+   SHA-256 is fast, deterministic, and sufficient for this purpose. Using bcrypt
+   here would just slow down every API request without adding security.
+
+
+Q: What is HMAC and why did you use it for webhooks?
+
+A: HMAC (Hash-based Message Authentication Code) is a technique for verifying
+   that a message came from a known sender and has not been tampered with. In
+   the webhook system, when DataGuard sends a risk alert to a tenant's registered
+   endpoint, it includes an X-Signature-256 header. This header is computed as
+   HMAC-SHA256(shared_secret, request_body). The recipient knows the shared secret
+   (exchanged at webhook registration). They can compute the same HMAC over the
+   body they received and compare it to the header. If they match, the payload is
+   authentic and untampered. This is the same approach used by Stripe, GitHub,
+   and Shopify. It is stateless and requires no certificate management.
+
+
+--------------------------------------------------------------------------------
+AI & MACHINE LEARNING
+--------------------------------------------------------------------------------
+
+Q: How does the AI risk agent work? Can it make mistakes?
+
+A: The agent fetches the last 100 events for each tenant every 6 hours and sends
+   them to a large language model with a structured prompt. The prompt asks the
+   model to identify patterns consistent with GDPR violations: high-sensitivity
+   data access without consent, data brokering without opt-in, after-hours
+   employee access, and unusual export volumes. The model returns structured JSON
+   with findings, each including a severity level, a GDPR article citation,
+   an explanation, and a suggested action.
+
+   On whether it can make mistakes: yes. LLMs can produce false positives —
+   flagging legitimate business activities as violations — and false negatives —
+   missing genuine violations. The agent's output should be reviewed by a qualified
+   privacy professional before acting on it. The system makes this explicit in the
+   UI. This is one of the acknowledged limitations in the dissertation.
+
+
+Q: Why did you support multiple AI providers (Claude, Gemini, OpenAI)?
+
+A: Two reasons. First, practical resilience — if one provider's API is down or
+   an API key is exhausted, you can switch without a code change or redeployment.
+   Second, academic value — the abstraction demonstrates good software design
+   (the open/closed principle: open for extension, closed for modification). All
+   three providers implement the same interface in AiOrchestrationService. Adding
+   a fourth provider would require only a new adapter class. The API keys are
+   stored in MongoDB encrypted with AES-256-GCM so they can be managed from the
+   UI — also a more realistic production design than hardcoding keys in env vars.
+
+
+--------------------------------------------------------------------------------
+SYSTEM DESIGN & SCALABILITY
+--------------------------------------------------------------------------------
+
+Q: How would this scale in production with millions of events?
+
+A: A few changes would be needed. The hash chain serialises processing per
+   (tenantId, tenantUserId) pair — at very high event volumes from the same user,
+   this becomes a bottleneck. You could partition the chain by time window or
+   by a secondary key. The BullMQ queue could be replaced with Kafka (which was
+   originally considered) for higher throughput and stronger ordering guarantees.
+   PostgreSQL would need partitioning on the audit_events table by tenant_id
+   and created_at for query performance. The Render free-tier deployment would
+   need to move to horizontally scaled web services. These are all acknowledged
+   as future work.
+
+
+Q: Why did you use Server-Sent Events for AI streaming instead of WebSockets?
+
+A: SSE is one-directional — server pushes to client. WebSockets are
+   bidirectional. For AI chat streaming, the communication is always
+   server-to-client after the initial request, so the bidirectionality of
+   WebSockets is unnecessary overhead. SSE has another advantage: it works over
+   standard HTTP/2, automatic reconnection is built into the browser EventSource
+   API, and it is simpler to implement on the NestJS side. The one challenge was
+   that native browser EventSource doesn't support POST requests or custom headers,
+   which are needed for the Bearer token authentication. The solution was to use
+   fetch() with a ReadableStream consumer — this supports POST and custom headers
+   while achieving the same streaming effect.
+
+
+Q: How does the handshake token flow prevent security issues?
+
+A: The handshake token is short-lived — 15 minutes. It is bound to a specific
+   tenantUserId. It is a one-time use token that is exchanged for a longer-lived
+   session token at the /dashboard/session endpoint. If the token is stolen during
+   the 15-minute window, the attacker would need to reach the DataGuard login URL
+   before it expires. Once exchanged, the handshake token cannot be used again.
+   The session token it produces is an 8-hour JWT. This design means the tenant
+   application never needs to know the user's DataGuard credentials — it only
+   needs its own API key to issue the handshake token.
+
+
+--------------------------------------------------------------------------------
+TESTING & EVALUATION
+--------------------------------------------------------------------------------
+
+Q: Why didn't you write unit tests for everything?
+
+A: The most significant risks in this system are integration risks, not unit
+   logic risks. Does the queue processor correctly compute the hash chain? Does
+   the export workflow correctly transition states? Does the handshake token flow
+   work end-to-end? These risks are only caught by integration testing in the
+   running Docker Compose environment. Unit tests for individual functions would
+   test the parts but miss the connections. I did write unit tests for the hash
+   computation and privacy score calculation — the pure functions where unit
+   testing is meaningful. But the primary verification method was manual
+   end-to-end scenario testing with 18 documented scenarios, all of which passed.
+
+
+Q: How did you evaluate whether the system is actually useful to users?
+
+A: I conducted an informal peer evaluation with three participant roles: a patient
+   using HealthTrack, a social media user on ConnectSocial, and a developer
+   integrating the SDK. Each had a defined set of tasks to complete without
+   guidance. The patient found the audit trail intuitive and was genuinely
+   surprised to discover that insurance billing had accessed their records —
+   which demonstrates the core value proposition. The developer completed the
+   onboarding wizard in under 5 minutes. I acknowledge the limitation: this is a
+   small, informal evaluation, not a statistically significant user study. A
+   formal evaluation with a diverse representative sample is future work.
+
+
+--------------------------------------------------------------------------------
+GENERAL / REFLECTION
+--------------------------------------------------------------------------------
+
+Q: What would you do differently if you started over?
+
+A: A few things. I would write integration tests earlier — especially for the
+   hash chain and the queue processor — rather than relying on manual testing
+   throughout. I would plan the Docker Compose health check dependencies from day
+   one; retrofitting them caused debugging time that could have been avoided.
+   I would also document the API contract before implementation, not after, which
+   would have made the SDK development faster since the endpoint shapes would have
+   been stable. Finally, I would implement formal performance benchmarks earlier
+   to understand the hash chain throughput limits before they became a theoretical
+   concern.
+
+
+Q: What is the most technically complex part of the project?
+
+A: The combination of the hash chain concurrency problem and the SSE streaming
+   architecture. The hash chain requires that for any given (tenantId, tenantUserId)
+   pair, events are processed strictly in order — reading the previous hash before
+   writing the new event. Under concurrent submissions, two queue workers could
+   read the same prev_hash simultaneously and produce two events with the same
+   prev_hash, breaking the chain. The solution — BullMQ job grouping to serialise
+   processing per tenant-user pair — is elegant but required understanding BullMQ's
+   internals. The SSE streaming for AI chat required a custom buffer-based parser
+   on the frontend because the fetch ReadableStream delivers chunks that may split
+   SSE events mid-line.
+
+
+Q: What is the real-world commercial potential of this?
+
+A: The gap is genuine — no open-source tool currently provides per-event, user-
+   facing audit trails as a service. The closest commercial tools (OneTrust,
+   DataGrail, BigID) are all designed for privacy teams, not individual users.
+   The SDK approach means the integration cost is low — two lines of code. The
+   multi-tenant SaaS model means it could serve hundreds of applications from one
+   deployment. The main barriers to production use would be a formal security
+   audit (which is acknowledged as future work), formal performance benchmarking,
+   and probably a more granular consent model at the per-field level rather than
+   per-category.
+
+
+================================================================================

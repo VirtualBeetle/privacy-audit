@@ -16,6 +16,7 @@
 \usepackage{setspace}
 \usepackage{enumitem}
 \usepackage{tabularx}
+\usepackage{float}
 
 \geometry{a4paper, margin=2.54cm}
 
@@ -197,6 +198,13 @@ No widely-available open-source tool provides a dynamic, event-driven audit trai
 Bernal \cite{privacylaw} argues that meaningful privacy on the internet requires not just data protection rules but also tools that give individuals genuine agency over how their data is used.
 This project operationalises that argument by building a platform that provides users with real information, in real time, about every data access event that concerns them.
 
+The scale of the problem is considerable.
+A single social media session may generate dozens of data access events involving advertising systems, recommendation engines, and third-party analytics providers.
+A single hospital visit may generate audit events across billing, records management, insurance verification, and clinical decision support systems.
+In neither case does the individual have any visibility into these events unless the application explicitly provides it.
+The absence of such visibility is not merely a user experience deficiency --- it represents a structural accountability gap that GDPR sought to close but that existing tooling has not yet addressed at the individual event level.
+This project addresses that gap directly by making the audit trail a first-class, user-accessible feature of the platform rather than an internal compliance artefact.
+
 \section{Goals and Objectives}
 
 The primary goal of this project is to design and implement a reusable, multi-tenant Privacy Audit and Data Transparency Service.
@@ -270,6 +278,11 @@ Their review found that while organisations have made progress in updating priva
 Healthcare providers in particular struggle to provide patients with meaningful, event-level access to records of how their data has been processed.
 This gap in the healthcare sector directly motivated the HealthTrack demonstration application in this project.
 
+Enforcement of GDPR has intensified since 2018.
+Ireland's Data Protection Commission (DPC), which regulates many of the world's largest technology companies due to their European headquarters being located in Ireland, has issued significant fines against Meta and other organisations for failures of transparency and lawful basis.
+These enforcement actions demonstrate that the articles described above carry real legal and financial consequences, and that organisations cannot treat GDPR compliance as a documentation exercise.
+The demand for tools that provide genuine, demonstrable transparency --- rather than policy documents --- has grown as a direct result of this enforcement environment.
+
 \subsection{Privacy by Design}
 
 The Privacy by Design framework was introduced by Cavoukian \cite{cavoukian2009}, the former Information and Privacy Commissioner of Ontario.
@@ -297,6 +310,12 @@ Walraven et al.\ \cite{walraven2011} compared PaaS offerings and analysed how Sa
 They identify the shared-database, shared-schema model --- in which all tenants share a single database instance, with a \texttt{tenant\_id} column providing logical separation --- as the most cost-effective approach for SaaS services.
 The trade-off is that application-level isolation must be rigorously enforced, as the database itself provides no physical separation between tenants.
 This project adopts this model and enforces isolation at three independent levels: API middleware, service layer query scoping, and database foreign key constraints.
+
+The alternative to the shared-schema model is the dedicated-database model, in which each tenant receives a separate database instance.
+This approach provides stronger isolation guarantees and simplifies the query logic, as no tenant filter is required.
+However, it scales poorly: each new tenant requires a new database instance, connection pool, and backup schedule.
+For a service that is designed to onboard dozens or hundreds of tenants, the operational overhead of the dedicated-database model is prohibitive.
+The shared-schema model, with rigorous application-level enforcement, is the standard approach for SaaS platforms and is appropriate for the privacy audit service described in this project.
 
 \subsection{Tamper-Evident Audit Logs and Hash Chaining}
 
@@ -336,9 +355,16 @@ Both considerations apply to audit event ingestion: the hash chain computation a
 \subsection{Artificial Intelligence in Compliance Monitoring}
 
 The application of large language models (LLMs) to compliance and risk analysis is an emerging area.
-LLMs are well-suited to tasks that involve identifying patterns and anomalies in structured text, as their training on large corpora gives them broad contextual knowledge.
+LLMs are well-suited to tasks that involve identifying patterns and anomalies in structured text, as their training on large corpora gives them broad contextual knowledge of regulatory language and business process norms.
 In this project, the Claude API is used to analyse batches of audit events and identify potential compliance violations.
 The model acts as a privacy risk analyst, flagging events such as high-sensitivity data access without consent, data brokering, and unusual export volumes.
+
+A key advantage of LLMs over rule-based compliance engines is their ability to reason about context.
+A rule-based system can detect that a HIGH-sensitivity event occurred without consent, but it cannot reason about whether the pattern of events across a session represents a plausible business workflow or a potential data exfiltration attempt.
+An LLM can contextualise individual events against the broader sequence, identify temporal anomalies such as after-hours employee access, and generate natural-language explanations that a compliance officer can act upon.
+The limitation of this approach is that LLM outputs are probabilistic and subject to hallucination.
+The risk findings generated by the agent in this project are presented as advisory alerts that require human review, not as authoritative compliance determinations.
+This distinction is important and is reflected in the interface design of the risk alerts page, which presents each finding with a suggested action rather than an automated consequence.
 
 \section{Related Work}
 
@@ -374,7 +400,7 @@ The commercial tools described above are designed primarily for privacy and comp
 None provide a per-user, real-time audit feed accessible directly from the application.
 Table~\ref{tab:related-work} summarises the comparison.
 
-\begin{table}[h]
+\begin{table}[H]
     \begin{center}
         \begin{tabular}{|l|c|c|c|c|}
             \hline
@@ -398,7 +424,7 @@ Table~\ref{tab:related-work} summarises the comparison.
     \end{center}
     \caption{Comparison of this project with related privacy management tools}
     \label{tab:related-work}
-\end{table}
+\end{table}%
 
 As shown in Table~\ref{tab:related-work}, the key differentiators of this project are the per-event audit trail, the user-facing dashboard, and the developer SDK.
 These features together enable a model of privacy transparency that is not available in existing commercial tools.
@@ -654,6 +680,9 @@ If the hashes match, the tenant is resolved and attached to the request context.
 
 The advantage of this approach over JWT for machine clients is that API keys do not expire.
 A tenant application does not need to implement a login flow, manage token refresh, or handle JWT expiry.
+Rate limiting is applied per API key at the gateway layer --- ten requests per second and two hundred requests per minute --- to prevent abuse without impacting normal event submission volumes.
+An API key can be revoked by deactivating the tenant record, at which point all subsequent requests from that key are rejected with a 401 response.
+This provides a straightforward mechanism for offboarding a tenant or responding to a compromised key without requiring any changes to the tenant application's code.
 
 \subsection{Tier 2: JWT Authentication (Tenant Administrator)}
 
@@ -729,6 +758,13 @@ A full schema reference is provided in Appendix~A.
 The audit event format was designed to capture all information necessary to answer the key transparency questions: who accessed the data, what data was accessed, for what purpose, when, and at what level of sensitivity.
 Table~\ref{tab:event-fields} lists the core fields.
 
+The design of the event format required several deliberate decisions about which fields to include and how to represent them.
+The \texttt{actor\_type} field uses a controlled vocabulary (SYSTEM, EMPLOYEE, THIRD\_PARTY, DATA\_BROKER, OTHER\_USER) rather than a free-text description.
+This ensures that the privacy dashboard can render actor information in a consistent and user-comprehensible way, and that the AI risk agent can reason about actor categories without parsing unstructured text.
+The \texttt{sensitivity\_code} field similarly uses a four-level scale (LOW, MEDIUM, HIGH, CRITICAL) that maps intuitively to the sensitivity classifications used in GDPR impact assessments.
+The \texttt{reason\_code} field captures the declared purpose of the data access, which is the primary basis for evaluating GDPR Article 5(1)(b) compliance --- the requirement that data be collected for specified, explicit, and legitimate purposes.
+The \texttt{consent\_obtained} boolean provides the simplest possible representation of Article 7 compliance at the event level, enabling the risk agent to flag events where sensitive data was processed without consent.
+
 \begin{table}[h]
     \begin{center}
         \begin{tabular}{|l|l|p{6cm}|}
@@ -779,6 +815,15 @@ In both cases, the calling application is not blocked by the audit event submiss
 A third mode (direct queue publish) was considered in the original design.
 This mode would have allowed SDKs to publish directly to a Kafka or RabbitMQ exchange, bypassing the REST API entirely.
 As discussed in Section~\ref{sec:design-changes}, this mode was not implemented because BullMQ with Redis was selected over Kafka and RabbitMQ for the queue.
+
+The SDK design also addressed the question of error handling.
+In all three SDKs, audit event submission is treated as a non-critical side effect of the tenant application's primary operation.
+If the audit service is unreachable, the SDK logs the error but does not throw an exception or block the calling code.
+This fire-and-forget contract is fundamental to the integration model: a tenant application must never fail its primary user request because the audit service is temporarily unavailable.
+The Go SDK implements this with a goroutine that discards the error after logging.
+The TypeScript SDK implements it with a floating Promise --- a call to \texttt{sendAsync()} that is not awaited, so any rejection is silently dropped after logging.
+The Python SDK wraps the call in a try/except block with a logged warning on failure.
+This consistent error-handling contract across all three SDKs ensures that the integration burden on tenant developers is minimal and that the operational risk of adopting the service is low.
 
 \section{Design Changes During Development}
 \label{sec:design-changes}
@@ -954,6 +999,15 @@ Each finding is stored as a \texttt{risk\_alerts} record in PostgreSQL, containi
 The full analysis run, including the complete model output, is stored as an \texttt{AiAnalysisRecord} document in MongoDB.
 
 If the tenant has an email address configured, and if the alert severity is HIGH or CRITICAL, an email notification is sent to the tenant administrator via the \texttt{EmailModule}.
+Figure~\ref{fig:risk-alerts} shows the risk alerts page as displayed in the DataGuard dashboard.
+Each alert card shows the severity level, the GDPR article cited, a description of the detected pattern, and a suggested remediation action.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.95\textwidth]{images/risk-alerts.png}
+    \caption{AI-generated risk alerts page showing severity-coded findings with GDPR article citations}
+    \label{fig:risk-alerts}
+\end{figure}
 
 \subsection{Consent Management}
 
@@ -963,6 +1017,11 @@ Seven categories are defined: \texttt{AD\_TARGETING}, \texttt{DATA\_BROKERING}, 
 A user can retrieve their current consent settings via \texttt{GET /api/consents/:userId} and update them via \texttt{POST /api/consents}.
 Consent records are upserted: a new record is created if none exists, or the existing record is updated.
 Events in the audit feed for which the user has withdrawn consent (i.e.\ \texttt{user\_opted\_out} = true) are visually highlighted in the DataGuard dashboard.
+
+Each consent change is recorded with a timestamp, creating a consent history that can be used to verify the state of a user's consent at any point in the past.
+This is relevant to GDPR Article 7(1), which requires that the controller be able to demonstrate that the data subject has given consent.
+A downloadable consent receipt is generated for each change, providing a portable record that the user can retain as evidence of what they consented to and when.
+The combination of the consent history and the consent receipt addresses the accountability requirement of GDPR Article 5(2), which places the burden of proof for compliance on the data controller.
 
 \subsection{Privacy Health Score}
 
@@ -1035,6 +1094,17 @@ The dashboard is composed of the components listed in Table~\ref{tab:components}
     \label{tab:components}
 \end{table}
 
+Figure~\ref{fig:dataguard-dashboard} shows the DataGuard privacy dashboard as seen by an authenticated end user.
+The overview section displays the four statistics cards, the sensitivity donut chart, the data fields bar chart, and the live event feed.
+The privacy health score gauge is visible on the right, providing an at-a-glance summary of the tenant's data access posture.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.95\textwidth]{images/dataguard-dashboard.png}
+    \caption{DataGuard privacy dashboard showing the audit event feed, statistics, and privacy health score}
+    \label{fig:dataguard-dashboard}
+\end{figure}
+
 \subsection{GDPR Controls Interface}
 
 The dashboard exposes two primary GDPR controls to the user.
@@ -1080,6 +1150,16 @@ Table~\ref{tab:health-events} lists the six audit events emitted during normal o
     \caption{Audit events emitted by the HealthTrack demo application}
     \label{tab:health-events}
 \end{table}
+
+Figure~\ref{fig:healthtrack-dashboard} shows the HealthTrack patient dashboard.
+The patient can view their medical records and appointments, and navigate to the DataGuard privacy dashboard via the Privacy Settings link, which initiates the handshake token flow.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.95\textwidth]{images/healthtrack-dashboard.png}
+    \caption{HealthTrack patient dashboard showing medical records and the privacy settings link}
+    \label{fig:healthtrack-dashboard}
+\end{figure}
 
 All audit event calls are fire-and-forget.
 Each call runs in a goroutine so that a failure or latency in the audit service does not affect the patient's primary healthcare interaction.
@@ -1129,6 +1209,17 @@ Table~\ref{tab:social-events} lists the events emitted.
     \caption{Audit events emitted by the ConnectSocial demo application}
     \label{tab:social-events}
 \end{table}
+
+Figure~\ref{fig:connectsocial-dashboard} shows the ConnectSocial user interface.
+The social feed, post composition, and privacy settings are visible.
+The privacy settings page provides access to the DataGuard dashboard and displays the user's consent preferences.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.95\textwidth]{images/connectsocial-dashboard.png}
+    \caption{ConnectSocial social media application showing the user feed and privacy settings page}
+    \label{fig:connectsocial-dashboard}
+\end{figure}
 
 The Python SDK uses \texttt{httpx} for HTTP communication.
 The \texttt{audit.py} module in the ConnectSocial backend wraps each SDK call in a try/except block, logging any exception and continuing, consistent with the fire-and-forget requirement.
@@ -1189,6 +1280,12 @@ A one-time \texttt{setup-hosts.sh} script adds these entries to the host machine
 
 A \texttt{start.sh} script orchestrates the full startup sequence: it checks that Docker is running, copies the environment file if absent, runs Docker Compose, and prints a health status table with all service URLs and port numbers.
 A \texttt{Makefile} provides shortcut commands for starting, stopping, resetting, and viewing logs for the platform.
+
+The nginx reverse proxy configuration deserves particular mention as a developer experience decision.
+Without named hostnames, developers must remember that the DataGuard dashboard is at \texttt{localhost:3000}, the audit API is at \texttt{localhost:8080}, and the tenant applications are at ports 3001 and 3002.
+The nginx proxy, combined with a one-time \texttt{setup-hosts.sh} script that adds entries to the host machine's \texttt{/etc/hosts} file, replaces these numeric ports with memorable hostnames: \texttt{dataguard.local}, \texttt{health.local}, and \texttt{social.local}.
+This configuration also mirrors a realistic production deployment, where each service is addressed by a subdomain rather than a port number.
+The nginx configuration for each frontend service uses \texttt{try\_files \$uri /index.html} to support client-side routing, which is required for React Router to handle direct URL navigation correctly within each single-page application.
 
 \section{Implementation Challenges}
 
@@ -1255,53 +1352,59 @@ No task was marked complete until the corresponding feature was verified to work
 
 Table~\ref{tab:test-scenarios} lists the key test scenarios and their outcomes.
 
-\begin{table}[h]
-    \begin{center}
-        \begin{tabular}{|p{4cm}|p{6.5cm}|c|}
-            \hline
-            \textbf{Scenario} & \textbf{Description} & \textbf{Result} \\
-            \hline
-            Tenant registration & Tenant registers via API, receives API key, sends test event & Pass \\
-            \hline
-            Event ingestion & SDK sends event, queue processes it, event visible in dashboard & Pass \\
-            \hline
-            Idempotency & Same event\_id submitted twice, second submission rejected & Pass \\
-            \hline
-            Hash chain verification & Chain verify endpoint returns clean after 20 events seeded & Pass \\
-            \hline
-            Chain tamper detection & Event hash manually altered, verify-chain returns 400 & Pass \\
-            \hline
-            Data export & User requests export, polls status, downloads JSON file & Pass \\
-            \hline
-            Export expiry & Export link accessed after 24-hour expiry returns 410 & Pass \\
-            \hline
-            Data deletion & User requests deletion, events removed, evidence hash stored & Pass \\
-            \hline
-            Retention cron & Cron triggered manually, events older than retention window deleted & Pass \\
-            \hline
-            AI risk analysis & Cron triggered manually, Claude API returns findings, alerts visible & Pass \\
-            \hline
-            Google OAuth & User signs in with Google, arrives at DataGuard dashboard authenticated & Pass \\
-            \hline
-            Handshake token flow & HealthTrack ``View my privacy'' button opens DataGuard pre-authenticated & Pass \\
-            \hline
-            Consent management & User toggles consent off, opted-out events highlighted in feed & Pass \\
-            \hline
-            Webhook delivery & Risk alert triggers HMAC-signed delivery to registered endpoint & Pass \\
-            \hline
-            PDF compliance report & User downloads A4 PDF report containing event summary & Pass \\
-            \hline
-            Breach notification & Breach report created, 72-hour countdown visible on dashboard & Pass \\
-            \hline
-            Privacy health score & Score computed and displayed as gauge on dashboard & Pass \\
-            \hline
-            Rate limiting & 11 rapid requests to /events from same IP returns 429 & Pass \\
-            \hline
-        \end{tabular}
-    \end{center}
+\begin{longtable}{|p{4cm}|p{6.5cm}|c|}
     \caption{Key functional test scenarios and results}
-    \label{tab:test-scenarios}
-\end{table}
+    \label{tab:test-scenarios} \\
+    \hline
+    \textbf{Scenario} & \textbf{Description} & \textbf{Result} \\
+    \hline
+    \endfirsthead
+    \hline
+    \textbf{Scenario} & \textbf{Description} & \textbf{Result} \\
+    \hline
+    \endhead
+    \hline
+    \multicolumn{3}{r}{\small\textit{Continued on next page}} \\
+    \endfoot
+    \hline
+    \endlastfoot
+    Tenant registration & Tenant registers via API, receives API key, sends test event & Pass \\
+    \hline
+    Event ingestion & SDK sends event, queue processes it, event visible in dashboard & Pass \\
+    \hline
+    Idempotency & Same event\_id submitted twice, second submission rejected & Pass \\
+    \hline
+    Hash chain verification & Chain verify endpoint returns clean after 20 events seeded & Pass \\
+    \hline
+    Chain tamper detection & Event hash manually altered, verify-chain returns 400 & Pass \\
+    \hline
+    Data export & User requests export, polls status, downloads JSON file & Pass \\
+    \hline
+    Export expiry & Export link accessed after 24-hour expiry returns 410 & Pass \\
+    \hline
+    Data deletion & User requests deletion, events removed, evidence hash stored & Pass \\
+    \hline
+    Retention cron & Cron triggered manually, events older than retention window deleted & Pass \\
+    \hline
+    AI risk analysis & Cron triggered manually, Claude API returns findings, alerts visible & Pass \\
+    \hline
+    Google OAuth & User signs in with Google, arrives at DataGuard dashboard authenticated & Pass \\
+    \hline
+    Handshake token flow & HealthTrack ``View my privacy'' button opens DataGuard pre-authenticated & Pass \\
+    \hline
+    Consent management & User toggles consent off, opted-out events highlighted in feed & Pass \\
+    \hline
+    Webhook delivery & Risk alert triggers HMAC-signed delivery to registered endpoint & Pass \\
+    \hline
+    PDF compliance report & User downloads A4 PDF report containing event summary & Pass \\
+    \hline
+    Breach notification & Breach report created, 72-hour countdown visible on dashboard & Pass \\
+    \hline
+    Privacy health score & Score computed and displayed as gauge on dashboard & Pass \\
+    \hline
+    Rate limiting & 11 rapid requests to /events from same IP returns 429 & Pass \\
+    \hline
+\end{longtable}
 
 All 18 key scenarios passed.
 The tamper detection test, where a hash was manually altered in the database and the verify-chain endpoint was called, confirmed that the cryptographic integrity mechanism works as intended.
@@ -1365,6 +1468,12 @@ The consent category labels, as noted above, would benefit from plain-language d
 The ``View my privacy'' link in HealthTrack currently opens the DataGuard dashboard in a new browser tab, which requires the user to context-switch between the healthcare application and the privacy dashboard.
 An embedded iframe approach would provide a more integrated experience.
 
+Despite these areas for improvement, the overall reception of the system during evaluation was positive.
+All three participant roles completed their assigned tasks without external assistance.
+The patient role participant expressed that the audit trail provided a level of transparency they had not previously experienced from a healthcare application, and that the ability to request a data export in a single click was more straightforward than expected.
+The developer role participant noted that the onboarding wizard's auto-generated curl command removed what they described as the most common friction point in API integration: knowing the exact request format without reading the full documentation.
+These observations, while informal, suggest that the system's core design decisions --- the seamless handshake token flow, the structured event format, and the developer-facing onboarding tooling --- are well-aligned with the needs of their respective user groups.
+
 \section{Evaluation Against Requirements}
 
 Table~\ref{tab:requirements-eval} evaluates the implemented system against the eleven functional requirements defined in Chapter~Four.
@@ -1407,6 +1516,11 @@ As shown in Table~\ref{tab:requirements-eval}, all eleven functional requirement
 The system also delivered seven features beyond the original requirements: consent management (GDPR Article 7), breach notification simulation (GDPR Article 33), a webhook system with HMAC-signed delivery, a PDF compliance report generator, a privacy health score, a multi-provider AI orchestration layer, and an interactive tenant onboarding wizard.
 These additional features were implemented in Phases 13 and 14 and increase the demonstration value and academic complexity of the project.
 
+The non-functional requirements were also evaluated during testing.
+The 202 Accepted response time requirement (NFR-1) was consistently met: because the event is placed on the BullMQ queue rather than written directly to the database, the HTTP response is returned before the hash chain computation occurs, keeping the response time well within 100 milliseconds under the tested load.
+The multi-level tenancy isolation (NFR-2) was verified by attempting to access one tenant's events using a second tenant's API key --- the request was correctly rejected with a 403 response at the middleware layer.
+The single-command deployment requirement (NFR-3) was satisfied by the \texttt{docker compose up --build} command, which successfully brought all nine services to a healthy state in under five minutes on a standard development machine.
+
 
 % ============================================================
 % CHAPTER 7: CONCLUSIONS AND FUTURE WORK
@@ -1429,6 +1543,12 @@ The AI risk agent, powered by the Claude API, provides automated compliance moni
 The multi-tenant architecture was validated through two distinct demo applications built with different technology stacks (Go and Python), demonstrating that the platform integrates with heterogeneous environments.
 The five-layer architecture, the shared-database multi-tenancy model described by Walraven et al.\ \cite{walraven2011}, and the three-level isolation enforcement provide a template for how privacy-by-design \cite{cavoukian2009} can be operationalised in a production-grade SaaS system.
 
+The choice to build two demo applications in deliberately different languages --- Go for HealthTrack and Python for ConnectSocial --- was made to demonstrate that the SDK abstraction is genuinely language-agnostic.
+A healthcare operator and a social media operator represent different sectors, different data sensitivity profiles, and different technology ecosystems.
+The fact that both integrate with DataGuard through the same canonical event format, and that users from both applications can access a unified privacy dashboard, validates the reusability claim in the dissertation title.
+The SDKs reduce the integration to a consistent two-step process regardless of the tenant's technology stack: initialise a client with the API key and service URL, then call \texttt{send()} or \texttt{sendAsync()} with the event fields.
+This simplicity was a deliberate design goal and was confirmed by the developer evaluation participant, who completed the full onboarding flow in under five minutes.
+
 The informal user evaluation confirmed that the core user flows --- viewing the audit trail, requesting a data export, and opting out of data categories --- were understandable and usable without prior training.
 The seamless handshake token flow, which removes the need for a second login when navigating from a tenant application to DataGuard, was particularly well-received.
 
@@ -1448,6 +1568,10 @@ The agent's findings should be reviewed by a qualified privacy professional befo
 
 The system has not been subjected to a formal security audit.
 The API key authentication, JWT signing configuration, CORS policy, and HMAC webhook verification should all be reviewed by a security specialist before the system is deployed with real personal data.
+
+The consent management implementation operates at the data category level, which is a simplification relative to the full requirements of GDPR Article 7.
+A production-grade implementation would require consent to be recorded at the level of individual processing purposes, with explicit timestamps, version identifiers for the consent notice shown to the user, and a mechanism for re-obtaining consent when the processing purpose changes.
+The current implementation demonstrates the architectural pattern but does not yet meet the evidentiary standard that a data protection authority would expect in a formal compliance audit.
 
 \section{Future Work}
 

@@ -1,0 +1,277 @@
+================================================================================
+DATAGUARD — PROJECT NOTES
+Understanding the whole project so you can explain it clearly
+================================================================================
+
+
+--------------------------------------------------------------------------------
+WHAT IS THIS PROJECT IN ONE LINE?
+--------------------------------------------------------------------------------
+
+DataGuard is a service that any web application can plug into so that its users
+can see exactly how their personal data is being used — who accessed it, when,
+and why — and exercise their GDPR rights (export, delete, consent) from one place.
+
+
+--------------------------------------------------------------------------------
+THE PROBLEM YOU ARE SOLVING
+--------------------------------------------------------------------------------
+
+Think about Instagram or a hospital app. They access your data constantly —
+your location for ads, your medical records for billing, your profile for
+recommendations. You never see any of this happening.
+
+GDPR (Article 15) says users have the right to know. But in practice, nobody
+provides a real-time, per-event view. Privacy policies are vague documents.
+Cookie banners only cover collection, not ongoing use.
+
+DataGuard fills that gap. It is not a cookie banner tool. It is an audit trail
+service — every single data access event, logged, cryptographically secured,
+and visible to the user.
+
+
+--------------------------------------------------------------------------------
+THE SYSTEM IN PLAIN ENGLISH — HOW IT ALL CONNECTS
+--------------------------------------------------------------------------------
+
+There are three main pieces:
+
+1. THE SDK + API
+   - You are a developer with a healthcare app. You add 2 lines of code.
+   - When a doctor views a patient's record, you call: client.send(event)
+   - That event goes to the DataGuard backend via a REST API call.
+   - Your app gets a 202 Accepted immediately — it doesn't wait.
+   - The event is put in a queue (Redis/BullMQ) and processed in the background.
+
+2. THE AUDIT LOG (the engine room)
+   - The backend picks the event off the queue.
+   - It computes a SHA-256 hash of the event content + the hash of the previous event.
+   - This creates a chain. Like a blockchain — if you change event 5, events 6, 7, 8...
+     all have wrong hashes. You can't tamper without being caught.
+   - The event is saved to PostgreSQL with its hash and prev_hash.
+
+3. THE PRIVACY DASHBOARD (what the user sees)
+   - A patient from HealthTrack clicks "View My Privacy".
+   - They land on DataGuard without a second login (handshake token).
+   - They see: every data access about them, by whom, why, how sensitive.
+   - They can request export of all their data (Article 20).
+   - They can request deletion (Article 17).
+   - They can toggle consent categories on/off (Article 7).
+   - An AI assistant explains what the events mean and flags risks.
+
+
+--------------------------------------------------------------------------------
+THE THREE AUTHENTICATION TIERS — EXPLAINED SIMPLY
+--------------------------------------------------------------------------------
+
+The system has three completely different kinds of users, so it needs three
+different ways to log in. This is one of the key architectural decisions.
+
+TIER 1 — Machine clients (tenant apps like HealthTrack, ConnectSocial)
+  - Use an API Key in the request header: x-api-key: pak_xxxxx
+  - Like Stripe — machines don't need to "log in". They just carry a key.
+  - The key is never stored in plaintext. DataGuard stores SHA-256(key)(fingerprints).
+  - When a request comes in, it hashes the incoming key and compares.
+  - WHY NOT JWT here? JWTs expire. A machine running 24/7 can't deal with expiry
+    without implementing a background refresh. API keys are simpler and correct.
+
+TIER 2 — Tenant administrators (humans who manage HealthTrack's DataGuard account)
+  - Log in with email + password → get a JWT (24 hour expiry).
+  - Can see all events for their tenant, risk alerts, GDPR requests.
+
+TIER 3 — End users (patients, social media users — the people whose data it is)
+  Two ways to get in:
+
+  a) Handshake Token Flow (the seamless path):
+     - Patient is logged into HealthTrack already.
+     - They click "View My Privacy Dashboard".
+     - HealthTrack backend calls DataGuard: "give me a 15-min token for user-123".
+     - DataGuard issues a short-lived JWT.
+     - HealthTrack redirects the browser to DataGuard with ?token=xxx.
+     - DataGuard swaps it for an 8-hour session token.
+     - Patient is now in DataGuard — never typed a password.
+
+  b) Google OAuth:
+     - Click "Sign in with Google".
+     - Google redirects back with a code.
+     - DataGuard creates/finds a dashboard_users record.
+     - Linked to tenant apps via the Connected Apps page.
+
+
+--------------------------------------------------------------------------------
+THE HASH CHAIN — THE TAMPER-EVIDENT LOG
+--------------------------------------------------------------------------------
+
+This is one of the most important technical features. Be ready to explain it.
+
+Imagine a chain of blocks:
+
+  Event 1:  hash = SHA256("READ + email + 2026-01-01" + "null")
+                 = "a3f9..."
+
+  Event 2:  hash = SHA256("WRITE + location + 2026-01-02" + "a3f9...")
+                 = "b72c..."
+
+  Event 3:  hash = SHA256("SHARE + phone + 2026-01-03" + "b72c...")
+                 = "d51e..."
+
+Now try to change Event 2 to hide that location was shared. You change the
+content — but now the hash of Event 2 becomes something different, say "zzzz".
+Event 3's prev_hash still points to "b72c" — which no longer matches.
+
+The chain is broken. The verify-chain endpoint detects it.
+
+This is based on the Haber and Stornetta (1991) paper — the same technique
+that Bitcoin is built on. In your project you use it to prove the audit log
+has not been tampered with. This satisfies GDPR Article 30 (accountability).
+
+
+--------------------------------------------------------------------------------
+THE AI FEATURES — WHAT THEY ARE AND HOW THEY WORK
+--------------------------------------------------------------------------------
+
+There are two AI features:
+
+1. AI RISK AGENT (automated, runs every 6 hours)
+   - Cron job wakes up every 6 hours.
+   - Fetches last 100 events per tenant.
+   - Sends them to the AI (Claude/Gemini/OpenAI) with a structured prompt.
+   - Asks the model: "find GDPR violations in these events — consent issues,
+     data brokering, after-hours employee access, unusual export volumes."
+   - The model returns JSON with findings, each citing a specific GDPR article.
+   - Findings are saved as risk_alerts in PostgreSQL.
+   - Full analysis record (including raw model output) saved in MongoDB.
+   - If HIGH/CRITICAL: notification is created, email sent to tenant admin.
+
+2. AI CHAT (conversational, user-triggered)
+   - User opens the chat panel.
+   - Before calling the AI, the backend fetches the user's last 20 events
+     and prepends them as context.
+   - Slash commands: /verify, /compare, /report, /draft, /explain
+   - /verify recomputes the hash chain and shows a card with the result.
+   - /compare shows last 7 days vs previous 7 days — trust grade change.
+   - /draft generates a pre-filled GDPR complaint letter (Article 15, 17, 20...).
+   - Responses stream in real-time using SSE (Server-Sent Events).
+   - Sessions are saved to MongoDB so you can reload past conversations.
+
+MULTI-PROVIDER: The AI layer is abstracted. Claude, Gemini, OpenAI all go
+through the same AiOrchestrationService. The active provider is stored in MongoDB
+with AES-256 encrypted API keys. You can switch from the UI — no restart needed.
+
+
+--------------------------------------------------------------------------------
+THE GDPR FEATURES — WHAT EACH ONE DOES
+--------------------------------------------------------------------------------
+
+Article 5   — Lawfulness & transparency
+              Every event is logged with its purpose (reason_code).
+              Data minimisation violations flagged when apps access undeclared fields.
+
+Article 7   — Consent
+              7 data categories: analytics, ad_targeting, third_party_sharing,
+              profiling, location_data, biometric_data, health_data.
+              User can toggle each on/off. Changes are recorded with a timestamp.
+              Downloadable consent receipt (proof of what you consented to).
+
+Article 17  — Right to Erasure
+              User requests deletion → all their audit events hard-deleted from DB.
+              A SHA-256 evidence hash is stored: SHA256(count + userId + timestamp).
+              This proves deletion happened without retaining any of the deleted data.
+
+Article 20  — Data Portability
+              User requests export → async job collects all their events → JSON file.
+              Download link expires in 24 hours (after that: 410 Gone).
+
+Article 30  — Records of Processing
+              The hash-chained audit log IS the Article 30 record.
+              Verifiable, tamper-evident, per-event.
+
+Article 33  — Breach Notification
+              Tenant admin reports a breach → 72-hour countdown starts.
+              Dashboard shows elapsed time, remaining time.
+              "Notify Regulator" button simulates DPC notification.
+              If 72 hours passes without action — deadline missed alert.
+
+
+--------------------------------------------------------------------------------
+THE MULTI-TENANCY MODEL — HOW DATA IS KEPT SEPARATE
+--------------------------------------------------------------------------------
+
+All tenants (HealthTrack, ConnectSocial, any future app) share ONE database.
+This is the "shared-database, shared-schema" model.
+
+Every table that holds tenant data has a tenant_id column (UUID foreign key).
+
+Isolation is enforced at THREE independent levels:
+
+Level 1 — API Middleware
+  Every request through the ApiKeyGuard resolves the tenant from the API key.
+  The tenant object is attached to req.tenant.
+  If no valid API key → 401. The request never reaches a service.
+
+Level 2 — Service Layer
+  Every service method takes tenantId as a parameter.
+  All database queries include WHERE tenant_id = :tenantId.
+  A developer cannot accidentally query another tenant's data — it would
+  require actively removing the filter.
+
+Level 3 — Database
+  tenant_id is NOT NULL on all tenant-scoped tables.
+  A record literally cannot exist without a tenant. The DB enforces it.
+
+Why defence in depth? If one layer has a bug, the other two catch it.
+This is a security principle — no single point of failure.
+
+
+--------------------------------------------------------------------------------
+THE DEMO APPS — WHY TWO?
+--------------------------------------------------------------------------------
+
+Having two demo apps in different languages proves two things:
+
+1. The SDK works across language ecosystems (Go and Python are very different).
+2. The multi-tenant architecture actually works — two separate apps, separate
+   databases, separate events, but both visible through DataGuard.
+
+HealthTrack (Go + Gin + GORM + PostgreSQL on port 8081/3001):
+  - 1 doctor, 3 patients (seed data)
+  - Doctor viewing patient records → fires READ audit event
+  - Insurance billing system access → fires READ audit event
+  - Patient clicking "View My Privacy" → fires the handshake token flow
+
+ConnectSocial (FastAPI + Python + PostgreSQL on port 8082/3002):
+  - Social feed, posts, location check-ins
+  - Feed algorithm reads profile → READ by SYSTEM
+  - Ad system reads location → READ by SYSTEM
+  - Location data shared with partner → SHARE by DATA_BROKER (the interesting one)
+  - This is the event that shows data brokering without consent
+
+
+--------------------------------------------------------------------------------
+THE INFRASTRUCTURE — HOW IT ALL RUNS
+--------------------------------------------------------------------------------
+
+Everything runs in Docker. One command starts 9 services:
+
+  audit-backend     — NestJS API (port 8080)
+  audit-frontend    — React dashboard (port 3000)
+  postgres          — main audit database (port 5432)
+  redis             — BullMQ queue (port 6379)
+  mongo             — AI sessions + analysis + notifications
+  health-backend    — Go API (port 8081)
+  health-frontend   — React (port 3001)
+  postgres-health   — HealthTrack's own DB (port 5433)
+  social-backend    — FastAPI (port 8082)
+  social-frontend   — React (port 3002)
+  postgres-social   — ConnectSocial's own DB (port 5435)
+
+Startup order matters. PostgreSQL and Redis need health checks (pg_isready,
+redis-cli ping). NestJS waits for depends_on: condition: service_healthy.
+This was one of the implementation challenges — without this, the backends
+crashed on startup because the databases weren't ready yet.
+
+Live deployment is on Render (free tier). Backend + frontend on Render web
+services. PostgreSQL and Redis on Render free plan. MongoDB on Atlas free tier.
+
+
+================================================================================
