@@ -135,6 +135,10 @@ services:
     envVars:
       - key: VITE_API_URL
         value: https://audit-backend-ddew.onrender.com
+      - key: VITE_HEALTH_APP_URL
+        value: https://health-frontend-b5d4.onrender.com
+      - key: VITE_SOCIAL_APP_URL
+        value: https://social-frontend-0p79.onrender.com
 
   # ── HealthTrack Tenant Backend (Go) ─────────────────────────────────────────
   - type: web

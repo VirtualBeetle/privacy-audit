@@ -24,6 +24,9 @@ interface AppOption {
   url: string;
 }
 
+const HEALTH_URL = (import.meta as any).env?.VITE_HEALTH_APP_URL ?? 'https://health-frontend-b5d4.onrender.com';
+const SOCIAL_URL = (import.meta as any).env?.VITE_SOCIAL_APP_URL ?? 'https://social-frontend-0p79.onrender.com';
+
 const APPS: AppOption[] = [
   {
     id: 'health',
@@ -32,7 +35,7 @@ const APPS: AppOption[] = [
     icon: <FavoriteIcon sx={{ fontSize: 28 }} />,
     color: '#ef4444',
     bg: '#fef2f2',
-    url: 'http://health.local',
+    url: HEALTH_URL,
   },
   {
     id: 'social',
@@ -41,7 +44,7 @@ const APPS: AppOption[] = [
     icon: <PeopleIcon sx={{ fontSize: 28 }} />,
     color: '#0ea5e9',
     bg: '#f0f9ff',
-    url: 'http://social.local',
+    url: SOCIAL_URL,
   },
 ];
 
